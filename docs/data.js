@@ -558,7 +558,7 @@ var APP_DATA = {
     },
     {
       "id": "13-21",
-      "name": "14. Yatak Odası",
+      "name": "14. Oturma Grubu",
       "levels": [
         {
           "tileSize": 256,
