@@ -102,7 +102,7 @@
 
     // Create info hotspots.
     data.infoHotspots.forEach(function(hotspot) {
-      var element = createInfoHotspotElement(hotspot);
+      var element = createInfoHotspotElement(hotspot, data.name);
       scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
     });
 
@@ -351,7 +351,7 @@
     return wrapper;
   }
 
-  function createInfoHotspotElement(hotspot) {
+  function createInfoHotspotElement(hotspot, sceneName) {
 
     // Create wrapper element to hold icon and tooltip.
     var wrapper = document.createElement('div');
@@ -395,6 +395,19 @@
     var text = document.createElement('div');
     text.classList.add('info-hotspot-text');
     text.innerHTML = hotspot.text;
+
+    // Create a WhatsApp "ask about this product" link, if requested.
+    if (hotspot.whatsapp) {
+      var waMessage = 'Merhaba, "' + hotspot.title + '" ürünü hakkında bilgi almak ' +
+        'istiyorum. (Sanal tur: ' + sceneName + ')';
+      var waLink = document.createElement('a');
+      waLink.href = 'https://wa.me/905493320707?text=' + encodeURIComponent(waMessage);
+      waLink.target = '_blank';
+      waLink.rel = 'noopener';
+      waLink.classList.add('info-hotspot-whatsapp');
+      waLink.textContent = 'Bu ürün hakkında daha fazla bilgi al';
+      text.appendChild(waLink);
+    }
 
     // Place header and text into wrapper element.
     wrapper.appendChild(header);

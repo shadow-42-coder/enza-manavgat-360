@@ -148,7 +148,15 @@ var APP_DATA = {
           "target": "3-5"
         }
       ],
-      "infoHotspots": []
+      "infoHotspots": [
+        {
+          "yaw": 0.08,
+          "pitch": -0.19,
+          "title": "[Ürün adı - onaylayın]",
+          "text": "[Teknik bilgi - onaylayın: kumaş tipi, ölçüler vb.]",
+          "whatsapp": true
+        }
+      ]
     },
     {
       "id": "3-5",
@@ -234,7 +242,15 @@ var APP_DATA = {
           "target": "3-5"
         }
       ],
-      "infoHotspots": []
+      "infoHotspots": [
+        {
+          "yaw": -2.2,
+          "pitch": -0.34,
+          "title": "[Ürün adı - onaylayın]",
+          "text": "[Teknik bilgi - onaylayın: kumaş tipi, ölçüler vb.]",
+          "whatsapp": true
+        }
+      ]
     },
     {
       "id": "5-8",
@@ -394,7 +410,15 @@ var APP_DATA = {
           "target": "9-13"
         }
       ],
-      "infoHotspots": []
+      "infoHotspots": [
+        {
+          "yaw": 0.02,
+          "pitch": -0.12,
+          "title": "[Ürün adı - onaylayın]",
+          "text": "[Teknik bilgi - onaylayın: kumaş tipi, ölçüler vb.]",
+          "whatsapp": true
+        }
+      ]
     },
     {
       "id": "9-13",
@@ -480,7 +504,22 @@ var APP_DATA = {
           "target": "11-16"
         }
       ],
-      "infoHotspots": []
+      "infoHotspots": [
+        {
+          "yaw": -1.68,
+          "pitch": -0.19,
+          "title": "[Ürün adı - onaylayın]",
+          "text": "[Teknik bilgi - onaylayın: kumaş tipi, ölçüler vb.]",
+          "whatsapp": true
+        },
+        {
+          "yaw": -2.3,
+          "pitch": -0.12,
+          "title": "[Ürün adı - onaylayın]",
+          "text": "[Teknik bilgi - onaylayın: gövde rengi, ölçüler vb.]",
+          "whatsapp": true
+        }
+      ]
     },
     {
       "id": "11-16",
