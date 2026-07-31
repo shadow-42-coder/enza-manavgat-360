@@ -70,6 +70,12 @@
   // Initialize viewer.
   var viewer = new Marzipano.Viewer(panoElement, viewerOpts);
 
+  // Mouse-wheel zoom (desktop) is already enabled by Marzipano's default
+  // controls. Disable its default touch pinch-to-zoom though, since we
+  // replace it below with a version that snaps back on release.
+  var controls = viewer.controls();
+  controls.disableMethod('pinch');
+
   // Create scenes.
   var scenes = data.scenes.map(function(data) {
     var urlPrefix = "tiles";
@@ -158,6 +164,84 @@
     });
   });
 
+  // Mobile: pinch with two fingers to zoom; release to snap back to the
+  // scene's normal view instead of staying zoomed in.
+  var currentView = null;
+  var currentBaseFov = null;
+  setupPinchZoom(panoElement);
+
+  function setupPinchZoom(element) {
+    var pinching = false;
+    var startDistance = 0;
+    var startFov = 0;
+    var animationFrame = null;
+
+    function touchDistance(touches) {
+      var dx = touches[0].clientX - touches[1].clientX;
+      var dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function cancelSnapAnimation() {
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+      }
+    }
+
+    function snapBack() {
+      if (!currentView || currentBaseFov === null) {
+        return;
+      }
+      var fromFov = currentView.parameters().fov;
+      var duration = 250;
+      var startTime = null;
+      cancelSnapAnimation();
+      function step(timestamp) {
+        if (startTime === null) {
+          startTime = timestamp;
+        }
+        var progress = Math.min(1, (timestamp - startTime) / duration);
+        var eased = 1 - Math.pow(1 - progress, 2);
+        currentView.setParameters({ fov: fromFov + (currentBaseFov - fromFov) * eased });
+        if (progress < 1) {
+          animationFrame = window.requestAnimationFrame(step);
+        } else {
+          animationFrame = null;
+        }
+      }
+      animationFrame = window.requestAnimationFrame(step);
+    }
+
+    element.addEventListener('touchstart', function(event) {
+      if (event.touches.length === 2 && currentView) {
+        cancelSnapAnimation();
+        pinching = true;
+        startDistance = touchDistance(event.touches);
+        startFov = currentView.parameters().fov;
+      }
+    });
+
+    element.addEventListener('touchmove', function(event) {
+      if (pinching && event.touches.length === 2 && currentView) {
+        var newDistance = touchDistance(event.touches);
+        if (newDistance > 0) {
+          var scale = startDistance / newDistance;
+          currentView.setParameters({ fov: startFov * scale });
+        }
+      }
+    });
+
+    function endPinch(event) {
+      if (pinching && event.touches.length < 2) {
+        pinching = false;
+        snapBack();
+      }
+    }
+
+    element.addEventListener('touchend', endPinch);
+    element.addEventListener('touchcancel', endPinch);
+  }
 
   function sanitize(s) {
     return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;');
@@ -170,6 +254,8 @@
     startAutorotate();
     updateSceneName(scene);
     updateSceneList(scene);
+    currentView = scene.view;
+    currentBaseFov = scene.data.initialViewParameters.fov;
   }
 
   function updateSceneName(scene) {
