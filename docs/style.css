@@ -784,59 +784,6 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   transition: opacity 0.3s ease-in-out 0.4s;
 }
 
-/* View control buttons */
-
-.viewControlButton {
-  display: none;
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 40px;
-  height: 40px;
-  padding: 5px;
-  background-color: rgb(41,56,72);
-  background-color: rgba(41,56,72,0.92);
-}
-
-body.view-control-buttons .viewControlButton {
-  display: block;
-}
-
-/* Hide controls when width is too small */
-@media (max-width: 600px) {
-  body.view-control-buttons .viewControlButton {
-    display: none;
-  }
-}
-
-.viewControlButton .icon {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 30px;
-  height: 30px;
-}
-
-/* Center is at margin-left: -20px */
-.viewControlButton-1 {
-  margin-left: -145px;
-}
-.viewControlButton-2 {
-  margin-left: -95px;
-}
-.viewControlButton-3 {
-  margin-left: -45px;
-}
-.viewControlButton-4 {
-  margin-left: 5px;
-}
-.viewControlButton-5 {
-  margin-left: 55px;
-}
-.viewControlButton-6 {
-  margin-left: 105px;
-}
-
 /* Brand theme additions */
 
 #titleBar .sceneName,
@@ -847,8 +794,7 @@ body.view-control-buttons .viewControlButton {
 
 #fullscreenToggle,
 #autorotateToggle,
-#sceneListToggle,
-.viewControlButton {
+#sceneListToggle {
   border-radius: 6px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.35);
 }
@@ -881,8 +827,8 @@ body.view-control-buttons .viewControlButton {
 }
 
 #splashLogo {
-  width: 220px;
-  max-width: 60%;
+  width: 320px;
+  max-width: 70%;
   margin-bottom: 28px;
 }
 
