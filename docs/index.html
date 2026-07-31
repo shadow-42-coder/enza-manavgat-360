@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<title>enza HOME Manavgat | 360° Sanal Mağaza Turu</title>
+<meta charset="utf-8">
+<meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui" />
+<meta name="description" content="enza HOME Manavgat mağazasını 360° sanal tur ile gezin. Oturma grupları, yatak odası takımları ve yataş bedding koleksiyonunu evinizden keşfedin.">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="enza HOME Manavgat | 360° Sanal Mağaza Turu">
+<meta property="og:description" content="enza HOME Manavgat mağazasını 360° sanal tur ile gezin.">
+<meta property="og:image" content="img/og-image.jpg">
+
+<link rel="icon" type="image/png" sizes="64x64" href="img/favicon-64.png">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="shortcut icon" href="favicon.ico">
+
+<style> @-ms-viewport { width: device-width; } </style>
+<link rel="stylesheet" href="vendor/reset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="multiple-scenes view-control-buttons">
+
+<div id="splash">
+  <img id="splashLogo" src="img/logo.svg" alt="enza HOME">
+  <div id="splashSpinner"></div>
+</div>
+
+<div id="pano"></div>
+
+<div id="sceneList">
+  <div id="sceneListHeader">
+    <img src="img/logo.svg" alt="enza HOME" id="sceneListLogo">
+  </div>
+  <ul class="scenes">
+
+      <a href="javascript:void(0)" class="scene" data-id="0-2">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="1-3">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="2-4">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="3-5">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="4-6">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="5-8">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="6-10">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="7-11">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="8-12">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="9-13">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="10-15">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="11-16">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="12-19">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="13-21">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="14-22">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="15-23">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="16-24">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="17-26">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="18-27">
+        <li class="text"></li>
+      </a>
+
+      <a href="javascript:void(0)" class="scene" data-id="19-28">
+        <li class="text"></li>
+      </a>
+
+  </ul>
+  <div id="sceneListFooter">
+    <a href="https://maps.google.com/?cid=5104403785270368674" target="_blank" rel="noopener" class="contactLink">Google Haritada Gör</a>
+    <a href="https://www.instagram.com/yatasenzahomemanavgat/" target="_blank" rel="noopener" class="contactLink">Instagram</a>
+    <a href="tel:+905493320707" class="contactLink">0549 332 07 07</a>
+    <a href="tel:+902427771212" class="contactLink">0242 777 12 12</a>
+  </div>
+</div>
+
+<div id="titleBar">
+  <h1 class="sceneName"></h1>
+</div>
+
+<a href="javascript:void(0)" id="autorotateToggle">
+  <img class="icon off" src="img/play.png">
+  <img class="icon on" src="img/pause.png">
+</a>
+
+<a href="javascript:void(0)" id="fullscreenToggle">
+  <img class="icon off" src="img/fullscreen.png">
+  <img class="icon on" src="img/windowed.png">
+</a>
+
+<a href="javascript:void(0)" id="sceneListToggle">
+  <img class="icon off" src="img/expand.png">
+  <img class="icon on" src="img/collapse.png">
+</a>
+
+<div id="contactBar">
+  <a href="https://maps.google.com/?cid=5104403785270368674" target="_blank" rel="noopener" title="Google Haritada Gör" class="contactButton contactButton-maps"></a>
+  <a href="https://www.instagram.com/yatasenzahomemanavgat/" target="_blank" rel="noopener" title="Instagram" class="contactButton contactButton-instagram"></a>
+  <a href="tel:+905493320707" title="0549 332 07 07" class="contactButton contactButton-phone"></a>
+</div>
+
+<a href="javascript:void(0)" id="viewUp" class="viewControlButton viewControlButton-1">
+  <img class="icon" src="img/up.png">
+</a>
+<a href="javascript:void(0)" id="viewDown" class="viewControlButton viewControlButton-2">
+  <img class="icon" src="img/down.png">
+</a>
+<a href="javascript:void(0)" id="viewLeft" class="viewControlButton viewControlButton-3">
+  <img class="icon" src="img/left.png">
+</a>
+<a href="javascript:void(0)" id="viewRight" class="viewControlButton viewControlButton-4">
+  <img class="icon" src="img/right.png">
+</a>
+<a href="javascript:void(0)" id="viewIn" class="viewControlButton viewControlButton-5">
+  <img class="icon" src="img/plus.png">
+</a>
+<a href="javascript:void(0)" id="viewOut" class="viewControlButton viewControlButton-6">
+  <img class="icon" src="img/minus.png">
+</a>
+
+<script src="vendor/screenfull.min.js" ></script>
+<script src="vendor/bowser.min.js" ></script>
+<script src="vendor/marzipano.js" ></script>
+
+<script src="data.js"></script>
+<script src="index.js"></script>
+
+</body>
+</html>
