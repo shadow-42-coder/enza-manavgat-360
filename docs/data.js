@@ -66,10 +66,31 @@ var APP_DATA = {
           "whatsapp": true
         },
         {
-          "yaw": -2.4506,
-          "pitch": -0.2394,
+          "yaw": -2.4163,
+          "pitch": 0.2229,
           "title": "Block Visions 3'lü Mekanizmalı Koltuk – Sonil 57001 Krem",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2026/07/29/53643/74165ec6-2bbe-419c-b36c-f4ca97463010_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Arkalık mekanizması ile yatağa dönüşebilen 3'lü koltuk. Kumaş: Şönil (%46 Polyester + %34 Pamuk + %20 Polipropilen), krem renk. Ölçüler: 234x107 cm, yükseklik 74 cm. Ahşap iskelet, 5 cm siyah polimer ayaklar. 4 dekoratif yastık dahil. 2 yıl garanti.</p>",
+          "whatsapp": true
+        },
+        {
+          "yaw": 0.0410,
+          "pitch": 0.3097,
+          "title": "Viera Koltuk Takımı – Keten Dokulu 17502 Gri",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2024/06/03/40507/1c7fb8bd-b41c-4496-bfe5-4a489b2bac95_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Modern tasarım, ergonomik sırt destek profilleri. 3'lü ve 2.5'lu koltuklarda kaz tüyü dolgulu sırt yastıkları. Kumaş: %100 Polyester, keten dokulu, 17502 Gri. Kolay silinebilir, robot süpürge uyumlu yükseltilmiş ayaklar (siyah metal).</p>",
+          "whatsapp": true
+        },
+        {
+          "yaw": 0.8216,
+          "pitch": 0.8695,
+          "title": "Berta Cam Sehpa – Orta Sehpa 89x89 cm",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/11/28/44291/4a1f68aa-0d6d-4775-9e41-9d03fc0b8f8b_size1684x950.jpg\" class=\"info-hotspot-image\"><p>2 adet çok amaçlı çekmeceli, kare formlu orta sehpa. Üst yüzey: Temperli cam. Metal gövde, koyu gri metal ayaklar. Ölçüler: 89x89 cm, yükseklik 38,5 cm. Montaj gerektirmez. 2 yıl garanti.</p>",
+          "whatsapp": true
+        },
+        {
+          "yaw": -2.8148,
+          "pitch": 0.2736,
+          "title": "Block Orta Sehpa – Gri 100x25 cm",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2024/12/25/48302/9330ef43-3814-41ea-a779-22325c567b07_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Gri traverten yüzeyli, kare formlu orta sehpa. Üst yüzey: Traverten. Gövde: Metal, ayaklar MDF (siyah). Ölçüler: 100x100 cm, yükseklik 25 cm. Silinebilir yüzey.</p>",
           "whatsapp": true
         }
       ]
@@ -172,10 +193,31 @@ var APP_DATA = {
       ],
       "infoHotspots": [
         {
-          "yaw": 0.08,
-          "pitch": -0.19,
-          "title": "Berta Yatak Odası",
-          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/06/25/41595/607163ab-f62d-4f8a-b0d2-2de1202a11a9_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Başlıklı yatak + 5 kapılı gardırop + şifonyer + 2 komodin. Endüstriyel ahşap gövde, dikişli başlık, özel siyah metal ayaklar. Gardıroplarda doğal renk aynalar; bazı modellerde aydınlatma ve çekmece kulpları. Silinebilir dokulu yüzey. Ücretsiz montaj, 2 yıl garanti.</p>",
+          "yaw": -1.0493,
+          "pitch": 0.053,
+          "title": "Berta Dolap – 272x221 cm",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/11/28/40796/e0564e5f-82db-4527-a28b-d3b50d76cef4_size1684x950.jpg\" class=\"info-hotspot-image\"><p>6 kapılı gardırop, metal efektli dokulu yüzey. 3 çekmece, LED iç aydınlatma, doğal renk ayna ve cam kapı uygulamaları, antik bronz metal kulplar. Ölçüler: 272x221x61 cm. Frenli menteşe mekanizması, metal ayaklar. Ücretsiz montaj, 2 yıl garanti.</p>",
+          "whatsapp": true
+        },
+        {
+          "yaw": 0.0393,
+          "pitch": 0.1175,
+          "title": "Berta Başlıklı Baza – 140x200 cm, 71001 Bej",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/11/28/41488/2efe5247-1502-4555-b833-86fd5bf93f20_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Dikiş uygulamalı başlık tasarımı, kumaş kaplı gövde, altında saklama alanı. Kumaş: Şönil (%50 Polyester + %40 Akrilik + %10 Pamuk), 71001 Bej. Ahşap iskelet, siyah metal ayaklar. Ölçüler: 140x200 cm (140x190, 150x200, 160x200, 180x200, 200x200 seçenekleri de mevcut). Ücretsiz montaj, 2 yıl garanti.</p>",
+          "whatsapp": true
+        },
+        {
+          "yaw": 1.0046,
+          "pitch": 0.2446,
+          "title": "Berta Şifonyer – 111x88 cm",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/07/21/40792/3165320a-b8b2-4540-9253-1e0a6f1748a1_size1684x950.jpg\" class=\"info-hotspot-image\"><p>4 çekmeceli şifonyer, üst çekmecede bölmeli düzenleme. Metal efektli dokulu yüzey (endüstriyel ahşap). Antik bronz metal kulplar, antrasit renk metal ayaklar. Ölçüler: 111x88x46 cm. Silinebilir yüzey, robot süpürge uyumlu. Ücretsiz montaj, 2 yıl garanti.</p>",
+          "whatsapp": true
+        },
+        {
+          "yaw": 1.3474,
+          "pitch": 0.3878,
+          "title": "Dante Berjer – Keten Dokulu, 12701 Açık Gri",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2021/11/25/22582/116bc44e-e4c2-4543-b352-ffe0122701e8_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Yalın ve şık tasarım, sırtı tam destekleyen ergonomik form. Kumaş: %100 Polyester, keten dokulu, 12701 Açık Gri. Ahşap iskelet, siyah metal ayaklar (kolay temizlik için yüksek). Ölçüler: Y90xG68xD86 cm. 2 yıl garanti.</p>",
           "whatsapp": true
         }
       ]
