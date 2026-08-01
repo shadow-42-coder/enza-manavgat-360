@@ -33,6 +33,13 @@ python -m http.server 8080
 
 sonra `http://localhost:8080` adresini açın.
 
+## Önbellek
+
+`index.html` içinde `style.css`, `data.js`, `index.js` dosyaları `?v=3` gibi bir sürüm
+numarasıyla yükleniyor. Bu dosyalardan birini değiştirdiğinizde (siz veya Claude), tarayıcı
+önbelleğinin ziyaretçilere eski içerik göstermemesi için `index.html`'deki üçünün de sürüm
+numarasını bir artırın.
+
 ## Düzenleme
 
 - `docs/data.js` — sahne isimleri ve sahneler arası geçiş (hotspot) tanımları. Hotspot
