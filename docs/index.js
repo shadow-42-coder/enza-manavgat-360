@@ -170,6 +170,25 @@
   var currentBaseFov = null;
   setupPinchZoom(panoElement);
 
+  // TEMP: position finder tool, remove once all product hotspots are placed.
+  // Add ?pos=1 to the URL, then click anywhere on the pano to see the
+  // yaw/pitch for that exact point.
+  if (/[?&]pos=1/.test(window.location.search)) {
+    var posBox = document.createElement('div');
+    posBox.id = 'posFinderBox';
+    posBox.textContent = 'Bir ürüne tıklayın...';
+    document.body.appendChild(posBox);
+    panoElement.addEventListener('click', function(event) {
+      if (!currentView || !currentView.screenToCoordinates) return;
+      var rect = panoElement.getBoundingClientRect();
+      var coords = currentView.screenToCoordinates({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      });
+      posBox.textContent = 'yaw: ' + coords.yaw.toFixed(4) + '   pitch: ' + coords.pitch.toFixed(4);
+    });
+  }
+
   function setupPinchZoom(element) {
     var pinching = false;
     var startDistance = 0;

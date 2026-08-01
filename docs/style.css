@@ -928,6 +928,23 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   #contactBar { display: none; }
 }
 
+/* TEMP: position finder overlay */
+
+#posFinderBox {
+  position: fixed;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30000;
+  background-color: rgba(0,0,0,0.85);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
 /* "Ask about this product" WhatsApp link inside info hotspots */
 
 .info-hotspot-image {
