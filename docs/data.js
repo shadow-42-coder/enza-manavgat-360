@@ -52,15 +52,15 @@ var APP_DATA = {
       ],
       "infoHotspots": [
         {
-          "yaw": 2.1506,
-          "pitch": -0.1473,
+          "yaw": 2.146,
+          "pitch": 0.1035,
           "title": "Bold Köşe Koltuk Takımı – Sonil 50201 Gri",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2025/03/03/49768/e8e2dd4d-ec33-4238-b4b5-b85e4a29145b_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Modüler tasarım, 13 farklı modülle özelleştirilebilir. Kumaş: Şönil (%84 Polyester + %16 Pamuk), dokuma ve silinebilir. Ölçüler: 381x344 cm, yükseklik 85 cm. Metal ayaklar (siyah), 34 DNS + 24 DNS sünger dolgu. Kablosuz şarj tablalı modül dahil. Renk: 50201 Gri.</p>",
           "whatsapp": true
         },
         {
-          "yaw": 2.1049,
-          "pitch": -0.4539,
+          "yaw": 2.1831,
+          "pitch": 0.4374,
           "title": "Bold Berjer – Döner Ayaklı, Dokuma Kumaş 50201 Gri",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2025/03/03/49767/0d9fb6ee-cf27-42ef-b844-6d75fbeb7a44_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Döner ayaklı, robot süpürge uyumlu yükseltilmiş tasarım. Kumaş: Dokuma (%84 Polyester + %16 Pamuk), silinebilir. Ölçüler: Y89xG80xD89 cm, oturma yüksekliği 45 cm. Ahşap iskelet + elastik kolon, metal ayaklar (siyah). 36 DNS + 24 DNS sünger dolgu.</p>",
           "whatsapp": true
