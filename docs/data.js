@@ -50,7 +50,29 @@ var APP_DATA = {
           "target": "14-22"
         }
       ],
-      "infoHotspots": []
+      "infoHotspots": [
+        {
+          "yaw": 2.1506,
+          "pitch": -0.1473,
+          "title": "Bold Köşe Koltuk Takımı – Sonil 50201 Gri",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2025/03/03/49768/e8e2dd4d-ec33-4238-b4b5-b85e4a29145b_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Modüler tasarım, 13 farklı modülle özelleştirilebilir. Kumaş: Şönil (%84 Polyester + %16 Pamuk), dokuma ve silinebilir. Ölçüler: 381x344 cm, yükseklik 85 cm. Metal ayaklar (siyah), 34 DNS + 24 DNS sünger dolgu. Kablosuz şarj tablalı modül dahil. Renk: 50201 Gri.</p>",
+          "whatsapp": true
+        },
+        {
+          "yaw": 2.1049,
+          "pitch": -0.4539,
+          "title": "Bold Berjer – Döner Ayaklı, Dokuma Kumaş 50201 Gri",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2025/03/03/49767/0d9fb6ee-cf27-42ef-b844-6d75fbeb7a44_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Döner ayaklı, robot süpürge uyumlu yükseltilmiş tasarım. Kumaş: Dokuma (%84 Polyester + %16 Pamuk), silinebilir. Ölçüler: Y89xG80xD89 cm, oturma yüksekliği 45 cm. Ahşap iskelet + elastik kolon, metal ayaklar (siyah). 36 DNS + 24 DNS sünger dolgu.</p>",
+          "whatsapp": true
+        },
+        {
+          "yaw": -2.4506,
+          "pitch": -0.2394,
+          "title": "Block Visions 3'lü Mekanizmalı Koltuk – Sonil 57001 Krem",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2026/07/29/53643/74165ec6-2bbe-419c-b36c-f4ca97463010_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Arkalık mekanizması ile yatağa dönüşebilen 3'lü koltuk. Kumaş: Şönil (%46 Polyester + %34 Pamuk + %20 Polipropilen), krem renk. Ölçüler: 234x107 cm, yükseklik 74 cm. Ahşap iskelet, 5 cm siyah polimer ayaklar. 4 dekoratif yastık dahil. 2 yıl garanti.</p>",
+          "whatsapp": true
+        }
+      ]
     },
     {
       "id": "1-3",
@@ -152,8 +174,8 @@ var APP_DATA = {
         {
           "yaw": 0.08,
           "pitch": -0.19,
-          "title": "[Ürün adı - onaylayın]",
-          "text": "[Teknik bilgi - onaylayın: kumaş tipi, ölçüler vb.]",
+          "title": "Berta Yatak Odası",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/06/25/41595/607163ab-f62d-4f8a-b0d2-2de1202a11a9_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Başlıklı yatak + 5 kapılı gardırop + şifonyer + 2 komodin. Endüstriyel ahşap gövde, dikişli başlık, özel siyah metal ayaklar. Gardıroplarda doğal renk aynalar; bazı modellerde aydınlatma ve çekmece kulpları. Silinebilir dokulu yüzey. Ücretsiz montaj, 2 yıl garanti.</p>",
           "whatsapp": true
         }
       ]
@@ -208,7 +230,15 @@ var APP_DATA = {
           "target": "5-8"
         }
       ],
-      "infoHotspots": []
+      "infoHotspots": [
+        {
+          "yaw": 0.3556,
+          "pitch": -0.3161,
+          "title": "Berta Masa, 160-200x90 cm",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/12/06/40825/b4a82647-ac8e-49b0-af1b-25310b35d600_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Uzatılabilir yemek masası, 6-8 kişilik. Gövde: Endüstriyel ahşap, tekstil dokulu yüzey (metal efektli). Ayaklar: Masif ahşap, antrasit renk. Ölçüler: 160-200x90 cm (uzatılabilir), yükseklik 77 cm. Silinebilir yüzey. Ücretsiz montaj, 2 yıl garanti.</p>",
+          "whatsapp": true
+        }
+      ]
     },
     {
       "id": "4-6",
@@ -246,8 +276,8 @@ var APP_DATA = {
         {
           "yaw": -2.2,
           "pitch": -0.34,
-          "title": "[Ürün adı - onaylayın]",
-          "text": "[Teknik bilgi - onaylayın: kumaş tipi, ölçüler vb.]",
+          "title": "Berta 3'lü Yataklı Koltuk + Berjer – Sonil Dokulu 17601 Bej",
+          "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2024/01/22/46499/6411e362-1282-46a3-9c46-6acff86372af_size1684x950.jpg\" class=\"info-hotspot-image\"><p>3'lü yataklı koltuk + berjer takımı. Kumaş: Şönil dokulu (%50 PES + %40 ACR), 17601 Bej. Sırt atlatma mekanizmasıyla 184x90 cm yatağa dönüşür. Berjerde kaz tüyü dolgulu sırt yastığı. Kahverengi metal ayaklar, robot süpürge uyumlu. 2 yıl garanti.</p>",
           "whatsapp": true
         }
       ]
@@ -282,6 +312,12 @@ var APP_DATA = {
           "pitch": 0.28069014232191236,
           "rotation": 5.497787143782138,
           "target": "6-10"
+        },
+        {
+          "yaw": -1.6456,
+          "pitch": 0.3771,
+          "rotation": 0,
+          "target": "3-5"
         }
       ],
       "infoHotspots": []
@@ -328,6 +364,12 @@ var APP_DATA = {
           "pitch": 0.3112812060153445,
           "rotation": 6.283185307179586,
           "target": "7-11"
+        },
+        {
+          "yaw": -1.3552,
+          "pitch": 0.2807,
+          "rotation": 0,
+          "target": "5-8"
         }
       ],
       "infoHotspots": []
@@ -502,6 +544,12 @@ var APP_DATA = {
           "pitch": 0.2319778331885125,
           "rotation": 0,
           "target": "11-16"
+        },
+        {
+          "yaw": 1.0673,
+          "pitch": 0.2334,
+          "rotation": 0,
+          "target": "13-21"
         }
       ],
       "infoHotspots": [
@@ -735,6 +783,12 @@ var APP_DATA = {
           "pitch": 0.34847016900614847,
           "rotation": 0,
           "target": "14-22"
+        },
+        {
+          "yaw": 1.2,
+          "pitch": 0.2,
+          "rotation": 0,
+          "target": "16-24"
         }
       ],
       "infoHotspots": []
@@ -763,7 +817,20 @@ var APP_DATA = {
         "yaw": 0,
         "fov": 1.5707963267948966
       },
-      "linkHotspots": [],
+      "linkHotspots": [
+        {
+          "yaw": -1.94,
+          "pitch": 0.2,
+          "rotation": 0,
+          "target": "15-23"
+        },
+        {
+          "yaw": -1.2,
+          "pitch": 0.2,
+          "rotation": 0,
+          "target": "17-26"
+        }
+      ],
       "infoHotspots": []
     },
     {
@@ -802,6 +869,12 @@ var APP_DATA = {
           "pitch": 0.3253274371178225,
           "rotation": 0,
           "target": "18-27"
+        },
+        {
+          "yaw": 1.94,
+          "pitch": 0.2,
+          "rotation": 0,
+          "target": "16-24"
         }
       ],
       "infoHotspots": []
@@ -882,6 +955,12 @@ var APP_DATA = {
           "pitch": 0.27263800511377667,
           "rotation": 0,
           "target": "0-2"
+        },
+        {
+          "yaw": 0.9137,
+          "pitch": 0.1394,
+          "rotation": 0,
+          "target": "1-3"
         }
       ],
       "infoHotspots": []

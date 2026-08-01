@@ -930,6 +930,15 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 
 /* "Ask about this product" WhatsApp link inside info hotspots */
 
+.info-hotspot-image {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
 .info-hotspot-whatsapp {
   display: block;
   margin-top: 10px;
