@@ -190,6 +190,19 @@
   // tap "Kopyala" to copy every entry as text and send it back in one go.
   if (/[?&]pos=1/.test(window.location.search)) {
     setupPositionCollector(panoElement);
+    loadScript('vendor/jszip.min.js', function() {
+      loadScript('photo-tool.js', function() {
+        document.body.classList.add('photo-tool-ready');
+        document.dispatchEvent(new Event('enzaPhotoToolReady'));
+      });
+    });
+  }
+
+  function loadScript(src, onload) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = onload;
+    document.head.appendChild(s);
   }
 
   function setupPositionCollector(element) {
@@ -224,9 +237,13 @@
     var deleteModeButton = document.createElement('button');
     deleteModeButton.textContent = 'Sil';
     deleteModeButton.className = 'posFinderModeButton posFinderModeButtonDanger';
+    var photoModeButton = document.createElement('button');
+    photoModeButton.textContent = 'Fotoğraflar';
+    photoModeButton.className = 'posFinderModeButton';
     modeRow.appendChild(productModeButton);
     modeRow.appendChild(linkModeButton);
     modeRow.appendChild(deleteModeButton);
+    modeRow.appendChild(photoModeButton);
 
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
@@ -262,9 +279,45 @@
     actionRow.appendChild(copyButton);
     actionRow.appendChild(clearButton);
 
+    // Photo replacement panel (its own tile-generation UI, no pano clicking).
+    var photoPanel = document.createElement('div');
+    photoPanel.id = 'posFinderPhotoPanel';
+    photoPanel.style.display = 'none';
+
+    var photoSceneSelect = document.createElement('select');
+    photoSceneSelect.id = 'posFinderPhotoSceneSelect';
+
+    var photoFileInput = document.createElement('input');
+    photoFileInput.type = 'file';
+    photoFileInput.accept = 'image/*';
+    photoFileInput.id = 'posFinderPhotoFile';
+
+    var photoStatus = document.createElement('div');
+    photoStatus.id = 'posFinderPhotoStatus';
+    photoStatus.textContent = 'Kütüphaneler yükleniyor...';
+
+    var photoProgressOuter = document.createElement('div');
+    photoProgressOuter.id = 'posFinderPhotoProgressOuter';
+    var photoProgressInner = document.createElement('div');
+    photoProgressInner.id = 'posFinderPhotoProgressInner';
+    photoProgressOuter.appendChild(photoProgressInner);
+    photoProgressOuter.style.display = 'none';
+
+    var photoDownloadLink = document.createElement('a');
+    photoDownloadLink.id = 'posFinderPhotoDownload';
+    photoDownloadLink.textContent = 'ZIP dosyasını indir';
+    photoDownloadLink.style.display = 'none';
+
+    photoPanel.appendChild(photoSceneSelect);
+    photoPanel.appendChild(photoFileInput);
+    photoPanel.appendChild(photoStatus);
+    photoPanel.appendChild(photoProgressOuter);
+    photoPanel.appendChild(photoDownloadLink);
+
     box.appendChild(modeRow);
     box.appendChild(coordsLine);
     box.appendChild(inputRow);
+    box.appendChild(photoPanel);
     box.appendChild(actionRow);
     document.body.appendChild(box);
 
@@ -273,18 +326,24 @@
       productModeButton.classList.toggle('active', mode === 'product');
       linkModeButton.classList.toggle('active', mode === 'link');
       deleteModeButton.classList.toggle('active', mode === 'delete');
+      photoModeButton.classList.toggle('active', mode === 'photo');
       linkInput.style.display = mode === 'product' ? '' : 'none';
       sceneSelect.style.display = mode === 'link' ? '' : 'none';
-      inputRow.style.display = mode === 'delete' ? 'none' : 'flex';
+      inputRow.style.display = (mode === 'delete' || mode === 'photo') ? 'none' : 'flex';
+      photoPanel.style.display = mode === 'photo' ? 'block' : 'none';
+      actionRow.style.display = mode === 'photo' ? 'none' : 'flex';
+      coordsLine.style.display = mode === 'photo' ? 'none' : '';
       pendingCoords = null;
       coordsLine.classList.remove('ready');
       if (mode === 'product') coordsLine.textContent = 'Boş bir yere tıklayın veya bir ikonu sürükleyin';
       else if (mode === 'link') coordsLine.textContent = 'Ok başlayacağı yere tıklayın, hedef sahneyi seçin';
-      else coordsLine.textContent = 'Silmek istediğiniz ikona dokunun';
+      else if (mode === 'delete') coordsLine.textContent = 'Silmek istediğiniz ikona dokunun';
+      if (mode === 'photo') populatePhotoSceneSelect();
     }
     productModeButton.addEventListener('click', function() { setMode('product'); });
     linkModeButton.addEventListener('click', function() { setMode('link'); });
     deleteModeButton.addEventListener('click', function() { setMode('delete'); });
+    photoModeButton.addEventListener('click', function() { setMode('photo'); });
 
     function populateSceneSelect() {
       sceneSelect.innerHTML = '';
@@ -296,6 +355,52 @@
         sceneSelect.appendChild(opt);
       });
     }
+
+    function populatePhotoSceneSelect() {
+      if (photoSceneSelect.options.length) return; // populate once
+      data.scenes.forEach(function(s, i) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = (i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, '');
+        if (currentSceneWrapper && s.id === currentSceneWrapper.data.id) opt.selected = true;
+        photoSceneSelect.appendChild(opt);
+      });
+    }
+
+    function updatePhotoToolReadyState() {
+      var ready = document.body.classList.contains('photo-tool-ready');
+      photoFileInput.disabled = !ready;
+      photoStatus.textContent = ready ? 'Bir sahne seçin, sonra fotoğrafı seçin.' : 'Kütüphaneler yükleniyor...';
+    }
+
+    photoFileInput.addEventListener('change', function() {
+      var file = photoFileInput.files[0];
+      if (!file || !window.EnzaPhotoTool) return;
+      var sceneId = photoSceneSelect.value;
+      photoDownloadLink.style.display = 'none';
+      photoProgressOuter.style.display = 'block';
+      photoProgressInner.style.width = '0%';
+      photoStatus.textContent = 'İşleniyor, sayfayı kapatmayın...';
+      photoFileInput.disabled = true;
+
+      window.EnzaPhotoTool.buildSceneTiles(file, sceneId, function(fraction) {
+        photoProgressInner.style.width = Math.round(fraction * 100) + '%';
+      }).then(function(blob) {
+        var url = URL.createObjectURL(blob);
+        photoDownloadLink.href = url;
+        photoDownloadLink.download = sceneId + '-tiles.zip';
+        photoDownloadLink.style.display = 'block';
+        photoStatus.textContent = 'Hazır! ZIP\'i indirin, Claude\'a "' + sceneId + ' sahnesinin fotoğrafını değiştirdim" diye yazıp dosyayı gönderin.';
+        photoFileInput.disabled = false;
+      }).catch(function(err) {
+        photoStatus.textContent = 'Hata: ' + err;
+        photoFileInput.disabled = false;
+        console.error(err);
+      });
+    });
+
+    document.addEventListener('enzaPhotoToolReady', updatePhotoToolReadyState);
+    updatePhotoToolReadyState();
 
     function updateCount() {
       countLabel.textContent = entries.length + ' ürün, ' + arrows.length + ' yeni ok, ' +
