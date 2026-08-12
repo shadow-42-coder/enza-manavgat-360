@@ -1007,6 +1007,10 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   background-color: var(--brand-accent);
 }
 
+.posFinderModeButtonDanger.active {
+  background-color: #e0432c;
+}
+
 #posFinderAdd {
   padding: 8px 14px;
   border-radius: 5px;

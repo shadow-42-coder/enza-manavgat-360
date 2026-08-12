@@ -198,14 +198,17 @@
     var ADD_KEY = 'enzaPosCollectorEntries';
     var MOVE_KEY = 'enzaPosCollectorMoves';
     var ARROW_KEY = 'enzaPosCollectorArrows';
+    var REMOVE_KEY = 'enzaPosCollectorRemovals';
     var entries = [];
     var moves = [];
     var arrows = [];
+    var removals = [];
     try { entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]'); } catch (e) { entries = []; }
     try { moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]'); } catch (e) { moves = []; }
     try { arrows = JSON.parse(window.localStorage.getItem(ARROW_KEY) || '[]'); } catch (e) { arrows = []; }
+    try { removals = JSON.parse(window.localStorage.getItem(REMOVE_KEY) || '[]'); } catch (e) { removals = []; }
     var pendingCoords = null;
-    var mode = 'product'; // 'product' | 'link'
+    var mode = 'product'; // 'product' | 'link' | 'delete'
 
     var box = document.createElement('div');
     box.id = 'posFinderBox';
@@ -218,8 +221,12 @@
     var linkModeButton = document.createElement('button');
     linkModeButton.textContent = 'Yön Oku Ekle';
     linkModeButton.className = 'posFinderModeButton';
+    var deleteModeButton = document.createElement('button');
+    deleteModeButton.textContent = 'Sil';
+    deleteModeButton.className = 'posFinderModeButton posFinderModeButtonDanger';
     modeRow.appendChild(productModeButton);
     modeRow.appendChild(linkModeButton);
+    modeRow.appendChild(deleteModeButton);
 
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
@@ -265,16 +272,19 @@
       mode = newMode;
       productModeButton.classList.toggle('active', mode === 'product');
       linkModeButton.classList.toggle('active', mode === 'link');
+      deleteModeButton.classList.toggle('active', mode === 'delete');
       linkInput.style.display = mode === 'product' ? '' : 'none';
       sceneSelect.style.display = mode === 'link' ? '' : 'none';
+      inputRow.style.display = mode === 'delete' ? 'none' : 'flex';
       pendingCoords = null;
       coordsLine.classList.remove('ready');
-      coordsLine.textContent = mode === 'product'
-        ? 'Boş bir yere tıklayın veya bir ikonu sürükleyin'
-        : 'Ok başlayacağı yere tıklayın, hedef sahneyi seçin';
+      if (mode === 'product') coordsLine.textContent = 'Boş bir yere tıklayın veya bir ikonu sürükleyin';
+      else if (mode === 'link') coordsLine.textContent = 'Ok başlayacağı yere tıklayın, hedef sahneyi seçin';
+      else coordsLine.textContent = 'Silmek istediğiniz ikona dokunun';
     }
     productModeButton.addEventListener('click', function() { setMode('product'); });
     linkModeButton.addEventListener('click', function() { setMode('link'); });
+    deleteModeButton.addEventListener('click', function() { setMode('delete'); });
 
     function populateSceneSelect() {
       sceneSelect.innerHTML = '';
@@ -288,11 +298,13 @@
     }
 
     function updateCount() {
-      countLabel.textContent = entries.length + ' ürün, ' + arrows.length + ' yeni ok, ' + moves.length + ' taşındı';
+      countLabel.textContent = entries.length + ' ürün, ' + arrows.length + ' yeni ok, ' +
+        moves.length + ' taşındı, ' + removals.length + ' silindi';
     }
 
     function saveEntries() { window.localStorage.setItem(ADD_KEY, JSON.stringify(entries)); updateCount(); }
     function saveMoves() { window.localStorage.setItem(MOVE_KEY, JSON.stringify(moves)); updateCount(); }
+    function saveRemovals() { window.localStorage.setItem(REMOVE_KEY, JSON.stringify(removals)); updateCount(); }
     function saveArrows() { window.localStorage.setItem(ARROW_KEY, JSON.stringify(arrows)); updateCount(); }
 
     function addEntry() {
@@ -350,7 +362,35 @@
         event.preventDefault();
         return;
       }
-      if (event.target.closest && event.target.closest('.hotspot')) return;
+      var clickedHotspotEl = event.target.closest && event.target.closest('.hotspot');
+      if (clickedHotspotEl) {
+        if (mode === 'delete' && currentSceneWrapper) {
+          var idx = currentSceneWrapper.editableHotspots.findIndex(function(entry) {
+            return entry.hotspot.domElement() === clickedHotspotEl;
+          });
+          if (idx !== -1) {
+            var removedEntry = currentSceneWrapper.editableHotspots[idx];
+            event.stopPropagation();
+            event.preventDefault();
+            removedEntry.hotspot.destroy();
+            currentSceneWrapper.editableHotspots.splice(idx, 1);
+            if (removedEntry.ownRecord) {
+              // Was added earlier in this same session - just undo the add.
+              arrows = arrows.filter(function(a) { return a !== removedEntry.ownRecord; });
+              saveArrows();
+            } else {
+              removals.push({
+                scene: currentSceneNumber,
+                kind: removedEntry.kind,
+                label: removedEntry.label
+              });
+              saveRemovals();
+            }
+            coordsLine.textContent = 'Silindi: ' + removedEntry.label;
+          }
+        }
+        return;
+      }
       if (!currentView || !currentView.screenToCoordinates) return;
       var rect = element.getBoundingClientRect();
       var coords = currentView.screenToCoordinates({
@@ -399,6 +439,12 @@
           lines.push(e.scene + ' ' + e.yaw.toFixed(4) + ' ' + e.pitch.toFixed(4) + ' ' + e.link);
         });
       }
+      if (removals.length) {
+        lines.push('--- SİLİNENLER ---');
+        removals.forEach(function(r) {
+          lines.push(r.scene + '  [' + r.kind + '] ' + r.label);
+        });
+      }
       var text = lines.join('\n');
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function() {
@@ -411,13 +457,15 @@
     });
 
     clearButton.addEventListener('click', function() {
-      if (!window.confirm('Eklenenler, oklar ve taşınanlar silinsin mi?')) return;
+      if (!window.confirm('Eklenenler, oklar, taşınanlar ve silinenler listesi temizlensin mi?')) return;
       entries = [];
       moves = [];
       arrows = [];
+      removals = [];
       saveEntries();
       saveMoves();
       saveArrows();
+      saveRemovals();
     });
 
     updateCount();
