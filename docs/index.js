@@ -197,22 +197,33 @@
 
     var ADD_KEY = 'enzaPosCollectorEntries';
     var MOVE_KEY = 'enzaPosCollectorMoves';
+    var ARROW_KEY = 'enzaPosCollectorArrows';
     var entries = [];
     var moves = [];
-    try {
-      entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]');
-    } catch (e) { entries = []; }
-    try {
-      moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]');
-    } catch (e) { moves = []; }
+    var arrows = [];
+    try { entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]'); } catch (e) { entries = []; }
+    try { moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]'); } catch (e) { moves = []; }
+    try { arrows = JSON.parse(window.localStorage.getItem(ARROW_KEY) || '[]'); } catch (e) { arrows = []; }
     var pendingCoords = null;
+    var mode = 'product'; // 'product' | 'link'
 
     var box = document.createElement('div');
     box.id = 'posFinderBox';
 
+    var modeRow = document.createElement('div');
+    modeRow.id = 'posFinderModeRow';
+    var productModeButton = document.createElement('button');
+    productModeButton.textContent = 'Ürün Ekle';
+    productModeButton.className = 'posFinderModeButton active';
+    var linkModeButton = document.createElement('button');
+    linkModeButton.textContent = 'Yön Oku Ekle';
+    linkModeButton.className = 'posFinderModeButton';
+    modeRow.appendChild(productModeButton);
+    modeRow.appendChild(linkModeButton);
+
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
-    coordsLine.textContent = 'Boş bir yere tıklayın (yeni ürün) veya bir ikonu sürükleyin (konum değiştir)';
+    coordsLine.textContent = 'Boş bir yere tıklayın veya bir ikonu sürükleyin';
 
     var inputRow = document.createElement('div');
     inputRow.id = 'posFinderInputRow';
@@ -220,10 +231,14 @@
     linkInput.type = 'text';
     linkInput.id = 'posFinderInput';
     linkInput.placeholder = 'Ürün linkini yapıştırın';
+    var sceneSelect = document.createElement('select');
+    sceneSelect.id = 'posFinderSceneSelect';
+    sceneSelect.style.display = 'none';
     var addButton = document.createElement('button');
     addButton.textContent = 'Ekle';
     addButton.id = 'posFinderAdd';
     inputRow.appendChild(linkInput);
+    inputRow.appendChild(sceneSelect);
     inputRow.appendChild(addButton);
 
     var actionRow = document.createElement('div');
@@ -240,24 +255,45 @@
     actionRow.appendChild(copyButton);
     actionRow.appendChild(clearButton);
 
+    box.appendChild(modeRow);
     box.appendChild(coordsLine);
     box.appendChild(inputRow);
     box.appendChild(actionRow);
     document.body.appendChild(box);
 
+    function setMode(newMode) {
+      mode = newMode;
+      productModeButton.classList.toggle('active', mode === 'product');
+      linkModeButton.classList.toggle('active', mode === 'link');
+      linkInput.style.display = mode === 'product' ? '' : 'none';
+      sceneSelect.style.display = mode === 'link' ? '' : 'none';
+      pendingCoords = null;
+      coordsLine.classList.remove('ready');
+      coordsLine.textContent = mode === 'product'
+        ? 'Boş bir yere tıklayın veya bir ikonu sürükleyin'
+        : 'Ok başlayacağı yere tıklayın, hedef sahneyi seçin';
+    }
+    productModeButton.addEventListener('click', function() { setMode('product'); });
+    linkModeButton.addEventListener('click', function() { setMode('link'); });
+
+    function populateSceneSelect() {
+      sceneSelect.innerHTML = '';
+      data.scenes.forEach(function(s, i) {
+        if (!currentSceneWrapper || s.id === currentSceneWrapper.data.id) return;
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = (i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, '');
+        sceneSelect.appendChild(opt);
+      });
+    }
+
     function updateCount() {
-      countLabel.textContent = entries.length + ' eklendi, ' + moves.length + ' taşındı';
+      countLabel.textContent = entries.length + ' ürün, ' + arrows.length + ' yeni ok, ' + moves.length + ' taşındı';
     }
 
-    function saveEntries() {
-      window.localStorage.setItem(ADD_KEY, JSON.stringify(entries));
-      updateCount();
-    }
-
-    function saveMoves() {
-      window.localStorage.setItem(MOVE_KEY, JSON.stringify(moves));
-      updateCount();
-    }
+    function saveEntries() { window.localStorage.setItem(ADD_KEY, JSON.stringify(entries)); updateCount(); }
+    function saveMoves() { window.localStorage.setItem(MOVE_KEY, JSON.stringify(moves)); updateCount(); }
+    function saveArrows() { window.localStorage.setItem(ARROW_KEY, JSON.stringify(arrows)); updateCount(); }
 
     function addEntry() {
       var link = linkInput.value.trim();
@@ -275,7 +311,36 @@
       coordsLine.classList.remove('ready');
     }
 
-    // Click on empty pano space: start adding a new product hotspot.
+    function addArrow() {
+      var targetId = sceneSelect.value;
+      if (!pendingCoords || !targetId || !currentSceneWrapper) return;
+      var targetData = findSceneDataById(targetId);
+      var hotspotData = { yaw: pendingCoords.yaw, pitch: pendingCoords.pitch, rotation: 0, target: targetId };
+      var hsElement = createLinkHotspotElement(hotspotData);
+      var marzipanoHotspot = currentSceneWrapper.scene.hotspotContainer().createHotspot(hsElement, {
+        yaw: pendingCoords.yaw, pitch: pendingCoords.pitch
+      });
+      var arrowRecord = {
+        scene: pendingCoords.scene,
+        yaw: pendingCoords.yaw,
+        pitch: pendingCoords.pitch,
+        targetScene: targetId,
+        targetName: targetData ? targetData.name : targetId
+      };
+      currentSceneWrapper.editableHotspots.push({
+        hotspot: marzipanoHotspot,
+        kind: 'link',
+        label: 'Yön oku → ' + targetId,
+        ownRecord: arrowRecord // if dragged, update this record instead of logging a separate move
+      });
+      arrows.push(arrowRecord);
+      saveArrows();
+      pendingCoords = null;
+      coordsLine.textContent = 'Ok eklendi (' + targetData.name + '). Şimdi sürükleyip tam yerine koyabilirsiniz.';
+      coordsLine.classList.remove('ready');
+    }
+
+    // Click on empty pano space: start adding a new product hotspot or arrow.
     // Registered on the capture phase so a post-drag click can be cancelled
     // here before it ever reaches a hotspot's own navigate/open handler.
     element.addEventListener('click', function(event) {
@@ -300,10 +365,16 @@
       coordsLine.textContent = currentSceneNumber + '  yaw: ' + coords.yaw.toFixed(4) +
         '   pitch: ' + coords.pitch.toFixed(4);
       coordsLine.classList.add('ready');
-      linkInput.focus();
+      if (mode === 'product') {
+        linkInput.focus();
+      } else {
+        populateSceneSelect();
+      }
     }, true);
 
-    addButton.addEventListener('click', addEntry);
+    addButton.addEventListener('click', function() {
+      if (mode === 'product') addEntry(); else addArrow();
+    });
     linkInput.addEventListener('keydown', function(event) {
       if (event.key === 'Enter') addEntry();
     });
@@ -314,6 +385,12 @@
         lines.push('--- TAŞINAN İKONLAR ---');
         moves.forEach(function(m) {
           lines.push(m.scene + ' ' + m.yaw.toFixed(4) + ' ' + m.pitch.toFixed(4) + '  [' + m.kind + '] ' + m.label);
+        });
+      }
+      if (arrows.length) {
+        lines.push('--- YENİ YÖN OKLARI ---');
+        arrows.forEach(function(a) {
+          lines.push(a.scene + ' ' + a.yaw.toFixed(4) + ' ' + a.pitch.toFixed(4) + '  -> ' + a.targetName);
         });
       }
       if (entries.length) {
@@ -334,11 +411,13 @@
     });
 
     clearButton.addEventListener('click', function() {
-      if (!window.confirm('Eklenenler ve taşınanlar silinsin mi?')) return;
+      if (!window.confirm('Eklenenler, oklar ve taşınanlar silinsin mi?')) return;
       entries = [];
       moves = [];
+      arrows = [];
       saveEntries();
       saveMoves();
+      saveArrows();
     });
 
     updateCount();
@@ -386,14 +465,22 @@
     element.addEventListener('pointerup', function(event) {
       if (!dragging || event.pointerId !== dragging.pointerId) return;
       if (dragging.moved && dragging.lastCoords) {
-        moves.push({
-          scene: currentSceneNumber,
-          kind: dragging.entry.kind,
-          label: dragging.entry.label,
-          yaw: dragging.lastCoords.yaw,
-          pitch: dragging.lastCoords.pitch
-        });
-        saveMoves();
+        if (dragging.entry.ownRecord) {
+          // This hotspot was created earlier in this same session (e.g. a new
+          // arrow) - update its own record instead of logging a separate move.
+          dragging.entry.ownRecord.yaw = dragging.lastCoords.yaw;
+          dragging.entry.ownRecord.pitch = dragging.lastCoords.pitch;
+          saveArrows();
+        } else {
+          moves.push({
+            scene: currentSceneNumber,
+            kind: dragging.entry.kind,
+            label: dragging.entry.label,
+            yaw: dragging.lastCoords.yaw,
+            pitch: dragging.lastCoords.pitch
+          });
+          saveMoves();
+        }
         coordsLine.textContent = 'Taşındı: ' + dragging.entry.label + '. Kaydedildi.';
         suppressNextClick = true;
       }
