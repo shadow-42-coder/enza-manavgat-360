@@ -932,17 +932,84 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 
 #posFinderBox {
   position: fixed;
-  top: 50px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 30000;
-  background-color: rgba(0,0,0,0.85);
+  background-color: rgba(0,0,0,0.92);
   color: #fff;
-  font-size: 18px;
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  width: 92%;
+  max-width: 420px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+
+#posFinderCoords {
   font-weight: 700;
-  padding: 10px 18px;
-  border-radius: 6px;
-  pointer-events: none;
+  font-size: 15px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+#posFinderCoords.ready {
+  color: #7fd88a;
+}
+
+#posFinderInputRow {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+#posFinderInput {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 5px;
+  border: none;
+  font-size: 14px;
+}
+
+#posFinderAdd {
+  padding: 8px 14px;
+  border-radius: 5px;
+  border: none;
+  background-color: var(--brand-accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#posFinderActionRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#posFinderCount {
+  flex: 1;
+  font-size: 13px;
+  color: #ccc;
+}
+
+#posFinderCopy, #posFinderClear {
+  padding: 7px 12px;
+  border-radius: 5px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#posFinderCopy {
+  background-color: #25d366;
+  color: #06210f;
+}
+
+#posFinderClear {
+  background-color: rgba(255,255,255,0.15);
+  color: #fff;
 }
 
 /* "Ask about this product" WhatsApp link inside info hotspots */

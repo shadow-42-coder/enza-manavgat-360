@@ -168,25 +168,134 @@
   // scene's normal view instead of staying zoomed in.
   var currentView = null;
   var currentBaseFov = null;
+  var currentSceneNumber = null;
   setupPinchZoom(panoElement);
 
-  // TEMP: position finder tool, remove once all product hotspots are placed.
-  // Add ?pos=1 to the URL, then click anywhere on the pano to see the
-  // yaw/pitch for that exact point.
+  // TEMP: product-link collector tool, remove once all product hotspots
+  // are placed. Add ?pos=1 to the URL: tap anywhere on the pano, paste the
+  // product link, tap "Ekle". Walk through the whole store this way, then
+  // tap "Kopyala" to copy every entry as text and send it back in one go.
   if (/[?&]pos=1/.test(window.location.search)) {
-    var posBox = document.createElement('div');
-    posBox.id = 'posFinderBox';
-    posBox.textContent = 'Bir ürüne tıklayın...';
-    document.body.appendChild(posBox);
-    panoElement.addEventListener('click', function(event) {
+    setupPositionCollector(panoElement);
+  }
+
+  function setupPositionCollector(element) {
+    var STORAGE_KEY = 'enzaPosCollectorEntries';
+    var entries = [];
+    try {
+      entries = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch (e) {
+      entries = [];
+    }
+    var pendingCoords = null;
+
+    var box = document.createElement('div');
+    box.id = 'posFinderBox';
+
+    var coordsLine = document.createElement('div');
+    coordsLine.id = 'posFinderCoords';
+    coordsLine.textContent = 'Bir ürüne tıklayın...';
+
+    var inputRow = document.createElement('div');
+    inputRow.id = 'posFinderInputRow';
+    var linkInput = document.createElement('input');
+    linkInput.type = 'text';
+    linkInput.id = 'posFinderInput';
+    linkInput.placeholder = 'Ürün linkini yapıştırın';
+    var addButton = document.createElement('button');
+    addButton.textContent = 'Ekle';
+    addButton.id = 'posFinderAdd';
+    inputRow.appendChild(linkInput);
+    inputRow.appendChild(addButton);
+
+    var actionRow = document.createElement('div');
+    actionRow.id = 'posFinderActionRow';
+    var countLabel = document.createElement('span');
+    countLabel.id = 'posFinderCount';
+    var copyButton = document.createElement('button');
+    copyButton.textContent = 'Kopyala';
+    copyButton.id = 'posFinderCopy';
+    var clearButton = document.createElement('button');
+    clearButton.textContent = 'Temizle';
+    clearButton.id = 'posFinderClear';
+    actionRow.appendChild(countLabel);
+    actionRow.appendChild(copyButton);
+    actionRow.appendChild(clearButton);
+
+    box.appendChild(coordsLine);
+    box.appendChild(inputRow);
+    box.appendChild(actionRow);
+    document.body.appendChild(box);
+
+    function updateCount() {
+      countLabel.textContent = entries.length + ' ürün eklendi';
+    }
+
+    function save() {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      updateCount();
+    }
+
+    function addEntry() {
+      var link = linkInput.value.trim();
+      if (!pendingCoords || !link) return;
+      entries.push({
+        scene: pendingCoords.scene,
+        yaw: pendingCoords.yaw,
+        pitch: pendingCoords.pitch,
+        link: link
+      });
+      save();
+      linkInput.value = '';
+      pendingCoords = null;
+      coordsLine.textContent = 'Eklendi. Bir sonraki ürüne tıklayın...';
+      coordsLine.classList.remove('ready');
+    }
+
+    element.addEventListener('click', function(event) {
       if (!currentView || !currentView.screenToCoordinates) return;
-      var rect = panoElement.getBoundingClientRect();
+      var rect = element.getBoundingClientRect();
       var coords = currentView.screenToCoordinates({
         x: event.clientX - rect.left,
         y: event.clientY - rect.top
       });
-      posBox.textContent = 'yaw: ' + coords.yaw.toFixed(4) + '   pitch: ' + coords.pitch.toFixed(4);
+      pendingCoords = {
+        scene: currentSceneNumber,
+        yaw: coords.yaw,
+        pitch: coords.pitch
+      };
+      coordsLine.textContent = currentSceneNumber + '  yaw: ' + coords.yaw.toFixed(4) +
+        '   pitch: ' + coords.pitch.toFixed(4);
+      coordsLine.classList.add('ready');
+      linkInput.focus();
     });
+
+    addButton.addEventListener('click', addEntry);
+    linkInput.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') addEntry();
+    });
+
+    copyButton.addEventListener('click', function() {
+      var text = entries.map(function(e) {
+        return e.scene + ' ' + e.yaw.toFixed(4) + ' ' + e.pitch.toFixed(4) + ' ' + e.link;
+      }).join('\n');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          copyButton.textContent = 'Kopyalandı!';
+          setTimeout(function() { copyButton.textContent = 'Kopyala'; }, 1500);
+        });
+      } else {
+        window.prompt('Metni kopyalayın:', text);
+      }
+    });
+
+    clearButton.addEventListener('click', function() {
+      if (!window.confirm('Tüm eklenen ürünler silinsin mi?')) return;
+      entries = [];
+      save();
+    });
+
+    updateCount();
   }
 
   function setupPinchZoom(element) {
@@ -275,6 +384,7 @@
     updateSceneList(scene);
     currentView = scene.view;
     currentBaseFov = scene.data.initialViewParameters.fov;
+    currentSceneNumber = scenes.indexOf(scene) + 1;
   }
 
   function updateSceneName(scene) {
