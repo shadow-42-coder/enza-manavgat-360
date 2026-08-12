@@ -95,21 +95,33 @@
     });
 
     // Create link hotspots.
+    var editableHotspots = [];
     data.linkHotspots.forEach(function(hotspot) {
       var element = createLinkHotspotElement(hotspot);
-      scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
+      var marzipanoHotspot = scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
+      editableHotspots.push({
+        hotspot: marzipanoHotspot,
+        kind: 'link',
+        label: 'Yön oku → ' + hotspot.target
+      });
     });
 
     // Create info hotspots.
     data.infoHotspots.forEach(function(hotspot) {
       var element = createInfoHotspotElement(hotspot, data.name);
-      scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
+      var marzipanoHotspot = scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
+      editableHotspots.push({
+        hotspot: marzipanoHotspot,
+        kind: 'info',
+        label: hotspot.title
+      });
     });
 
     return {
       data: data,
       scene: scene,
-      view: view
+      view: view,
+      editableHotspots: editableHotspots
     };
   });
 
@@ -169,6 +181,7 @@
   var currentView = null;
   var currentBaseFov = null;
   var currentSceneNumber = null;
+  var currentSceneWrapper = null;
   setupPinchZoom(panoElement);
 
   // TEMP: product-link collector tool, remove once all product hotspots
@@ -180,13 +193,18 @@
   }
 
   function setupPositionCollector(element) {
-    var STORAGE_KEY = 'enzaPosCollectorEntries';
+    document.body.classList.add('admin-mode');
+
+    var ADD_KEY = 'enzaPosCollectorEntries';
+    var MOVE_KEY = 'enzaPosCollectorMoves';
     var entries = [];
+    var moves = [];
     try {
-      entries = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]');
-    } catch (e) {
-      entries = [];
-    }
+      entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]');
+    } catch (e) { entries = []; }
+    try {
+      moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]');
+    } catch (e) { moves = []; }
     var pendingCoords = null;
 
     var box = document.createElement('div');
@@ -194,7 +212,7 @@
 
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
-    coordsLine.textContent = 'Bir ürüne tıklayın...';
+    coordsLine.textContent = 'Boş bir yere tıklayın (yeni ürün) veya bir ikonu sürükleyin (konum değiştir)';
 
     var inputRow = document.createElement('div');
     inputRow.id = 'posFinderInputRow';
@@ -228,11 +246,16 @@
     document.body.appendChild(box);
 
     function updateCount() {
-      countLabel.textContent = entries.length + ' ürün eklendi';
+      countLabel.textContent = entries.length + ' eklendi, ' + moves.length + ' taşındı';
     }
 
-    function save() {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    function saveEntries() {
+      window.localStorage.setItem(ADD_KEY, JSON.stringify(entries));
+      updateCount();
+    }
+
+    function saveMoves() {
+      window.localStorage.setItem(MOVE_KEY, JSON.stringify(moves));
       updateCount();
     }
 
@@ -245,14 +268,24 @@
         pitch: pendingCoords.pitch,
         link: link
       });
-      save();
+      saveEntries();
       linkInput.value = '';
       pendingCoords = null;
       coordsLine.textContent = 'Eklendi. Bir sonraki ürüne tıklayın...';
       coordsLine.classList.remove('ready');
     }
 
+    // Click on empty pano space: start adding a new product hotspot.
+    // Registered on the capture phase so a post-drag click can be cancelled
+    // here before it ever reaches a hotspot's own navigate/open handler.
     element.addEventListener('click', function(event) {
+      if (suppressNextClick) {
+        suppressNextClick = false;
+        event.stopPropagation();
+        event.preventDefault();
+        return;
+      }
+      if (event.target.closest && event.target.closest('.hotspot')) return;
       if (!currentView || !currentView.screenToCoordinates) return;
       var rect = element.getBoundingClientRect();
       var coords = currentView.screenToCoordinates({
@@ -268,7 +301,7 @@
         '   pitch: ' + coords.pitch.toFixed(4);
       coordsLine.classList.add('ready');
       linkInput.focus();
-    });
+    }, true);
 
     addButton.addEventListener('click', addEntry);
     linkInput.addEventListener('keydown', function(event) {
@@ -276,9 +309,20 @@
     });
 
     copyButton.addEventListener('click', function() {
-      var text = entries.map(function(e) {
-        return e.scene + ' ' + e.yaw.toFixed(4) + ' ' + e.pitch.toFixed(4) + ' ' + e.link;
-      }).join('\n');
+      var lines = [];
+      if (moves.length) {
+        lines.push('--- TAŞINAN İKONLAR ---');
+        moves.forEach(function(m) {
+          lines.push(m.scene + ' ' + m.yaw.toFixed(4) + ' ' + m.pitch.toFixed(4) + '  [' + m.kind + '] ' + m.label);
+        });
+      }
+      if (entries.length) {
+        lines.push('--- YENİ EKLENEN ÜRÜNLER ---');
+        entries.forEach(function(e) {
+          lines.push(e.scene + ' ' + e.yaw.toFixed(4) + ' ' + e.pitch.toFixed(4) + ' ' + e.link);
+        });
+      }
+      var text = lines.join('\n');
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function() {
           copyButton.textContent = 'Kopyalandı!';
@@ -290,12 +334,71 @@
     });
 
     clearButton.addEventListener('click', function() {
-      if (!window.confirm('Tüm eklenen ürünler silinsin mi?')) return;
+      if (!window.confirm('Eklenenler ve taşınanlar silinsin mi?')) return;
       entries = [];
-      save();
+      moves = [];
+      saveEntries();
+      saveMoves();
     });
 
     updateCount();
+
+    // Dragging existing hotspots (link arrows and info icons) to reposition them.
+    var suppressNextClick = false;
+    var dragging = null; // { entry, pointerId }
+    var DRAG_THRESHOLD = 6;
+
+    element.addEventListener('pointerdown', function(event) {
+      var hotspotEl = event.target.closest && event.target.closest('.hotspot');
+      if (!hotspotEl || !currentSceneWrapper) return;
+      var match = currentSceneWrapper.editableHotspots.filter(function(entry) {
+        return entry.hotspot.domElement() === hotspotEl;
+      })[0];
+      if (!match) return;
+      dragging = {
+        entry: match,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false
+      };
+    }, true);
+
+    element.addEventListener('pointermove', function(event) {
+      if (!dragging || event.pointerId !== dragging.pointerId) return;
+      var dx = event.clientX - dragging.startX;
+      var dy = event.clientY - dragging.startY;
+      if (!dragging.moved && Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+      if (!dragging.moved) event.preventDefault();
+      dragging.moved = true;
+      if (!currentView || !currentView.screenToCoordinates) return;
+      var rect = element.getBoundingClientRect();
+      var coords = currentView.screenToCoordinates({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      });
+      dragging.entry.hotspot.setPosition({ yaw: coords.yaw, pitch: coords.pitch });
+      dragging.lastCoords = coords;
+      coordsLine.textContent = 'Taşınıyor: ' + dragging.entry.label;
+      coordsLine.classList.add('ready');
+    }, true);
+
+    element.addEventListener('pointerup', function(event) {
+      if (!dragging || event.pointerId !== dragging.pointerId) return;
+      if (dragging.moved && dragging.lastCoords) {
+        moves.push({
+          scene: currentSceneNumber,
+          kind: dragging.entry.kind,
+          label: dragging.entry.label,
+          yaw: dragging.lastCoords.yaw,
+          pitch: dragging.lastCoords.pitch
+        });
+        saveMoves();
+        coordsLine.textContent = 'Taşındı: ' + dragging.entry.label + '. Kaydedildi.';
+        suppressNextClick = true;
+      }
+      dragging = null;
+    }, true);
   }
 
   function setupPinchZoom(element) {
@@ -385,6 +488,7 @@
     currentView = scene.view;
     currentBaseFov = scene.data.initialViewParameters.fov;
     currentSceneNumber = scenes.indexOf(scene) + 1;
+    currentSceneWrapper = scene;
   }
 
   function updateSceneName(scene) {

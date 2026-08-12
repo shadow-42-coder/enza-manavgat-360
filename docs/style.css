@@ -928,6 +928,19 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   #contactBar { display: none; }
 }
 
+/* TEMP: admin drag mode for hotspots (active only with ?pos=1) */
+
+.admin-mode .hotspot {
+  touch-action: none;
+  cursor: move;
+}
+
+.admin-mode .link-hotspot-icon,
+.admin-mode .info-hotspot-header {
+  outline: 2px dashed #ffd23f;
+  outline-offset: 2px;
+}
+
 /* TEMP: position finder overlay */
 
 #posFinderBox {
