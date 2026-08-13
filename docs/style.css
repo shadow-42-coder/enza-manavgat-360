@@ -922,6 +922,7 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 .contactButton-maps { background-image: url('img/icon-maps.svg'); }
 .contactButton-instagram { background-image: url('img/icon-instagram.svg'); }
 .contactButton-phone { background-image: url('img/icon-phone.svg'); }
+.contactButton-whatsapp { background-image: url('img/icon-whatsapp.svg'); border-radius: 0 6px 0 0; }
 
 /* Hide the floating contact bar on narrow screens; contact links already live in the scene list footer */
 @media (max-width: 600px) {
@@ -933,6 +934,13 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 .admin-mode .hotspot {
   touch-action: none;
   cursor: move;
+}
+
+.admin-mode #contactBar {
+  touch-action: none;
+  cursor: move;
+  outline: 2px dashed #ffd23f;
+  outline-offset: 2px;
 }
 
 .admin-mode .link-hotspot-icon,

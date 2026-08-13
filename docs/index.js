@@ -556,6 +556,64 @@
     document.addEventListener('enzaPhotoToolReady', updatePhotoToolReadyState);
     updatePhotoToolReadyState();
 
+    setupContactBarDrag();
+
+    function setupContactBarDrag() {
+      var bar = document.querySelector('#contactBar');
+      if (!bar) return;
+      var dragging = null;
+      var suppressBarClick = false;
+      var DRAG_THRESHOLD = 6;
+
+      bar.addEventListener('pointerdown', function(event) {
+        var rect = bar.getBoundingClientRect();
+        dragging = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          barLeft: rect.left,
+          barTop: rect.top,
+          moved: false
+        };
+      }, true);
+
+      window.addEventListener('pointermove', function(event) {
+        if (!dragging || event.pointerId !== dragging.pointerId) return;
+        var dx = event.clientX - dragging.startX;
+        var dy = event.clientY - dragging.startY;
+        if (!dragging.moved && Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
+        dragging.moved = true;
+        bar.style.right = 'auto';
+        bar.style.bottom = 'auto';
+        bar.style.left = Math.max(0, dragging.barLeft + dx) + 'px';
+        bar.style.top = Math.max(0, dragging.barTop + dy) + 'px';
+      });
+
+      window.addEventListener('pointerup', function(event) {
+        if (!dragging || event.pointerId !== dragging.pointerId) return;
+        if (dragging.moved) {
+          var rect = bar.getBoundingClientRect();
+          var right = Math.round(window.innerWidth - rect.right);
+          var bottom = Math.round(window.innerHeight - rect.bottom);
+          settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'contactBarPosition'; });
+          settingsChanges.push({ type: 'contactBarPosition', right: right, bottom: bottom });
+          saveSettingsChanges();
+          settingsStatus.textContent = 'İletişim ikon grubunun yeni konumu kaydedildi (right:' + right + 'px, bottom:' + bottom + 'px).';
+          coordsLine.textContent = 'İletişim ikon grubu taşındı ve kaydedildi.';
+          suppressBarClick = true;
+        }
+        dragging = null;
+      });
+
+      bar.addEventListener('click', function(event) {
+        if (suppressBarClick) {
+          suppressBarClick = false;
+          event.stopPropagation();
+          event.preventDefault();
+        }
+      }, true);
+    }
+
     function updateCount() {
       countLabel.textContent = entries.length + ' ürün, ' + arrows.length + ' yeni ok, ' +
         moves.length + ' taşındı, ' + removals.length + ' silindi, ' +
