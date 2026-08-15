@@ -899,6 +899,60 @@
       uiText('homeScreenTipText', 'Bu turu bir uygulama gibi kullanmak için tarayıcı menüsünden "Ana Ekrana Ekle"yi deneyebilirsin.'), 16000, 24000);
   })();
 
+  // Farewell card: once, after a visitor has been genuinely browsing for a
+  // while (not just landed and left), a calm closing card surfaces the
+  // same contact options as the corner bar - a second, lower-pressure
+  // chance to reach out before they close the tab.
+  (function setupFarewellCard() {
+    var SHOWN_KEY = 'enzaFarewellShown';
+    var shown = null;
+    try { shown = window.sessionStorage.getItem(SHOWN_KEY); } catch (e) {}
+    if (shown) return;
+    setTimeout(function() {
+      if (document.hidden) return;
+      try { window.sessionStorage.setItem(SHOWN_KEY, '1'); } catch (e) {}
+      var card = document.createElement('div');
+      card.id = 'farewellCard';
+      var title = document.createElement('div');
+      title.id = 'farewellTitle';
+      title.textContent = uiText('farewellTitle', 'Turu gezdiğiniz için teşekkürler!');
+      var subtitle = document.createElement('div');
+      subtitle.id = 'farewellSubtitle';
+      subtitle.textContent = uiText('farewellSubtitle', 'Bir sorunuz mu var? Buradan bize ulaşabilirsiniz.');
+      var buttons = document.createElement('div');
+      buttons.id = 'farewellButtons';
+      if (contactBarWaBtn && contactBarWaBtn.href) {
+        var waLink = document.createElement('a');
+        waLink.href = contactBarWaBtn.href;
+        waLink.target = '_blank';
+        waLink.rel = 'noopener';
+        waLink.textContent = uiText('presentationWhatsappLabel', "💬 WhatsApp'tan Yazın");
+        buttons.appendChild(waLink);
+      }
+      if (contactBarMapsBtn && contactBarMapsBtn.href) {
+        var mapsLink = document.createElement('a');
+        mapsLink.href = contactBarMapsBtn.href;
+        mapsLink.target = '_blank';
+        mapsLink.rel = 'noopener';
+        mapsLink.textContent = '📍 ' + uiText('mapsLabel', 'Google Haritada Gör');
+        buttons.appendChild(mapsLink);
+      }
+      var closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = uiText('closeLabel', 'Kapat');
+      closeBtn.addEventListener('click', function() {
+        card.classList.remove('visible');
+        setTimeout(function() { if (card.parentNode) card.parentNode.removeChild(card); }, 400);
+      });
+      buttons.appendChild(closeBtn);
+      card.appendChild(title);
+      card.appendChild(subtitle);
+      card.appendChild(buttons);
+      document.body.appendChild(card);
+      setTimeout(function() { card.classList.add('visible'); }, 50);
+    }, 75000);
+  })();
+
   // Mobile: pinch with two fingers to zoom; release to snap back to the
   // scene's normal view instead of staying zoomed in.
   var currentView = null;
@@ -4156,6 +4210,57 @@
       });
     });
   });
+
+  // Mobile-only gyroscope look-around: tilting/turning the phone moves the
+  // camera instead of (or alongside) dragging. iOS 13+ requires an explicit
+  // permission prompt, triggered by the tap on this button itself since it
+  // must come from a real user gesture.
+  (function setupGyroscopeControl() {
+    if (!document.body.classList.contains('mobile') || !window.DeviceOrientationEvent) return;
+    var gyroButton = document.createElement('button');
+    gyroButton.type = 'button';
+    gyroButton.id = 'gyroToggleButton';
+    gyroButton.textContent = '🧭';
+    gyroButton.title = uiText('gyroLabel', 'Telefonu çevirerek bak');
+    document.body.appendChild(gyroButton);
+
+    var active = false;
+    var baseYaw = 0;
+    var baseAlpha = null;
+
+    function handleOrientation(event) {
+      if (!currentView || event.alpha === null || event.beta === null) return;
+      if (baseAlpha === null) baseAlpha = event.alpha;
+      var yaw = baseYaw - (event.alpha - baseAlpha) * Math.PI / 180;
+      var pitch = -(event.beta - 90) * Math.PI / 180;
+      pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+      currentView.setParameters({ yaw: yaw, pitch: pitch });
+    }
+
+    function start() {
+      baseAlpha = null;
+      if (currentView) baseYaw = currentView.parameters().yaw;
+      window.addEventListener('deviceorientation', handleOrientation);
+      gyroButton.classList.add('active');
+      active = true;
+    }
+    function stop() {
+      window.removeEventListener('deviceorientation', handleOrientation);
+      gyroButton.classList.remove('active');
+      active = false;
+    }
+
+    gyroButton.addEventListener('click', function() {
+      if (active) { stop(); return; }
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(function(state) {
+          if (state === 'granted') start();
+        }).catch(function() {});
+      } else {
+        start();
+      }
+    });
+  })();
 
   // "Az önce buradaydın" breadcrumb: small thumbnails of the last few scenes
   // visited this session (not persisted), for quickly hopping back.

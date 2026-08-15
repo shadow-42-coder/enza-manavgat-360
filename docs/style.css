@@ -1062,6 +1062,25 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   cursor: pointer;
 }
 
+#gyroToggleButton {
+  position: absolute;
+  top: 0;
+  right: 80px;
+  width: 40px;
+  height: 40px;
+  z-index: 90;
+  border: none;
+  background-color: rgba(41,56,72,0.92);
+  color: rgba(255,255,255,0.6);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+#gyroToggleButton.active {
+  color: #fff;
+  background-color: var(--brand-accent);
+}
+
 #recentScenesBar.visible {
   display: flex;
 }
@@ -2346,6 +2365,67 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
+}
+
+#farewellCard {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 20px);
+  z-index: 19000;
+  max-width: 340px;
+  width: 90%;
+  padding: 18px;
+  border-radius: 10px;
+  background-color: rgba(10,14,18,0.94);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+#farewellCard.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+#farewellTitle {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+#farewellSubtitle {
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 14px;
+}
+
+#farewellButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#farewellButtons a,
+#farewellButtons button {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--brand-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#farewellButtons button {
+  background-color: rgba(255,255,255,0.15);
 }
 
 .miniTip {
