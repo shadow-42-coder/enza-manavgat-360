@@ -2343,8 +2343,32 @@
     var newScenePhotoFile = document.createElement('input');
     newScenePhotoFile.type = 'file';
     newScenePhotoFile.accept = 'image/*';
+    var newSceneCaptureButton = document.createElement('button');
+    newSceneCaptureButton.type = 'button';
+    newSceneCaptureButton.id = 'posFinderNewSceneCaptureButton';
+    newSceneCaptureButton.textContent = '📷 Kamerayla 360 Çek (yeni)';
+    var newSceneCaptureStatus = document.createElement('div');
+    newSceneCaptureStatus.id = 'posFinderNewSceneCaptureStatus';
+    var capturedEquirectBlob = null;
     newSceneInfoSection.appendChild(newSceneNameInput);
     newSceneInfoSection.appendChild(newScenePhotoFile);
+    newSceneInfoSection.appendChild(newSceneCaptureButton);
+    newSceneInfoSection.appendChild(newSceneCaptureStatus);
+
+    newScenePhotoFile.addEventListener('change', function() {
+      if (newScenePhotoFile.files[0]) {
+        capturedEquirectBlob = null;
+        newSceneCaptureStatus.textContent = '';
+      }
+    });
+
+    newSceneCaptureButton.addEventListener('click', function() {
+      startGuidedCapture(function(blob) {
+        capturedEquirectBlob = blob;
+        newScenePhotoFile.value = '';
+        newSceneCaptureStatus.textContent = '✓ Fotoğraf kameradan hazırlandı (' + Math.round(blob.size / 1024) + ' KB). Aşağıdan sahne adı ve bağlantıları girip oluşturabilirsiniz.';
+      });
+    });
 
     var newSceneConnSection = settingsSection('Hangi sahnelere bağlansın? (çift yönlü)', '🔗', true);
     var newSceneConnList = document.createElement('div');
@@ -2408,33 +2432,30 @@
 
     function saveNewScenes() { window.localStorage.setItem(NEW_SCENE_KEY, JSON.stringify(newScenes)); updateCount(); }
 
-    newSceneCreateButton.addEventListener('click', function() {
-      var name = newSceneNameInput.value.trim();
-      var file = newScenePhotoFile.files[0];
-      var connSelects = newSceneConnList.querySelectorAll('select');
-      var connections = [];
-      connSelects.forEach(function(sel) {
-        if (sel.value && connections.indexOf(sel.value) === -1) connections.push(sel.value);
-      });
-      if (!name) { newSceneStatus.textContent = 'Lütfen sahne adı girin.'; return; }
-      if (!file) { newSceneStatus.textContent = 'Lütfen bir fotoğraf seçin.'; return; }
-      if (!connections.length) { newSceneStatus.textContent = 'Lütfen en az bir bağlantı seçin.'; return; }
-      if (!window.EnzaPhotoTool) { newSceneStatus.textContent = 'Araç henüz hazır değil, birkaç saniye bekleyip tekrar deneyin.'; return; }
+    // Shared by both the manual "Yeni Sahne" file-upload flow and the guided
+    // 360 capture tool below - takes any equirectangular image (a File from
+    // disk, or a Blob produced in-memory by the capture tool) and runs it
+    // through the same tested tile-generation pipeline.
+    function createSceneFromEquirectFile(file, name, connections, statusEl, progressOuterEl, progressInnerEl, downloadLinkEl, createButtonEl, onDone) {
+      if (!name) { statusEl.textContent = 'Lütfen sahne adı girin.'; return; }
+      if (!file) { statusEl.textContent = 'Lütfen bir fotoğraf seçin.'; return; }
+      if (!connections.length) { statusEl.textContent = 'Lütfen en az bir bağlantı seçin.'; return; }
+      if (!window.EnzaPhotoTool) { statusEl.textContent = 'Araç henüz hazır değil, birkaç saniye bekleyip tekrar deneyin.'; return; }
 
       var tempId = 'new-' + Date.now();
-      newSceneDownloadLink.style.display = 'none';
-      newSceneProgressOuter.style.display = 'block';
-      newSceneProgressInner.style.width = '0%';
-      newSceneStatus.textContent = 'İşleniyor, sayfayı kapatmayın...';
-      newSceneCreateButton.disabled = true;
+      downloadLinkEl.style.display = 'none';
+      progressOuterEl.style.display = 'block';
+      progressInnerEl.style.width = '0%';
+      statusEl.textContent = 'İşleniyor, sayfayı kapatmayın...';
+      createButtonEl.disabled = true;
 
       window.EnzaPhotoTool.buildSceneTiles(file, tempId, function(fraction) {
-        newSceneProgressInner.style.width = Math.round(fraction * 100) + '%';
+        progressInnerEl.style.width = Math.round(fraction * 100) + '%';
       }).then(function(blob) {
         var url = URL.createObjectURL(blob);
-        newSceneDownloadLink.href = url;
-        newSceneDownloadLink.download = tempId + '-tiles.zip';
-        newSceneDownloadLink.style.display = 'block';
+        downloadLinkEl.href = url;
+        downloadLinkEl.download = tempId + '-tiles.zip';
+        downloadLinkEl.style.display = 'block';
         var record = {
           tempId: tempId,
           name: name,
@@ -2445,8 +2466,8 @@
         };
         newScenes.push(record);
         saveNewScenes();
-        newSceneStatus.textContent = 'Hazır! ZIP\'i indirin, "Kopyala" ile bilgileri kopyalayın ve ikisini de Claude\'a gönderip "yeni sahne ekledim" yazın.';
-        newSceneCreateButton.disabled = false;
+        statusEl.textContent = 'Hazır! ZIP\'i indirin, "Kopyala" ile bilgileri kopyalayın ve ikisini de Claude\'a gönderip "yeni sahne ekledim" yazın.';
+        createButtonEl.disabled = false;
         pushHistory('yeni sahne oluşturma (' + name + ')', function() {
           newScenes = newScenes.filter(function(r) { return r !== record; });
           saveNewScenes();
@@ -2454,14 +2475,29 @@
           newScenes.push(record);
           saveNewScenes();
         });
+        if (onDone) onDone();
+      }).catch(function(err) {
+        statusEl.textContent = 'Hata: ' + err;
+        createButtonEl.disabled = false;
+        console.error(err);
+      });
+    }
+
+    newSceneCreateButton.addEventListener('click', function() {
+      var name = newSceneNameInput.value.trim();
+      var file = capturedEquirectBlob || newScenePhotoFile.files[0];
+      var connSelects = newSceneConnList.querySelectorAll('select');
+      var connections = [];
+      connSelects.forEach(function(sel) {
+        if (sel.value && connections.indexOf(sel.value) === -1) connections.push(sel.value);
+      });
+      createSceneFromEquirectFile(file, name, connections, newSceneStatus, newSceneProgressOuter, newSceneProgressInner, newSceneDownloadLink, newSceneCreateButton, function() {
         newSceneNameInput.value = '';
         newScenePhotoFile.value = '';
+        capturedEquirectBlob = null;
+        newSceneCaptureStatus.textContent = '';
         newSceneConnList.innerHTML = '';
         addNewSceneConnRow();
-      }).catch(function(err) {
-        newSceneStatus.textContent = 'Hata: ' + err;
-        newSceneCreateButton.disabled = false;
-        console.error(err);
       });
     });
 
@@ -4211,6 +4247,278 @@
     });
   });
 
+  // Guided 360 photo capture: walks an admin through a fixed shot list
+  // (equator ring + upper ring + zenith) using the phone's own orientation
+  // sensors, auto-firing the shutter once the phone is pointed at each
+  // target and briefly held still, then warps every shot onto a shared
+  // equirectangular canvas (reprojected by its own capture-time yaw/pitch)
+  // and hands the result straight to the same tile pipeline the manual
+  // "Yeni Sahne" upload uses. Camera/orientation quality (especially the
+  // phone's compass, which drifts badly near metal shelving/lighting) sets
+  // a real ceiling on how clean the seams come out - this is a budget
+  // stand-in for a dedicated 360 camera, not a replacement for one.
+  var CAPTURE_FOV_H = 60 * Math.PI / 180;
+
+  function buildCaptureTargets() {
+    var targets = [];
+    var n = 8;
+    for (var i = 0; i < n; i++) {
+      targets.push({ yaw: (i / n) * 2 * Math.PI - Math.PI, pitch: 0, done: false });
+    }
+    for (var j = 0; j < n; j++) {
+      targets.push({ yaw: (j / n) * 2 * Math.PI - Math.PI + Math.PI / n, pitch: Math.PI / 4, done: false });
+    }
+    targets.push({ yaw: 0, pitch: Math.PI / 2 - 0.15, done: false });
+    return targets;
+  }
+
+  function wrapAngle(a) {
+    while (a > Math.PI) a -= 2 * Math.PI;
+    while (a < -Math.PI) a += 2 * Math.PI;
+    return a;
+  }
+
+  // Draws only the (sx,sy,sw,sh) region of srcCanvas, warped so that its
+  // corners land on p0 (top-left), p1 (top-right), p2 (bottom-left) of the
+  // destination - a locally-affine approximation of the true nonlinear
+  // gnomonic-to-equirectangular mapping, applied over a fine enough grid
+  // (see warpShotOntoEquirect) that the approximation error is negligible.
+  function drawWarpedQuad(ctx, srcCanvas, sx, sy, sw, sh, p0, p1, p2) {
+    if (sw <= 0 || sh <= 0) return;
+    var a = (p1[0] - p0[0]) / sw, b = (p1[1] - p0[1]) / sw;
+    var c = (p2[0] - p0[0]) / sh, d = (p2[1] - p0[1]) / sh;
+    ctx.setTransform(a, b, c, d, p0[0], p0[1]);
+    ctx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  }
+
+  function warpShotOntoEquirect(t, octx, outW, outH, halfFovH, halfFovV) {
+    var GRID = 16;
+    var srcW = t.canvas.width, srcH = t.canvas.height;
+    var yawC = t.capturedYaw, pitchC = t.capturedPitch;
+    for (var gy = 0; gy < GRID; gy++) {
+      var v0 = (gy / GRID) * 2 - 1, v1 = ((gy + 1) / GRID) * 2 - 1;
+      for (var gx = 0; gx < GRID; gx++) {
+        var u0 = (gx / GRID) * 2 - 1, u1 = ((gx + 1) / GRID) * 2 - 1;
+        var corners = [[u0, v0], [u1, v0], [u0, v1]].map(function(uv) {
+          var yaw = yawC + uv[0] * halfFovH;
+          var pitch = pitchC - uv[1] * halfFovV;
+          return [
+            ((yaw + Math.PI) / (2 * Math.PI)) * outW,
+            ((Math.PI / 2 - pitch) / Math.PI) * outH
+          ];
+        });
+        var xs = [corners[0][0], corners[1][0], corners[2][0]];
+        if (Math.max.apply(null, xs) - Math.min.apply(null, xs) > outW / 2) continue;
+        var sx0 = ((u0 + 1) / 2) * srcW, sx1 = ((u1 + 1) / 2) * srcW;
+        var sy0 = ((v0 + 1) / 2) * srcH, sy1 = ((v1 + 1) / 2) * srcH;
+        drawWarpedQuad(octx, t.canvas, sx0, sy0, sx1 - sx0, sy1 - sy0, corners[0], corners[1], corners[2]);
+      }
+    }
+  }
+
+  function stitchCaptureTargets(targets, videoAspect) {
+    var outW = 2048, outH = 1024;
+    var out = document.createElement('canvas');
+    out.width = outW;
+    out.height = outH;
+    var octx = out.getContext('2d');
+    octx.fillStyle = '#000';
+    octx.fillRect(0, 0, outW, outH);
+    var halfFovH = CAPTURE_FOV_H / 2;
+    var halfFovV = halfFovH / videoAspect;
+    targets.forEach(function(t) {
+      if (!t.done || !t.canvas) return;
+      warpShotOntoEquirect(t, octx, outW, outH, halfFovH, halfFovV);
+    });
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+    return out;
+  }
+
+  function startGuidedCapture(onComplete) {
+    var overlay = document.createElement('div');
+    overlay.id = 'captureOverlay';
+    var video = document.createElement('video');
+    video.id = 'captureVideo';
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;
+    var guideCanvas = document.createElement('canvas');
+    guideCanvas.id = 'captureGuideCanvas';
+    var statusText = document.createElement('div');
+    statusText.id = 'captureStatusText';
+    statusText.textContent = 'Kamera açılıyor...';
+    var progressText = document.createElement('div');
+    progressText.id = 'captureProgressText';
+    var cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.id = 'captureCancelButton';
+    cancelBtn.textContent = '✕ İptal';
+    overlay.appendChild(video);
+    overlay.appendChild(guideCanvas);
+    overlay.appendChild(statusText);
+    overlay.appendChild(progressText);
+    overlay.appendChild(cancelBtn);
+    document.body.appendChild(overlay);
+
+    var stream = null;
+    var targets = buildCaptureTargets();
+    var currentYaw = 0, currentPitch = 0;
+    var baseAlpha = null;
+    var alignedSince = null;
+    var lastAlpha = null, lastBeta = null;
+    var ALIGN_TOL = 9 * Math.PI / 180;
+    var DWELL_MS = 450;
+
+    function cleanup() {
+      window.removeEventListener('deviceorientation', onOrientation);
+      window.removeEventListener('resize', resizeCanvas);
+      if (stream) stream.getTracks().forEach(function(tr) { tr.stop(); });
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    cancelBtn.addEventListener('click', cleanup);
+
+    function resizeCanvas() {
+      guideCanvas.width = window.innerWidth;
+      guideCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function nearestIncompleteTarget() {
+      var best = null, bestDist = Infinity;
+      targets.forEach(function(t) {
+        if (t.done) return;
+        var dYaw = Math.abs(wrapAngle(t.yaw - currentYaw));
+        var dPitch = Math.abs(t.pitch - currentPitch);
+        var dist = dYaw + dPitch;
+        if (dist < bestDist) { bestDist = dist; best = t; }
+      });
+      return best;
+    }
+
+    function captureShot(target) {
+      var canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      target.done = true;
+      target.canvas = canvas;
+      target.capturedYaw = currentYaw;
+      target.capturedPitch = currentPitch;
+      var doneCount = targets.filter(function(t) { return t.done; }).length;
+      progressText.textContent = doneCount + ' / ' + targets.length;
+      if (doneCount === targets.length) {
+        finish();
+      } else {
+        statusText.textContent = 'Çekildi! Bir sonraki beyaz noktaya bakın.';
+      }
+    }
+
+    function finish() {
+      window.removeEventListener('deviceorientation', onOrientation);
+      statusText.textContent = 'Birleştiriliyor, lütfen bekleyin...';
+      progressText.textContent = '';
+      var aspect = video.videoWidth / video.videoHeight;
+      setTimeout(function() {
+        var outCanvas = stitchCaptureTargets(targets, aspect);
+        outCanvas.toBlob(function(blob) {
+          cleanup();
+          if (onComplete) onComplete(blob);
+        }, 'image/jpeg', 0.9);
+      }, 30);
+    }
+
+    function checkAutoCapture(moving, now) {
+      var target = nearestIncompleteTarget();
+      if (!target) return;
+      var dYaw = Math.abs(wrapAngle(target.yaw - currentYaw));
+      var dPitch = Math.abs(target.pitch - currentPitch);
+      var aligned = dYaw < ALIGN_TOL && dPitch < ALIGN_TOL;
+      if (aligned && !moving) {
+        if (alignedSince === null) alignedSince = now;
+        if (now - alignedSince > DWELL_MS) {
+          alignedSince = null;
+          captureShot(target);
+        }
+      } else {
+        alignedSince = null;
+      }
+    }
+
+    function drawGuide() {
+      var ctx = guideCanvas.getContext('2d');
+      var w = guideCanvas.width, h = guideCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(w / 2 - 14, h / 2); ctx.lineTo(w / 2 + 14, h / 2);
+      ctx.moveTo(w / 2, h / 2 - 14); ctx.lineTo(w / 2, h / 2 + 14);
+      ctx.stroke();
+
+      var halfFovH = CAPTURE_FOV_H / 2;
+      var halfFovV = halfFovH * (h / w);
+
+      targets.forEach(function(t) {
+        var dYaw = wrapAngle(t.yaw - currentYaw);
+        var dPitch = t.pitch - currentPitch;
+        if (Math.abs(dYaw) < halfFovH * 1.4 && Math.abs(dPitch) < halfFovV * 1.4) {
+          var sx = w / 2 + (dYaw / halfFovH) * (w / 2);
+          var sy = h / 2 - (dPitch / halfFovV) * (h / 2);
+          ctx.fillStyle = t.done ? 'rgba(60,200,100,0.9)' : 'rgba(255,255,255,0.9)';
+          ctx.beginPath();
+          ctx.arc(sx, sy, t.done ? 7 : 12, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (!t.done) {
+          var angle = Math.atan2(-dPitch, dYaw);
+          var ex = Math.max(24, Math.min(w - 24, w / 2 + Math.cos(angle) * (w * 0.42)));
+          var ey = Math.max(24, Math.min(h - 24, h / 2 + Math.sin(angle) * (h * 0.42)));
+          ctx.fillStyle = 'rgba(255,255,255,0.5)';
+          ctx.beginPath();
+          ctx.arc(ex, ey, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    }
+
+    function onOrientation(event) {
+      if (event.alpha === null || event.beta === null) return;
+      if (baseAlpha === null) baseAlpha = event.alpha;
+      currentYaw = -(event.alpha - baseAlpha) * Math.PI / 180;
+      currentPitch = -(event.beta - 90) * Math.PI / 180;
+      currentPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, currentPitch));
+
+      var now = window.performance.now();
+      var moving = lastAlpha !== null && (Math.abs(event.alpha - lastAlpha) > 1.2 || Math.abs(event.beta - lastBeta) > 1.2);
+      lastAlpha = event.alpha;
+      lastBeta = event.beta;
+
+      drawGuide();
+      checkAutoCapture(moving, now);
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(s) {
+      stream = s;
+      video.srcObject = s;
+      return video.play();
+    }).then(function() {
+      statusText.textContent = 'Beyaz noktalara bakıp bir an sabit tutun - otomatik çekilecek.';
+      progressText.textContent = '0 / ' + targets.length;
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        return DeviceOrientationEvent.requestPermission();
+      }
+      return 'granted';
+    }).then(function(state) {
+      if (state !== 'granted' && state !== undefined) {
+        statusText.textContent = 'Yön sensörü izni verilmedi, çekim yapılamıyor.';
+        return;
+      }
+      window.addEventListener('deviceorientation', onOrientation);
+    }).catch(function(err) {
+      statusText.textContent = 'Kamera açılamadı: ' + err.message;
+    });
+  }
+
   // Mobile-only gyroscope look-around: tilting/turning the phone moves the
   // camera instead of (or alongside) dragging. iOS 13+ requires an explicit
   // permission prompt, triggered by the tap on this button itself since it
@@ -4878,6 +5186,28 @@
       progressBar.textContent = (stepIndex + 1) + ' / ' + route.length + (s ? (' · ' + s.data.name.replace(/^\d+\.\s*/, '')) : '');
     }
 
+    // While presenting, if the current scene happens to link directly to the
+    // next stop on the route, give that specific arrow a subtle highlight -
+    // a quiet visual hint of where the tour is headed, when it's not just a
+    // teleport to an unrelated scene.
+    var suggestedArrowEl = null;
+    function clearSuggestedArrow() {
+      if (suggestedArrowEl) { suggestedArrowEl.classList.remove('suggestedNext'); suggestedArrowEl = null; }
+    }
+    function highlightSuggestedArrow() {
+      clearSuggestedArrow();
+      var current = route[stepIndex];
+      var next = route[stepIndex + 1];
+      if (!current || !next) return;
+      var match = (current.editableHotspots || []).filter(function(e) {
+        return e.kind === 'link' && e.rawData && e.rawData.target === next.data.id;
+      })[0];
+      if (match) {
+        suggestedArrowEl = match.hotspot.domElement();
+        suggestedArrowEl.classList.add('suggestedNext');
+      }
+    }
+
     function scheduleAdvance() {
       if (timer) clearTimeout(timer);
       timer = setTimeout(advance, STEP_SECONDS * 1000);
@@ -4888,6 +5218,7 @@
       if (stepIndex >= route.length) { endPresentation(); return; }
       switchScene(route[stepIndex]);
       updateProgress();
+      highlightSuggestedArrow();
       scheduleAdvance();
     }
 
@@ -4902,6 +5233,7 @@
       progressBar.classList.add('visible');
       switchScene(route[0]);
       updateProgress();
+      highlightSuggestedArrow();
       scheduleAdvance();
     }
 
@@ -4916,6 +5248,7 @@
       if (timer) clearTimeout(timer);
       progressBar.classList.remove('visible');
       resumeBtn.classList.remove('visible');
+      clearSuggestedArrow();
       closingCard.classList.add('visible');
     }
 
