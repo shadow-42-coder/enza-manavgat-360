@@ -21,6 +21,35 @@
   var screenfull = window.screenfull;
   var data = window.APP_DATA;
 
+  // Visitor-facing language: TR (default site language) / EN / RU. Detected
+  // once from the browser's language on first visit, remembered afterwards,
+  // switchable via the on-page language buttons. Admin panel text and the
+  // underlying data.js scene names always stay Turkish - only what a visitor
+  // actually reads (scene names, contact labels, WhatsApp messages) changes.
+  var LANG_KEY = 'enzaVisitorLang';
+  function detectLang() {
+    var stored = null;
+    try { stored = window.localStorage.getItem(LANG_KEY); } catch (e) {}
+    if (stored === 'tr' || stored === 'en' || stored === 'ru') return stored;
+    var nav = (navigator.language || navigator.userLanguage || 'tr').toLowerCase();
+    if (nav.indexOf('ru') === 0) return 'ru';
+    if (nav.indexOf('tr') === 0) return 'tr';
+    return 'en';
+  }
+  var currentLang = detectLang();
+  function translatedSceneName(sceneData) {
+    if (currentLang === 'tr') return sceneData.name;
+    var pack = data.i18n && data.i18n[currentLang];
+    if (pack && pack.sceneNames && pack.sceneNames[sceneData.id]) return pack.sceneNames[sceneData.id];
+    return sceneData.name;
+  }
+  function uiText(key, fallback) {
+    if (currentLang === 'tr') return fallback;
+    var pack = data.i18n && data.i18n[currentLang];
+    if (pack && pack.ui && pack.ui[key]) return pack.ui[key];
+    return fallback;
+  }
+
   // Grab elements from DOM.
   var panoElement = document.querySelector('#pano');
   var sceneNameElement = document.querySelector('#titleBar .sceneName');
@@ -109,7 +138,7 @@
 
     // Create info hotspots.
     data.infoHotspots.forEach(function(hotspot) {
-      var element = createInfoHotspotElement(hotspot, data.name);
+      var element = createInfoHotspotElement(hotspot, translatedSceneName(data));
       var marzipanoHotspot = scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
       editableHotspots.push({
         hotspot: marzipanoHotspot,
@@ -168,7 +197,7 @@
   // Set handler for scene switch.
   scenes.forEach(function(scene) {
     var el = document.querySelector('#sceneList .scene[data-id="' + scene.data.id + '"]');
-    el.querySelector('.text').innerHTML = sanitize(scene.data.name);
+    el.querySelector('.text').innerHTML = sanitize(translatedSceneName(scene.data));
     el.addEventListener('click', function() {
       switchScene(scene);
       // On mobile, hide scene list after selecting a scene.
@@ -177,6 +206,132 @@
       }
     });
   });
+
+  // Translate contact labels, tooltips and WhatsApp message text for the
+  // currently detected/chosen visitor language. Turkish is the site's base
+  // language, so at currentLang === 'tr' the static HTML is already correct.
+  var sceneListFooterMapsLink = document.querySelector('#sceneListFooter .contactLink[href*="maps.google.com"]');
+  var sceneListFooterIgLink = document.querySelector('#sceneListFooter .contactLink[href*="instagram.com"]');
+  var sceneListFooterWaLink = document.querySelector('#sceneListFooter .contactLink[href*="wa.me"]');
+  var contactBarMapsBtn = document.querySelector('#contactBar .contactButton-maps');
+  var contactBarIgBtn = document.querySelector('#contactBar .contactButton-instagram');
+  var contactBarWaBtn = document.querySelector('#contactBar .contactButton-whatsapp');
+  var sceneListFooterShareLink = document.querySelector('#sceneListFooter #shareLink');
+  var contactBarShareBtn = document.querySelector('#contactBar #shareButton');
+
+  // Captured once, before any translation runs, so switching back to
+  // Turkish can restore the original text/links instead of leaving
+  // whatever language was applied last.
+  var originalTr = {
+    mapsText: sceneListFooterMapsLink ? sceneListFooterMapsLink.textContent : null,
+    igText: sceneListFooterIgLink ? sceneListFooterIgLink.textContent : null,
+    waText: sceneListFooterWaLink ? sceneListFooterWaLink.textContent : null,
+    waHref: sceneListFooterWaLink ? sceneListFooterWaLink.href : null,
+    mapsTitle: contactBarMapsBtn ? contactBarMapsBtn.title : null,
+    igTitle: contactBarIgBtn ? contactBarIgBtn.title : null,
+    waTitle: contactBarWaBtn ? contactBarWaBtn.title : null,
+    waBtnHref: contactBarWaBtn ? contactBarWaBtn.href : null,
+    shareText: sceneListFooterShareLink ? sceneListFooterShareLink.textContent : null,
+    shareTitle: contactBarShareBtn ? contactBarShareBtn.title : null
+  };
+
+  function applyUiTranslations() {
+    if (currentLang === 'tr') {
+      if (sceneListFooterMapsLink) sceneListFooterMapsLink.textContent = originalTr.mapsText;
+      if (sceneListFooterIgLink) sceneListFooterIgLink.textContent = originalTr.igText;
+      if (sceneListFooterWaLink) { sceneListFooterWaLink.textContent = originalTr.waText; sceneListFooterWaLink.href = originalTr.waHref; }
+      if (contactBarMapsBtn) contactBarMapsBtn.title = originalTr.mapsTitle;
+      if (contactBarIgBtn) contactBarIgBtn.title = originalTr.igTitle;
+      if (contactBarWaBtn) { contactBarWaBtn.title = originalTr.waTitle; contactBarWaBtn.href = originalTr.waBtnHref; }
+      if (sceneListFooterShareLink) sceneListFooterShareLink.textContent = originalTr.shareText;
+      if (contactBarShareBtn) contactBarShareBtn.title = originalTr.shareTitle;
+      return;
+    }
+    var mapsLabel = uiText('mapsLabel', null);
+    var igLabel = uiText('instagramLabel', null);
+    var waLabel = uiText('whatsappLabel', null);
+    var waMsg = uiText('whatsappGeneralMessage', null);
+    var shareLabel = uiText('shareLabel', null);
+    if (mapsLabel) {
+      if (sceneListFooterMapsLink) sceneListFooterMapsLink.textContent = mapsLabel;
+      if (contactBarMapsBtn) contactBarMapsBtn.title = mapsLabel;
+    }
+    if (igLabel) {
+      if (sceneListFooterIgLink) sceneListFooterIgLink.textContent = igLabel;
+      if (contactBarIgBtn) contactBarIgBtn.title = igLabel;
+    }
+    if (waMsg) {
+      var waHref = 'https://wa.me/905493320707?text=' + encodeURIComponent(waMsg);
+      if (sceneListFooterWaLink) {
+        sceneListFooterWaLink.href = waHref;
+        if (waLabel) sceneListFooterWaLink.textContent = waLabel;
+      }
+      if (contactBarWaBtn) {
+        contactBarWaBtn.href = waHref;
+        if (waLabel) contactBarWaBtn.title = waLabel;
+      }
+    }
+    if (shareLabel) {
+      if (sceneListFooterShareLink) sceneListFooterShareLink.textContent = shareLabel;
+      if (contactBarShareBtn) contactBarShareBtn.title = shareLabel;
+    }
+  }
+  applyUiTranslations();
+
+  // Share the tour: native share sheet where available (mobile), otherwise
+  // copy the link to the clipboard with a brief visual confirmation.
+  function shareTour(triggerEl) {
+    var url = window.location.href.split('?')[0];
+    var shareText = uiText('shareText', 'enza HOME Manavgat 360° sanal mağaza turuna göz atın!');
+    if (navigator.share) {
+      navigator.share({ title: document.title, text: shareText, url: url }).catch(function() {});
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function() {
+        if (!triggerEl) return;
+        var original = triggerEl.getAttribute('data-original-text');
+        var copiedText = uiText('shareCopied', 'Link kopyalandı!');
+        if (triggerEl.tagName === 'A' && triggerEl.textContent) {
+          if (original === null) triggerEl.setAttribute('data-original-text', triggerEl.textContent);
+          triggerEl.textContent = copiedText;
+          setTimeout(function() { triggerEl.textContent = triggerEl.getAttribute('data-original-text'); }, 1800);
+        }
+      });
+    } else {
+      window.prompt('Bağlantıyı kopyalayın:', url);
+    }
+  }
+  if (sceneListFooterShareLink) sceneListFooterShareLink.addEventListener('click', function() { shareTour(sceneListFooterShareLink); });
+  if (contactBarShareBtn) contactBarShareBtn.addEventListener('click', function() { shareTour(null); });
+
+  // Small language switcher for visitors (TR / EN / RU). Choice persists via
+  // localStorage; switching re-renders scene names and contact labels and,
+  // if a scene is currently open, its title too.
+  var langSwitcher = document.createElement('div');
+  langSwitcher.id = 'langSwitcher';
+  ['tr', 'en', 'ru'].forEach(function(lang) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'langSwitcherButton' + (lang === currentLang ? ' active' : '');
+    btn.textContent = lang.toUpperCase();
+    btn.addEventListener('click', function() {
+      if (lang === currentLang) return;
+      currentLang = lang;
+      try { window.localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+      Array.prototype.forEach.call(langSwitcher.querySelectorAll('.langSwitcherButton'), function(b) {
+        b.classList.toggle('active', b === btn);
+      });
+      scenes.forEach(function(scene) {
+        var el = document.querySelector('#sceneList .scene[data-id="' + scene.data.id + '"]');
+        if (el) el.querySelector('.text').innerHTML = sanitize(translatedSceneName(scene.data));
+      });
+      if (currentSceneWrapper) updateSceneName(currentSceneWrapper);
+      applyUiTranslations();
+    });
+    langSwitcher.appendChild(btn);
+  });
+  document.body.appendChild(langSwitcher);
 
   // Mobile: pinch with two fingers to zoom; release to snap back to the
   // scene's normal view instead of staying zoomed in.
@@ -200,6 +355,7 @@
 
   function initAdminPanel() {
     setupPositionCollector(panoElement);
+    setupAutoLogout();
     loadScript('vendor/jszip.min.js', function() {
       loadScript('photo-tool.js', function() {
         document.body.classList.add('photo-tool-ready');
@@ -208,10 +364,43 @@
     });
   }
 
-  function showAdminLogin(onSuccess) {
-    var ADMIN_USER = 'ENZAHOME-MANAVGAT';
-    var ADMIN_PASS = 'yedi10077';
+  function setupAutoLogout() {
+    var IDLE_LIMIT_MS = 20 * 60 * 1000;
+    var idleTimer = null;
+    function resetIdleTimer() {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(function() {
+        window.sessionStorage.removeItem('enzaAdminAuthed');
+        window.location.reload();
+      }, IDLE_LIMIT_MS);
+    }
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(function(evt) {
+      document.addEventListener(evt, resetIdleTimer, { passive: true });
+    });
+    resetIdleTimer();
+  }
 
+  var CREDENTIALS_KEY = 'enzaAdminCredentials';
+  var DEFAULT_ADMIN_USER = 'ENZAHOME-MANAVGAT';
+  var DEFAULT_ADMIN_PASS = 'yedi10077';
+  // Fixed master passphrase that always works, independent of whatever custom
+  // password is set from the panel. This is the only "forgot my password"
+  // recovery path possible on a static site with no backend/email. Logging
+  // in with it resets any custom password back to the default pair.
+  var RECOVERY_PASSWORD = 'ENZA-KURTARMA-9471';
+
+  function getStoredCredentials() {
+    try {
+      var raw = window.localStorage.getItem(CREDENTIALS_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.user && parsed.pass) return parsed;
+      }
+    } catch (e) {}
+    return { user: DEFAULT_ADMIN_USER, pass: DEFAULT_ADMIN_PASS };
+  }
+
+  function showAdminLogin(onSuccess) {
     var overlay = document.createElement('div');
     overlay.id = 'adminLoginOverlay';
     var box = document.createElement('div');
@@ -241,8 +430,16 @@
     userInput.focus();
 
     function attempt() {
-      if (userInput.value === ADMIN_USER && passInput.value === ADMIN_PASS) {
+      var creds = getStoredCredentials();
+      var isMainMatch = userInput.value === creds.user && passInput.value === creds.pass;
+      var isRecoveryMatch = passInput.value === RECOVERY_PASSWORD;
+      if (isMainMatch || isRecoveryMatch) {
         window.sessionStorage.setItem('enzaAdminAuthed', '1');
+        if (isRecoveryMatch && !isMainMatch) {
+          // Forgot the custom password - recovery resets it back to default
+          // so a new one can be set right away from the settings panel.
+          window.localStorage.removeItem(CREDENTIALS_KEY);
+        }
         overlay.remove();
         onSuccess();
       } else {
@@ -270,18 +467,44 @@
   function setupPositionCollector(element) {
     document.body.classList.add('admin-mode');
 
-    // Single-level-per-step undo history for this session. Each performed
-    // action pushes { label, undo } here; the "Geri Al" button pops and
-    // runs the most recent one.
+    // Single-level-per-step undo/redo history for this session. Each
+    // performed action pushes { label, undo, redo } here; "Geri Al" (or
+    // Ctrl+Z) pops and undoes the most recent one, moving it onto the redo
+    // stack; "İleri Al" (or Ctrl+I) does the reverse. Any new action clears
+    // the redo stack, matching standard undo/redo behavior.
     var history = [];
-    function pushHistory(label, undoFn) {
-      history.push({ label: label, undo: undoFn });
+    var redoStack = [];
+    function pushHistory(label, undoFn, redoFn) {
+      history.push({ label: label, undo: undoFn, redo: redoFn });
+      redoStack = [];
       updateUndoButton();
+      updateRedoButton();
     }
     function updateUndoButton() {
       if (!undoButton) return;
       undoButton.disabled = history.length === 0;
       undoButton.title = history.length ? ('Geri al: ' + history[history.length - 1].label) : '';
+    }
+    function updateRedoButton() {
+      if (!redoButton) return;
+      redoButton.disabled = redoStack.length === 0;
+      redoButton.title = redoStack.length ? ('İleri al: ' + redoStack[redoStack.length - 1].label) : '';
+    }
+    function performUndo() {
+      var last = history.pop();
+      if (!last) return;
+      last.undo();
+      redoStack.push(last);
+      updateUndoButton();
+      updateRedoButton();
+    }
+    function performRedo() {
+      var last = redoStack.pop();
+      if (!last || !last.redo) return;
+      last.redo();
+      history.push(last);
+      updateUndoButton();
+      updateRedoButton();
     }
 
     var ADD_KEY = 'enzaPosCollectorEntries';
@@ -371,6 +594,56 @@
     inputRow.appendChild(sceneSelect);
     inputRow.appendChild(addButton);
 
+    // Badge buttons: only shown while editing an existing product (info
+    // hotspot) in product mode. Applied live to the hotspot's own DOM.
+    var badgeRow = document.createElement('div');
+    badgeRow.id = 'posFinderBadgeRow';
+    badgeRow.style.display = 'none';
+    ['Yeni', 'İndirimde', 'Tükendi'].forEach(function(label) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'posFinderBadgeButton';
+      btn.setAttribute('data-badge', label);
+      btn.textContent = label;
+      btn.addEventListener('click', function() { setBadge(label); });
+      badgeRow.appendChild(btn);
+    });
+    var clearBadgeButton = document.createElement('button');
+    clearBadgeButton.type = 'button';
+    clearBadgeButton.className = 'posFinderBadgeButton posFinderBadgeClearButton';
+    clearBadgeButton.textContent = 'Rozet Yok';
+    clearBadgeButton.addEventListener('click', function() { setBadge(null); });
+    badgeRow.appendChild(clearBadgeButton);
+
+    function setBadge(label) {
+      if (!editingEntry || editingEntry.kind !== 'info') return;
+      var entryRef = editingEntry;
+      var rawData = entryRef.rawData;
+      var oldBadge = rawData.badge || null;
+      var newBadge = label || null;
+      if (oldBadge === newBadge) return;
+      rawData.badge = newBadge;
+      updateHotspotBadgeDom(entryRef);
+      Array.prototype.forEach.call(badgeRow.querySelectorAll('.posFinderBadgeButton'), function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-badge') === newBadge);
+      });
+      var editRecord = { scene: currentSceneNumber, kind: 'badge', title: rawData.title, oldBadge: oldBadge, newBadge: newBadge };
+      edits.push(editRecord);
+      saveEdits();
+      coordsLine.textContent = newBadge ? ('Rozet ayarlandı: ' + newBadge) : 'Rozet kaldırıldı.';
+      pushHistory('rozet ayarlama (' + rawData.title + ')', function() {
+        rawData.badge = oldBadge;
+        updateHotspotBadgeDom(entryRef);
+        edits = edits.filter(function(e) { return e !== editRecord; });
+        saveEdits();
+      }, function() {
+        rawData.badge = newBadge;
+        updateHotspotBadgeDom(entryRef);
+        edits.push(editRecord);
+        saveEdits();
+      });
+    }
+
     var actionRow = document.createElement('div');
     actionRow.id = 'posFinderActionRow';
     var countLabel = document.createElement('span');
@@ -385,16 +658,41 @@
     undoButton.textContent = 'Geri Al';
     undoButton.id = 'posFinderUndo';
     undoButton.disabled = true;
+    var redoButton = document.createElement('button');
+    redoButton.textContent = 'İleri Al';
+    redoButton.id = 'posFinderRedo';
+    redoButton.disabled = true;
     actionRow.appendChild(countLabel);
     actionRow.appendChild(undoButton);
+    actionRow.appendChild(redoButton);
     actionRow.appendChild(copyButton);
     actionRow.appendChild(clearButton);
 
-    undoButton.addEventListener('click', function() {
-      var last = history.pop();
-      if (!last) return;
-      last.undo();
-      updateUndoButton();
+    undoButton.addEventListener('click', performUndo);
+    redoButton.addEventListener('click', performRedo);
+
+    document.addEventListener('keydown', function(event) {
+      if (event.ctrlKey || event.metaKey) {
+        var key = event.key.toLowerCase();
+        if (key !== 'z' && key !== 'i') return;
+        // Let native text-field undo work normally while typing; only hijack
+        // Ctrl+Z/Ctrl+I for the panel's own undo/redo outside text inputs.
+        var activeTag = document.activeElement && document.activeElement.tagName;
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+        event.preventDefault();
+        if (key === 'z') performUndo(); else performRedo();
+        return;
+      }
+      if (event.key === 'Escape') {
+        // Cancel whatever add/edit is in progress without committing it.
+        if (pendingCoords || editingEntry) {
+          pendingCoords = null;
+          resetInputRowForAdd();
+          coordsLine.classList.remove('ready');
+          coordsLine.textContent = 'İptal edildi.';
+          if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        }
+      }
     });
 
     // Photo replacement panel (its own tile-generation UI, no pano clicking).
@@ -467,6 +765,114 @@
     startSection.appendChild(startSceneSelect);
     startSection.appendChild(startButton);
 
+    // -- Kiosk/showroom mode interval --
+    var kioskSection = settingsSection('Vitrin modu geçiş süresi');
+    var kioskIntervalInput = document.createElement('input');
+    kioskIntervalInput.type = 'number';
+    kioskIntervalInput.min = '3';
+    kioskIntervalInput.max = '120';
+    kioskIntervalInput.placeholder = 'Saniye (ör. 8)';
+    var kioskIntervalButton = document.createElement('button');
+    kioskIntervalButton.textContent = 'Süreyi Kaydet';
+    var kioskHint = document.createElement('div');
+    kioskHint.className = 'posFinderPasswordHint';
+    kioskHint.textContent = 'Mağazada bir ekranda sürekli açık kalacaksa, adrese "?kiosk=1" ekle — tur kendi kendine bu sürede sahne değiştirerek gezinir.';
+    kioskSection.appendChild(kioskIntervalInput);
+    kioskSection.appendChild(kioskIntervalButton);
+    kioskSection.appendChild(kioskHint);
+
+    kioskIntervalButton.addEventListener('click', function() {
+      var seconds = parseInt(kioskIntervalInput.value, 10);
+      if (!seconds || seconds < 3) { settingsStatus.textContent = 'Lütfen 3 saniyeden büyük bir süre girin.'; return; }
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'kioskInterval'; });
+      settingsChanges.push({ type: 'kioskInterval', seconds: seconds });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = 'Vitrin modu geçiş süresi ' + seconds + ' saniye olarak kaydedildi.';
+      pushHistory('vitrin modu süresi değiştirme', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'Vitrin modu geçiş süresi ' + seconds + ' saniye olarak kaydedildi.';
+      });
+    });
+
+    // -- Opening view angle for the currently viewed scene --
+    var openingViewSection = settingsSection('Sahnenin açılış açısı');
+    var openingViewButton = document.createElement('button');
+    openingViewButton.textContent = 'Şu Anki Görünümü Bu Sahnenin Açılışı Yap';
+    var openingViewHint = document.createElement('div');
+    openingViewHint.className = 'posFinderPasswordHint';
+    openingViewHint.textContent = 'Panoyu istediğin açıya çevir, sonra bu butona bas — o sahne artık her zaman bu açıyla açılır.';
+    openingViewSection.appendChild(openingViewButton);
+    openingViewSection.appendChild(openingViewHint);
+
+    openingViewButton.addEventListener('click', function() {
+      if (!currentSceneWrapper || !currentView) { settingsStatus.textContent = 'Önce bir sahneye gidin.'; return; }
+      var params = currentView.parameters();
+      var sceneId = currentSceneWrapper.data.id;
+      var displayName = currentSceneWrapper.data.name.replace(/^\d+\.\s*/, '');
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return !(c.type === 'openingView' && c.sceneId === sceneId); });
+      settingsChanges.push({ type: 'openingView', sceneId: sceneId, sceneName: currentSceneWrapper.data.name, yaw: params.yaw, pitch: params.pitch, fov: params.fov });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = '"' + displayName + '" için yeni açılış görünümü kaydedildi.';
+      pushHistory('açılış görünümü ayarlama', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = '"' + displayName + '" için yeni açılış görünümü kaydedildi.';
+      });
+    });
+
+    // -- Scene notes (admin-only, stays in this browser, never sent to Claude) --
+    var NOTES_KEY = 'enzaSceneNotes';
+    var sceneNotes = {};
+    try { sceneNotes = JSON.parse(window.localStorage.getItem(NOTES_KEY) || '{}'); } catch (e) { sceneNotes = {}; }
+    function saveSceneNotes() { window.localStorage.setItem(NOTES_KEY, JSON.stringify(sceneNotes)); }
+
+    var notesSection = settingsSection('Sahne notu (sadece sen görürsün, siteye yansımaz)');
+    var notesSceneSelect = document.createElement('select');
+    var notesTextarea = document.createElement('textarea');
+    notesTextarea.placeholder = 'Bu sahneyle ilgili kendine not bırak (ör. "yeniden çekilecek", "açı düzeltilmeli")...';
+    notesTextarea.rows = 3;
+    var notesSaveButton = document.createElement('button');
+    notesSaveButton.textContent = 'Notu Kaydet';
+    notesSection.appendChild(notesSceneSelect);
+    notesSection.appendChild(notesTextarea);
+    notesSection.appendChild(notesSaveButton);
+
+    notesSceneSelect.addEventListener('change', function() {
+      notesTextarea.value = sceneNotes[notesSceneSelect.value] || '';
+    });
+
+    notesSaveButton.addEventListener('click', function() {
+      var sceneId = notesSceneSelect.value;
+      if (!sceneId) return;
+      var before = sceneNotes[sceneId] || '';
+      var after = notesTextarea.value;
+      if (before === after) return;
+      sceneNotes[sceneId] = after;
+      saveSceneNotes();
+      settingsStatus.textContent = 'Not kaydedildi.';
+      pushHistory('sahne notu kaydetme', function() {
+        sceneNotes[sceneId] = before;
+        saveSceneNotes();
+        if (notesSceneSelect.value === sceneId) notesTextarea.value = before;
+      }, function() {
+        sceneNotes[sceneId] = after;
+        saveSceneNotes();
+        if (notesSceneSelect.value === sceneId) notesTextarea.value = after;
+        settingsStatus.textContent = 'Not kaydedildi.';
+      });
+    });
+
     // -- Contact info --
     var contactSection = settingsSection('İletişim bilgileri');
     var phone1Input = document.createElement('input');
@@ -489,12 +895,95 @@
     contactSection.appendChild(mapsInput);
     contactSection.appendChild(contactButton);
 
+    // -- Backup --
+    var backupSection = settingsSection('Yedekleme');
+    var backupButton = document.createElement('button');
+    backupButton.id = 'posFinderBackup';
+    backupButton.textContent = 'Tüm Veriyi Yedekle (JSON indir)';
+    backupSection.appendChild(backupButton);
+    backupButton.addEventListener('click', function() {
+      var json = JSON.stringify(data, null, 2);
+      var blob = new Blob([json], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      var today = new Date().toISOString().slice(0, 10);
+      a.download = 'enza-manavgat-yedek-' + today + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      settingsStatus.textContent = 'Yedek dosyası indirildi.';
+    });
+
+    // -- Change admin password --
+    var passwordSection = settingsSection('Yönetici şifresini değiştir');
+    var newUserInput = document.createElement('input');
+    newUserInput.type = 'text';
+    newUserInput.placeholder = 'Yeni kullanıcı adı';
+    var newPassInput = document.createElement('input');
+    newPassInput.type = 'password';
+    newPassInput.placeholder = 'Yeni şifre';
+    var confirmPassInput = document.createElement('input');
+    confirmPassInput.type = 'password';
+    confirmPassInput.placeholder = 'Yeni şifre (tekrar)';
+    var passwordButton = document.createElement('button');
+    passwordButton.textContent = 'Şifreyi Değiştir';
+    var passwordHint = document.createElement('div');
+    passwordHint.className = 'posFinderPasswordHint';
+    passwordHint.textContent = 'Şifreni unutursan, kurtarma şifresiyle her zaman girebilirsin: ' + RECOVERY_PASSWORD + ' (bunu bir yere not et).';
+    passwordSection.appendChild(newUserInput);
+    passwordSection.appendChild(newPassInput);
+    passwordSection.appendChild(confirmPassInput);
+    passwordSection.appendChild(passwordButton);
+    passwordSection.appendChild(passwordHint);
+
+    passwordButton.addEventListener('click', function() {
+      var newUser = newUserInput.value.trim();
+      var newPass = newPassInput.value;
+      var confirmPass = confirmPassInput.value;
+      if (!newUser || !newPass) { settingsStatus.textContent = 'Kullanıcı adı ve yeni şifre gerekli.'; return; }
+      if (newPass !== confirmPass) { settingsStatus.textContent = 'Yeni şifreler eşleşmiyor.'; return; }
+      if (newPass === RECOVERY_PASSWORD) { settingsStatus.textContent = 'Bu şifre kurtarma şifresiyle aynı olamaz, başka bir şifre seç.'; return; }
+      var before = getStoredCredentials();
+      var after = { user: newUser, pass: newPass };
+      window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(after));
+      newPassInput.value = '';
+      confirmPassInput.value = '';
+      settingsStatus.textContent = 'Şifre değiştirildi. Bir sonraki girişte yeni bilgileri kullan.';
+      pushHistory('şifre değiştirme', function() {
+        window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(before));
+        settingsStatus.textContent = 'Şifre değişikliği geri alındı.';
+      }, function() {
+        window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(after));
+        settingsStatus.textContent = 'Şifre değişikliği yinelendi.';
+      });
+    });
+
+    // -- Logout --
+    var logoutSection = settingsSection('Oturum');
+    var logoutButton = document.createElement('button');
+    logoutButton.id = 'posFinderLogout';
+    logoutButton.textContent = 'Çıkış Yap';
+    logoutSection.appendChild(logoutButton);
+    logoutButton.addEventListener('click', function() {
+      if (!window.confirm('Yönetim panelinden çıkmak istediğine emin misin?')) return;
+      window.sessionStorage.removeItem('enzaAdminAuthed');
+      window.location.reload();
+    });
+
     var settingsStatus = document.createElement('div');
     settingsStatus.id = 'posFinderSettingsStatus';
 
     settingsPanel.appendChild(renameSection);
     settingsPanel.appendChild(startSection);
+    settingsPanel.appendChild(kioskSection);
+    settingsPanel.appendChild(openingViewSection);
+    settingsPanel.appendChild(notesSection);
     settingsPanel.appendChild(contactSection);
+    settingsPanel.appendChild(backupSection);
+    settingsPanel.appendChild(passwordSection);
+    settingsPanel.appendChild(logoutSection);
     settingsPanel.appendChild(settingsStatus);
 
     // New scene creation panel: name + photo + which existing scenes to connect to.
@@ -615,6 +1104,9 @@
         newSceneCreateButton.disabled = false;
         pushHistory('yeni sahne oluşturma (' + name + ')', function() {
           newScenes = newScenes.filter(function(r) { return r !== record; });
+          saveNewScenes();
+        }, function() {
+          newScenes.push(record);
           saveNewScenes();
         });
         newSceneNameInput.value = '';
@@ -852,10 +1344,55 @@
         btnDown.textContent = '▼';
         btnDown.disabled = i === data.scenes.length - 1;
         btnDown.addEventListener('click', function() { moveScene(i, 1); });
+        var btnDelete = document.createElement('button');
+        btnDelete.type = 'button';
+        btnDelete.className = 'posFinderOrderMoveButton posFinderOrderDeleteButton';
+        btnDelete.textContent = '🗑';
+        btnDelete.title = 'Sahneyi sil';
+        btnDelete.addEventListener('click', function() { deleteScene(s.id); });
         row.appendChild(label);
         row.appendChild(btnUp);
         row.appendChild(btnDown);
+        row.appendChild(btnDelete);
         orderList.appendChild(row);
+      });
+    }
+
+    function deleteScene(sceneId) {
+      var index = data.scenes.findIndex(function(s) { return s.id === sceneId; });
+      if (index === -1) return;
+      var sceneObj = data.scenes[index];
+      var sceneName = sceneObj.name.replace(/^\d+\.\s*/, '');
+      if (!window.confirm('"' + sceneName + '" sahnesi silinsin mi? Bu sahneye giden oklar da site canlıya alınırken kaldırılacak.')) return;
+
+      var container = document.querySelector('#sceneList .scenes');
+      var domEl = container ? container.querySelector('.scene[data-id="' + sceneId + '"]') : null;
+      var domNextSibling = domEl ? domEl.nextSibling : null;
+      var beforeSnapshot = settingsChanges.slice();
+
+      function applyDelete() {
+        var curIndex = data.scenes.findIndex(function(s) { return s.id === sceneId; });
+        if (curIndex !== -1) data.scenes.splice(curIndex, 1);
+        orderBaseline = orderBaseline.filter(function(s) { return s.id !== sceneId; });
+        if (domEl && domEl.parentNode) domEl.parentNode.removeChild(domEl);
+        renderOrderList();
+        settingsChanges.push({ type: 'deleteScene', sceneId: sceneId, sceneName: sceneName });
+        saveSettingsChanges();
+        orderStatus.textContent = '"' + sceneName + '" silindi (henüz canlı sitede değil, kaydedip Claude\'a gönderince uygulanacak).';
+      }
+
+      applyDelete();
+
+      pushHistory('sahne silme (' + sceneName + ')', function() {
+        data.scenes.splice(index, 0, sceneObj);
+        orderBaseline = data.scenes.slice();
+        if (domEl && container) container.insertBefore(domEl, domNextSibling);
+        renderOrderList();
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+        orderStatus.textContent = '"' + sceneName + '" geri getirildi.';
+      }, function() {
+        applyDelete();
       });
     }
 
@@ -873,9 +1410,11 @@
     orderSaveButton.addEventListener('click', function() {
       var beforeSnapshot = settingsChanges.slice();
       var beforeOrder = orderBaseline.slice();
+      var afterOrder = data.scenes.slice();
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'sceneOrder'; });
-      var newOrder = data.scenes.map(function(s) { return s.id; });
+      var newOrder = afterOrder.map(function(s) { return s.id; });
       settingsChanges.push({ type: 'sceneOrder', order: newOrder });
+      var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
       orderBaseline = data.scenes.slice();
       orderStatus.textContent = 'Yeni sıralama kaydedildi.';
@@ -886,25 +1425,130 @@
         renderOrderList();
         settingsChanges = beforeSnapshot;
         saveSettingsChanges();
+      }, function() {
+        data.scenes = afterOrder;
+        orderBaseline = afterOrder.slice();
+        reorderSidebarDom();
+        renderOrderList();
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        orderStatus.textContent = 'Yeni sıralama kaydedildi.';
       });
     });
 
-    box.appendChild(modeRow);
-    box.appendChild(coordsLine);
-    box.appendChild(inputRow);
-    box.appendChild(photoPanel);
-    box.appendChild(settingsPanel);
-    box.appendChild(newScenePanel);
-    box.appendChild(listPanel);
-    box.appendChild(mapPanel);
-    box.appendChild(orderPanel);
-    box.appendChild(actionRow);
+    // Header: drag handle + minimize toggle, so the box can be moved out of
+    // the way and collapsed to a small pill instead of always taking up
+    // this much space with every tool visible at once.
+    var header = document.createElement('div');
+    header.id = 'posFinderHeader';
+    var headerTitle = document.createElement('span');
+    headerTitle.id = 'posFinderHeaderTitle';
+    headerTitle.textContent = 'Yönetim Paneli';
+    var minimizeButton = document.createElement('button');
+    minimizeButton.type = 'button';
+    minimizeButton.id = 'posFinderMinimize';
+    minimizeButton.textContent = '–';
+    minimizeButton.title = 'Küçült';
+    header.appendChild(headerTitle);
+    header.appendChild(minimizeButton);
+
+    // Category tabs group the 9 tools into 4 topics so they aren't all
+    // fighting for attention in one flat row. Switching category shows only
+    // that group's buttons in modeRow and jumps to its first mode.
+    var categoryRow = document.createElement('div');
+    categoryRow.id = 'posFinderCategoryRow';
+    var categories = [
+      { key: 'edit', label: 'Düzenle', buttons: [productModeButton, linkModeButton, deleteModeButton] },
+      { key: 'scenes', label: 'Sahneler', buttons: [newSceneModeButton, orderModeButton, mapModeButton] },
+      { key: 'content', label: 'İçerik', buttons: [listModeButton, photoModeButton] },
+      { key: 'settings', label: 'Ayarlar', buttons: [settingsModeButton] }
+    ];
+    var categoryButtons = {};
+    categories.forEach(function(cat) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'posFinderCategoryButton';
+      btn.textContent = cat.label;
+      btn.addEventListener('click', function() { showCategory(cat.key); });
+      categoryRow.appendChild(btn);
+      categoryButtons[cat.key] = btn;
+    });
+
+    function showCategory(key) {
+      categories.forEach(function(cat) {
+        categoryButtons[cat.key].classList.toggle('active', cat.key === key);
+        cat.buttons.forEach(function(btn) {
+          btn.style.display = (cat.key === key) ? '' : 'none';
+        });
+      });
+      var activeCat = categories.filter(function(c) { return c.key === key; })[0];
+      if (activeCat && activeCat.buttons.length) activeCat.buttons[0].click();
+    }
+
+    var content = document.createElement('div');
+    content.id = 'posFinderContent';
+    content.appendChild(modeRow);
+    content.appendChild(coordsLine);
+    content.appendChild(inputRow);
+    content.appendChild(badgeRow);
+    content.appendChild(photoPanel);
+    content.appendChild(settingsPanel);
+    content.appendChild(newScenePanel);
+    content.appendChild(listPanel);
+    content.appendChild(mapPanel);
+    content.appendChild(orderPanel);
+    content.appendChild(actionRow);
+
+    box.appendChild(header);
+    box.appendChild(categoryRow);
+    box.appendChild(content);
     document.body.appendChild(box);
+
+    showCategory('edit');
+
+    minimizeButton.addEventListener('click', function() {
+      var collapsed = box.classList.toggle('posFinderCollapsed');
+      minimizeButton.textContent = collapsed ? '+' : '–';
+      minimizeButton.title = collapsed ? 'Genişlet' : 'Küçült';
+    });
+
+    // Drag the whole box by its header, same pattern as the contact bar drag.
+    (function setupBoxDrag() {
+      var dragging = null;
+      header.addEventListener('pointerdown', function(event) {
+        if (event.target === minimizeButton) return;
+        var rect = box.getBoundingClientRect();
+        dragging = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          boxLeft: rect.left,
+          boxTop: rect.top,
+          moved: false
+        };
+      });
+      window.addEventListener('pointermove', function(event) {
+        if (!dragging || event.pointerId !== dragging.pointerId) return;
+        var dx = event.clientX - dragging.startX;
+        var dy = event.clientY - dragging.startY;
+        if (!dragging.moved && Math.sqrt(dx * dx + dy * dy) < 6) return;
+        dragging.moved = true;
+        box.style.bottom = 'auto';
+        box.style.transform = 'none';
+        box.style.left = Math.max(0, dragging.boxLeft + dx) + 'px';
+        box.style.top = Math.max(0, dragging.boxTop + dy) + 'px';
+      });
+      window.addEventListener('pointerup', function(event) {
+        if (!dragging || event.pointerId !== dragging.pointerId) return;
+        dragging = null;
+      });
+    })();
 
     function resetInputRowForAdd() {
       editingEntry = null;
       addButton.textContent = 'Ekle';
       linkInput.value = '';
+      badgeRow.style.display = 'none';
     }
 
     function setMode(newMode) {
@@ -983,12 +1627,15 @@
           renameSceneSelect.appendChild(opt1);
           var opt2 = opt1.cloneNode(true);
           startSceneSelect.appendChild(opt2);
+          var opt3 = opt1.cloneNode(true);
+          notesSceneSelect.appendChild(opt3);
         });
         renameSceneSelect.addEventListener('change', function() {
           var s = findSceneDataById(renameSceneSelect.value);
           renameInput.value = s ? s.name.replace(/^\d+\.\s*/, '') : '';
         });
         renameSceneSelect.dispatchEvent(new Event('change'));
+        notesSceneSelect.dispatchEvent(new Event('change'));
       }
       if (!phone1Input.dataset.filled) {
         var phoneLinks = document.querySelectorAll('#sceneListFooter .contactLink[href^="tel:"]');
@@ -999,6 +1646,10 @@
         var mapsLink = document.querySelector('#sceneListFooter .contactLink[href*="maps.google.com"]');
         if (mapsLink) mapsInput.value = mapsLink.href;
         phone1Input.dataset.filled = '1';
+      }
+      if (!kioskIntervalInput.dataset.filled) {
+        kioskIntervalInput.value = (data.settings && data.settings.kioskIntervalSeconds) || 8;
+        kioskIntervalInput.dataset.filled = '1';
       }
     }
 
@@ -1012,11 +1663,16 @@
       var s = findSceneDataById(sceneId);
       var beforeSnapshot = settingsChanges.slice();
       settingsChanges.push({ type: 'rename', sceneId: sceneId, oldName: s ? s.name : sceneId, newName: newName });
+      var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
       settingsStatus.textContent = 'Kaydedildi: ' + sceneId + ' -> "' + newName + '"';
       pushHistory('sahne adı değiştirme', function() {
         settingsChanges = beforeSnapshot;
         saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'Kaydedildi: ' + sceneId + ' -> "' + newName + '"';
       });
     });
 
@@ -1027,11 +1683,16 @@
       var beforeSnapshot = settingsChanges.slice();
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'startScene'; });
       settingsChanges.push({ type: 'startScene', sceneId: sceneId, sceneName: s ? s.name : sceneId });
+      var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
       settingsStatus.textContent = 'Varsayılan açılış sahnesi: ' + (s ? s.name : sceneId);
       pushHistory('varsayılan sahne değiştirme', function() {
         settingsChanges = beforeSnapshot;
         saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'Varsayılan açılış sahnesi: ' + (s ? s.name : sceneId);
       });
     });
 
@@ -1045,10 +1706,15 @@
         instagram: instagramInput.value.trim(),
         mapsLink: mapsInput.value.trim()
       });
+      var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
       pushHistory('iletişim bilgisi değiştirme', function() {
         settingsChanges = beforeSnapshot;
         saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'İletişim bilgileri güncellemesi kaydedildi.';
       });
       settingsStatus.textContent = 'İletişim bilgileri güncellemesi kaydedildi.';
     });
@@ -1138,8 +1804,15 @@
             right: dragging.originalRight,
             bottom: dragging.originalBottom
           };
+          var redoStyle = {
+            left: bar.style.left,
+            top: bar.style.top,
+            right: bar.style.right,
+            bottom: bar.style.bottom
+          };
           settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'contactBarPosition'; });
           settingsChanges.push({ type: 'contactBarPosition', right: right, bottom: bottom });
+          var afterSnapshot = settingsChanges.slice();
           saveSettingsChanges();
           settingsStatus.textContent = 'İletişim ikon grubunun yeni konumu kaydedildi (right:' + right + 'px, bottom:' + bottom + 'px).';
           coordsLine.textContent = 'İletişim ikon grubu taşındı ve kaydedildi.';
@@ -1150,6 +1823,13 @@
             bar.style.right = undoStyle.right;
             bar.style.bottom = undoStyle.bottom;
             settingsChanges = beforeSnapshot;
+            saveSettingsChanges();
+          }, function() {
+            bar.style.left = redoStyle.left;
+            bar.style.top = redoStyle.top;
+            bar.style.right = redoStyle.right;
+            bar.style.bottom = redoStyle.bottom;
+            settingsChanges = afterSnapshot;
             saveSettingsChanges();
           });
         }
@@ -1195,6 +1875,9 @@
       pushHistory('ürün ekleme', function() {
         entries = entries.filter(function(e) { return e !== record; });
         saveEntries();
+      }, function() {
+        entries.push(record);
+        saveEntries();
       });
     }
 
@@ -1232,6 +1915,15 @@
         sceneWrapperForUndo.editableHotspots = sceneWrapperForUndo.editableHotspots.filter(function(e) { return e !== newEditable; });
         arrows = arrows.filter(function(a) { return a !== arrowRecord; });
         saveArrows();
+      }, function() {
+        var redoElement = createLinkHotspotElement(hotspotData);
+        marzipanoHotspot = sceneWrapperForUndo.scene.hotspotContainer().createHotspot(redoElement, {
+          yaw: hotspotData.yaw, pitch: hotspotData.pitch
+        });
+        newEditable.hotspot = marzipanoHotspot;
+        sceneWrapperForUndo.editableHotspots.push(newEditable);
+        arrows.push(arrowRecord);
+        saveArrows();
       });
     }
 
@@ -1258,6 +1950,10 @@
           edits = edits.filter(function(e) { return e !== editRecord; });
           saveEdits();
           editedInfoEntryRef.rawData.sourceLink = oldSourceLink;
+        }, function() {
+          edits.push(editRecord);
+          saveEdits();
+          editedInfoEntryRef.rawData.sourceLink = newLink;
         });
       } else if (editingEntry.kind === 'link') {
         var newTargetId = sceneSelect.value;
@@ -1285,6 +1981,11 @@
           saveEdits();
           editedEntryRef.rawData.target = oldTargetId;
           editedEntryRef.label = oldLabel;
+        }, function() {
+          edits.push(linkEditRecord);
+          saveEdits();
+          editedEntryRef.rawData.target = newTargetId;
+          editedEntryRef.label = 'Yön oku → ' + newTargetId;
         });
       }
       resetInputRowForAdd();
@@ -1322,6 +2023,10 @@
               coordsLine.classList.add('ready');
               linkInput.focus();
               linkInput.select();
+              badgeRow.style.display = 'flex';
+              Array.prototype.forEach.call(badgeRow.querySelectorAll('.posFinderBadgeButton'), function(btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-badge') === (editMatch.rawData.badge || null));
+              });
             } else {
               populateSceneSelect();
               var oldTargetData = findSceneDataById(editMatch.rawData.target);
@@ -1340,6 +2045,7 @@
             var sceneWrapperForUndo = currentSceneWrapper;
             event.stopPropagation();
             event.preventDefault();
+            if (!window.confirm('"' + removedEntry.label + '" silinsin mi?')) return;
             removedEntry.hotspot.destroy();
             sceneWrapperForUndo.editableHotspots.splice(idx, 1);
             var removalRecord = null;
@@ -1357,25 +2063,38 @@
               saveRemovals();
             }
             coordsLine.textContent = 'Silindi: ' + removedEntry.label;
+            var restoredHotspot = null;
+            var restoredEditable = null;
             pushHistory('silme (' + removedEntry.label + ')', function() {
               var el = removedEntry.kind === 'link'
                 ? createLinkHotspotElement(removedEntry.rawData)
                 : createInfoHotspotElement(removedEntry.rawData, sceneWrapperForUndo.data.name);
-              var restoredHotspot = sceneWrapperForUndo.scene.hotspotContainer().createHotspot(el, {
+              restoredHotspot = sceneWrapperForUndo.scene.hotspotContainer().createHotspot(el, {
                 yaw: removedEntry.rawData.yaw, pitch: removedEntry.rawData.pitch
               });
-              sceneWrapperForUndo.editableHotspots.push({
+              restoredEditable = {
                 hotspot: restoredHotspot,
                 kind: removedEntry.kind,
                 label: removedEntry.label,
                 rawData: removedEntry.rawData,
                 ownRecord: removedEntry.ownRecord
-              });
+              };
+              sceneWrapperForUndo.editableHotspots.push(restoredEditable);
               if (removalRecord) {
                 removals = removals.filter(function(r) { return r !== removalRecord; });
                 saveRemovals();
               } else if (removedEntry.ownRecord) {
                 arrows.push(removedEntry.ownRecord);
+                saveArrows();
+              }
+            }, function() {
+              if (restoredHotspot) restoredHotspot.destroy();
+              sceneWrapperForUndo.editableHotspots = sceneWrapperForUndo.editableHotspots.filter(function(e) { return e !== restoredEditable; });
+              if (removalRecord) {
+                removals.push(removalRecord);
+                saveRemovals();
+              } else if (removedEntry.ownRecord) {
+                arrows = arrows.filter(function(a) { return a !== removedEntry.ownRecord; });
                 saveArrows();
               }
             });
@@ -1443,6 +2162,8 @@
         edits.forEach(function(e) {
           if (e.kind === 'info') {
             lines.push(e.scene + '  "' + e.oldTitle + '"  ->  yeni link: ' + e.newLink);
+          } else if (e.kind === 'badge') {
+            lines.push(e.scene + '  "' + e.title + '"  rozet: ' + (e.oldBadge || '(yok)') + ' -> ' + (e.newBadge || '(yok)'));
           } else {
             lines.push(e.scene + '  ok hedefi "' + e.oldTarget + '" -> "' + e.newTarget + '" (' + e.newTargetName + ')');
           }
@@ -1462,6 +2183,12 @@
               var s = findSceneDataById(id);
               return s ? s.name.replace(/^\d+\.\s*/, '') : id;
             }).join(' -> '));
+          } else if (c.type === 'deleteScene') {
+            lines.push('SAHNE SİLİNDİ: "' + c.sceneName + '" (' + c.sceneId + ') — bu sahneye giden oklar da temizlenmeli');
+          } else if (c.type === 'openingView') {
+            lines.push('Açılış görünümü: "' + c.sceneName + '" (' + c.sceneId + ') -> yaw:' + c.yaw.toFixed(4) + ' pitch:' + c.pitch.toFixed(4) + ' fov:' + c.fov.toFixed(4));
+          } else if (c.type === 'kioskInterval') {
+            lines.push('Vitrin modu geçiş süresi: ' + c.seconds + ' saniye');
           }
         });
       }
@@ -1500,7 +2227,9 @@
       saveSettingsChanges();
       saveNewScenes();
       history = [];
+      redoStack = [];
       updateUndoButton();
+      updateRedoButton();
     });
 
     updateCount();
@@ -1555,11 +2284,12 @@
       if (dragging.moved && dragging.lastCoords) {
         var draggedEntry = dragging.entry;
         var startCoords = dragging.startCoords;
+        var endCoords = { yaw: dragging.lastCoords.yaw, pitch: dragging.lastCoords.pitch };
         if (draggedEntry.ownRecord) {
           // This hotspot was created earlier in this same session (e.g. a new
           // arrow) - update its own record instead of logging a separate move.
-          draggedEntry.ownRecord.yaw = dragging.lastCoords.yaw;
-          draggedEntry.ownRecord.pitch = dragging.lastCoords.pitch;
+          draggedEntry.ownRecord.yaw = endCoords.yaw;
+          draggedEntry.ownRecord.pitch = endCoords.pitch;
           saveArrows();
           coordsLine.textContent = 'Taşındı: ' + draggedEntry.label + '. Kaydedildi.';
           pushHistory('taşıma (' + draggedEntry.label + ')', function() {
@@ -1567,14 +2297,19 @@
             draggedEntry.ownRecord.yaw = startCoords.yaw;
             draggedEntry.ownRecord.pitch = startCoords.pitch;
             saveArrows();
+          }, function() {
+            draggedEntry.hotspot.setPosition(endCoords);
+            draggedEntry.ownRecord.yaw = endCoords.yaw;
+            draggedEntry.ownRecord.pitch = endCoords.pitch;
+            saveArrows();
           });
         } else {
           var moveRecord = {
             scene: currentSceneNumber,
             kind: draggedEntry.kind,
             label: draggedEntry.label,
-            yaw: dragging.lastCoords.yaw,
-            pitch: dragging.lastCoords.pitch
+            yaw: endCoords.yaw,
+            pitch: endCoords.pitch
           };
           moves.push(moveRecord);
           saveMoves();
@@ -1582,6 +2317,10 @@
           pushHistory('taşıma (' + draggedEntry.label + ')', function() {
             draggedEntry.hotspot.setPosition(startCoords);
             moves = moves.filter(function(m) { return m !== moveRecord; });
+            saveMoves();
+          }, function() {
+            draggedEntry.hotspot.setPosition(endCoords);
+            moves.push(moveRecord);
             saveMoves();
           });
         }
@@ -1682,7 +2421,7 @@
   }
 
   function updateSceneName(scene) {
-    sceneNameElement.innerHTML = sanitize(scene.data.name);
+    sceneNameElement.innerHTML = sanitize(translatedSceneName(scene.data));
   }
 
   function updateSceneList(scene) {
@@ -1793,6 +2532,14 @@
     icon.classList.add('info-hotspot-icon');
     iconWrapper.appendChild(icon);
 
+    if (hotspot.badge) {
+      var badgeEl = document.createElement('div');
+      badgeEl.classList.add('info-hotspot-badge');
+      badgeEl.setAttribute('data-badge', hotspot.badge);
+      badgeEl.textContent = hotspot.badge;
+      iconWrapper.appendChild(badgeEl);
+    }
+
     // Create title element.
     var titleWrapper = document.createElement('div');
     titleWrapper.classList.add('info-hotspot-title-wrapper');
@@ -1821,14 +2568,17 @@
 
     // Create a WhatsApp "ask about this product" link, if requested.
     if (hotspot.whatsapp) {
-      var waMessage = 'Merhaba, "' + hotspot.title + '" ürünü hakkında bilgi almak ' +
-        'istiyorum. (Sanal tur: ' + sceneName + ')';
+      var waTemplate = uiText('whatsappProductMessage', null);
+      var waMessage = waTemplate
+        ? waTemplate.replace('{title}', hotspot.title).replace('{scene}', sceneName)
+        : 'Merhaba, "' + hotspot.title + '" ürünü hakkında bilgi almak ' +
+          'istiyorum. (Sanal tur: ' + sceneName + ')';
       var waLink = document.createElement('a');
       waLink.href = 'https://wa.me/905493320707?text=' + encodeURIComponent(waMessage);
       waLink.target = '_blank';
       waLink.rel = 'noopener';
       waLink.classList.add('info-hotspot-whatsapp');
-      waLink.textContent = 'Bu ürün hakkında daha fazla bilgi al';
+      waLink.textContent = uiText('whatsappProductButton', 'Bu ürün hakkında daha fazla bilgi al');
       text.appendChild(waLink);
     }
 
@@ -1858,6 +2608,25 @@
     stopTouchAndScrollEventPropagation(wrapper);
 
     return wrapper;
+  }
+
+  // Live-updates a badge ("Yeni"/"İndirimde"/"Tükendi") on an already-created
+  // info hotspot without destroying/recreating it. Only touches the pano
+  // element, not its mobile modal clone - the modal will pick up the badge
+  // correctly on the next real page load once the change is applied to data.js.
+  function updateHotspotBadgeDom(entry) {
+    var container = entry.hotspot.domElement();
+    var iconWrapperEl = container.querySelector('.info-hotspot-icon-wrapper');
+    if (!iconWrapperEl) return;
+    var existing = iconWrapperEl.querySelector('.info-hotspot-badge');
+    if (existing) existing.parentNode.removeChild(existing);
+    if (entry.rawData.badge) {
+      var badgeEl = document.createElement('div');
+      badgeEl.classList.add('info-hotspot-badge');
+      badgeEl.setAttribute('data-badge', entry.rawData.badge);
+      badgeEl.textContent = entry.rawData.badge;
+      iconWrapperEl.appendChild(badgeEl);
+    }
   }
 
   // Prevent touch and scroll events from reaching the parent element.
@@ -1898,6 +2667,37 @@
     setTimeout(function() {
       splashElement.classList.add('hidden');
     }, 700);
+  }
+
+  // Kiosk/showroom mode: add ?kiosk=1 to the URL on a screen left running in
+  // the store, and the tour advances through every scene on its own. Pauses
+  // while someone is actually dragging the view around, resumes afterwards.
+  if (/[?&]kiosk=1/.test(window.location.search)) {
+    setupKioskMode();
+  }
+
+  function setupKioskMode() {
+    var intervalSeconds = (data.settings && data.settings.kioskIntervalSeconds) || 8;
+    var kioskIndex = 0;
+    var kioskTimer = null;
+
+    function scheduleNext() {
+      if (kioskTimer) clearTimeout(kioskTimer);
+      kioskTimer = setTimeout(advance, intervalSeconds * 1000);
+    }
+    function advance() {
+      kioskIndex = (kioskIndex + 1) % scenes.length;
+      switchScene(scenes[kioskIndex]);
+      scheduleNext();
+    }
+    scheduleNext();
+
+    panoElement.addEventListener('pointerdown', function() {
+      if (kioskTimer) clearTimeout(kioskTimer);
+    });
+    panoElement.addEventListener('pointerup', function() {
+      scheduleNext();
+    });
   }
 
 })();

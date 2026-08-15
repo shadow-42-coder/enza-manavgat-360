@@ -1014,5 +1014,77 @@ var APP_DATA = {
     "autorotateEnabled": false,
     "fullscreenButton": true,
     "viewControlButtons": true
+  },
+  "i18n": {
+    "en": {
+      "sceneNames": {
+        "0-2": "1. Main Entrance & Living Room",
+        "1-3": "2. Yataş Bedding Entrance",
+        "2-4": "3. Bedroom",
+        "3-5": "4. Living & Dining Set",
+        "4-6": "5. Living Room Set",
+        "5-8": "6. Bedroom",
+        "6-10": "7. Living & Dining Set",
+        "7-11": "8. Cafenza Coffee Corner",
+        "8-12": "9. Bedroom",
+        "9-13": "10. Living & Dining Set",
+        "10-15": "11. Bedroom",
+        "11-16": "12. Living Room Set",
+        "12-19": "13. enza HOME Reception & Checkout",
+        "13-21": "14. Living Room Set",
+        "14-22": "15. Staircase & Social Area",
+        "15-23": "16. Bedroom",
+        "16-24": "17. Bedroom",
+        "17-26": "18. Bedroom",
+        "18-27": "19. Bedroom",
+        "19-28": "20. Exterior & Parking"
+      },
+      "ui": {
+        "mapsLabel": "View on Google Maps",
+        "instagramLabel": "Instagram",
+        "whatsappLabel": "Message on WhatsApp",
+        "whatsappGeneralMessage": "Hello, I'd like information about the enza HOME Manavgat virtual tour.",
+        "whatsappProductMessage": "Hello, I would like information about the \"{title}\" product. (Virtual tour: {scene})",
+        "whatsappProductButton": "Get more info about this product",
+        "shareLabel": "Share the Virtual Tour",
+        "shareText": "Take a look at the enza HOME Manavgat 360° virtual store tour!",
+        "shareCopied": "Link copied!"
+      }
+    },
+    "ru": {
+      "sceneNames": {
+        "0-2": "1. Главный вход и гостиная",
+        "1-3": "2. Вход Yataş Bedding",
+        "2-4": "3. Спальня",
+        "3-5": "4. Гостиная и столовая",
+        "4-6": "5. Гостиный гарнитур",
+        "5-8": "6. Спальня",
+        "6-10": "7. Гостиная и столовая",
+        "7-11": "8. Кофейный уголок Cafenza",
+        "8-12": "9. Спальня",
+        "9-13": "10. Гостиная и столовая",
+        "10-15": "11. Спальня",
+        "11-16": "12. Гостиный гарнитур",
+        "12-19": "13. Ресепшн и касса enza HOME",
+        "13-21": "14. Гостиный гарнитур",
+        "14-22": "15. Лестница и зона отдыха",
+        "15-23": "16. Спальня",
+        "16-24": "17. Спальня",
+        "17-26": "18. Спальня",
+        "18-27": "19. Спальня",
+        "19-28": "20. Фасад и парковка"
+      },
+      "ui": {
+        "mapsLabel": "Посмотреть на Google Картах",
+        "instagramLabel": "Instagram",
+        "whatsappLabel": "Написать в WhatsApp",
+        "whatsappGeneralMessage": "Здравствуйте, хочу узнать больше о виртуальном туре enza HOME Manavgat.",
+        "whatsappProductMessage": "Здравствуйте, хочу узнать больше о товаре «{title}». (Виртуальный тур: {scene})",
+        "whatsappProductButton": "Узнать больше об этом товаре",
+        "shareLabel": "Поделиться виртуальным туром",
+        "shareText": "Посмотрите виртуальный 360° тур по магазину enza HOME Manavgat!",
+        "shareCopied": "Ссылка скопирована!"
+      }
+    }
   }
 };

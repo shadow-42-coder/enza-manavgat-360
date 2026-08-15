@@ -500,6 +500,34 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 .info-hotspot .info-hotspot-icon-wrapper {
   width: 40px;
   height: 40px;
+  position: relative;
+}
+
+.info-hotspot-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #fff;
+  background-color: #2f8fd6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+.info-hotspot-badge[data-badge="Yeni"] {
+  background-color: #25d366;
+}
+
+.info-hotspot-badge[data-badge="İndirimde"] {
+  background-color: #e0432c;
+}
+
+.info-hotspot-badge[data-badge="Tükendi"] {
+  background-color: #6b6b6b;
 }
 
 .mobile .info-hotspot .info-hotspot-icon-wrapper {
@@ -897,6 +925,30 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   display: flex;
 }
 
+#langSwitcher {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  z-index: 100;
+}
+
+.langSwitcherButton {
+  width: 34px;
+  height: 34px;
+  border: none;
+  background-color: rgba(41,56,72,0.92);
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.langSwitcherButton.active {
+  background-color: var(--brand-accent);
+  color: #fff;
+}
+
 .contactButton {
   display: block;
   width: 40px;
@@ -922,7 +974,8 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 .contactButton-maps { background-image: url('img/icon-maps.svg'); }
 .contactButton-instagram { background-image: url('img/icon-instagram.svg'); }
 .contactButton-phone { background-image: url('img/icon-phone.svg'); }
-.contactButton-whatsapp { background-image: url('img/icon-whatsapp.svg'); border-radius: 0 6px 0 0; }
+.contactButton-whatsapp { background-image: url('img/icon-whatsapp.svg'); }
+.contactButton-share { background-image: url('img/icon-share.svg'); border-radius: 0 6px 0 0; }
 
 /* Hide the floating contact bar on narrow screens; contact links already live in the scene list footer */
 @media (max-width: 600px) {
@@ -1021,6 +1074,87 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   width: 92%;
   max-width: 420px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#posFinderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -10px -12px 10px -12px;
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
+  background-color: rgba(255,255,255,0.08);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+#posFinderHeaderTitle {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--brand-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+#posFinderMinimize {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: none;
+  background-color: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#posFinderCategoryRow {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.posFinderCategoryButton {
+  flex: 1;
+  padding: 9px 4px;
+  border-radius: 5px;
+  border: none;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  background-color: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+}
+
+.posFinderCategoryButton.active {
+  background-color: var(--brand-accent);
+  color: #fff;
+}
+
+#posFinderContent {
+  overflow-y: auto;
+}
+
+#posFinderBox.posFinderCollapsed #posFinderCategoryRow,
+#posFinderBox.posFinderCollapsed #posFinderContent {
+  display: none;
+}
+
+#posFinderBox.posFinderCollapsed {
+  width: auto;
+  max-width: none;
+}
+
+#posFinderBox.posFinderCollapsed #posFinderHeader {
+  margin-bottom: -10px;
+  border-radius: 8px;
 }
 
 #posFinderCoords {
@@ -1148,7 +1282,8 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 }
 
 .posFinderSettingsSection select,
-.posFinderSettingsSection input {
+.posFinderSettingsSection input,
+.posFinderSettingsSection textarea {
   width: 100%;
   padding: 8px;
   border-radius: 5px;
@@ -1156,6 +1291,11 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   font-size: 14px;
   margin-bottom: 6px;
   box-sizing: border-box;
+}
+
+.posFinderSettingsSection textarea {
+  resize: vertical;
+  font-family: inherit;
 }
 
 .posFinderSettingsSection button {
@@ -1415,6 +1555,14 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   cursor: default;
 }
 
+.posFinderOrderDeleteButton {
+  background-color: rgba(224,67,44,0.35);
+}
+
+.posFinderOrderDeleteButton:hover {
+  background-color: rgba(224,67,44,0.6);
+}
+
 #posFinderOrderSave {
   width: 100%;
   padding: 10px;
@@ -1430,6 +1578,45 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 #posFinderOrderStatus {
   font-size: 13px;
   color: #ccc;
+}
+
+.posFinderPasswordHint {
+  font-size: 11px;
+  color: #ccc;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+#posFinderLogout {
+  background-color: #e0432c !important;
+}
+
+#posFinderBadgeRow {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.posFinderBadgeButton {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-color: rgba(255,255,255,0.12);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.posFinderBadgeButton.active {
+  border-color: var(--brand-accent);
+  background-color: rgba(47,143,214,0.35);
+}
+
+.posFinderBadgeClearButton {
+  background-color: rgba(255,255,255,0.06);
 }
 
 #posFinderAdd {
@@ -1454,7 +1641,7 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   color: #ccc;
 }
 
-#posFinderCopy, #posFinderClear, #posFinderUndo {
+#posFinderCopy, #posFinderClear, #posFinderUndo, #posFinderRedo {
   padding: 7px 12px;
   border-radius: 5px;
   border: none;
@@ -1477,10 +1664,15 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   color: #3a2c00;
 }
 
-#posFinderUndo:disabled {
+#posFinderUndo:disabled, #posFinderRedo:disabled {
   background-color: rgba(255,255,255,0.1);
   color: rgba(255,255,255,0.35);
   cursor: default;
+}
+
+#posFinderRedo {
+  background-color: #ffd23f;
+  color: #3a2c00;
 }
 
 /* "Ask about this product" WhatsApp link inside info hotspots */
