@@ -26,6 +26,23 @@
   var currentTransitionDuration = (data.settings && data.settings.sceneTransitionDuration != null)
     ? data.settings.sceneTransitionDuration : 1000;
 
+  // Scenes temporarily hidden ("under maintenance") - excluded from the
+  // sidebar list and kiosk rotation, but not deleted; a scene keeps its
+  // hotspots and remains reachable if directly linked from elsewhere.
+  var hiddenSceneIds = {};
+  data.scenes.forEach(function(s) { if (s.hidden) hiddenSceneIds[s.id] = true; });
+  function applySceneVisibilityToDom(sceneId, hidden) {
+    var el = document.querySelector('#sceneList .scene[data-id="' + sceneId + '"]');
+    if (el) el.style.display = hidden ? 'none' : '';
+  }
+
+  // Global visual size of link-arrow and info-product icons, adjustable
+  // from admin settings for screens where the default feels too small/large.
+  document.documentElement.style.setProperty(
+    '--hotspot-icon-scale',
+    String((data.settings && data.settings.hotspotIconScale) || 1)
+  );
+
   // Visitor-facing language: TR (default site language) / EN / RU. Detected
   // once from the browser's language on first visit, remembered afterwards,
   // switchable via the on-page language buttons. Admin panel text and the
@@ -210,6 +227,7 @@
         hideSceneList();
       }
     });
+    if (hiddenSceneIds[scene.data.id]) applySceneVisibilityToDom(scene.data.id, true);
   });
 
   // Translate contact labels, tooltips and WhatsApp message text for the
@@ -915,6 +933,9 @@
     var pendingCoords = null;
     var editingEntry = null;
     var mode = 'product'; // 'product' | 'link' | 'delete' | 'photo' | 'settings' | 'newScene'
+    // Set while a "move product to another scene" flow is waiting for the
+    // admin to click the new spot on the (already-switched-to) target scene.
+    var pendingMove = null; // { sourceSceneId, entry, title }
 
     var box = document.createElement('div');
     box.id = 'posFinderBox';
@@ -999,6 +1020,72 @@
     clearBadgeButton.addEventListener('click', function() { setBadge(null); });
     badgeRow.appendChild(clearBadgeButton);
 
+    // Description editor: only shown while editing an existing product (info
+    // hotspot) in product mode, alongside the link field. Two simple format
+    // buttons insert HTML markup around the current textarea selection - kept
+    // deliberately basic (raw-HTML textarea, no full rich-text editor) since
+    // this is meant for quick touch-ups, not authoring from scratch.
+    var descRow = document.createElement('div');
+    descRow.id = 'posFinderDescRow';
+    descRow.style.display = 'none';
+    var descToolbar = document.createElement('div');
+    descToolbar.id = 'posFinderDescToolbar';
+    var descBoldButton = document.createElement('button');
+    descBoldButton.type = 'button';
+    descBoldButton.className = 'posFinderDescFormatButton';
+    descBoldButton.textContent = 'K Kalın';
+    var descBulletButton = document.createElement('button');
+    descBulletButton.type = 'button';
+    descBulletButton.className = 'posFinderDescFormatButton';
+    descBulletButton.textContent = '≡ Madde İşareti';
+    descToolbar.appendChild(descBoldButton);
+    descToolbar.appendChild(descBulletButton);
+    var descTextarea = document.createElement('textarea');
+    descTextarea.id = 'posFinderDescInput';
+    descTextarea.placeholder = 'Ürün açıklaması';
+    var descHint = document.createElement('div');
+    descHint.id = 'posFinderDescHint';
+    descHint.textContent = 'Metni seçip Kalın veya Madde İşareti butonuna basın. Kaydetmek için "Güncelle"ye basın.';
+    descRow.appendChild(descToolbar);
+    descRow.appendChild(descTextarea);
+    descRow.appendChild(descHint);
+
+    function wrapDescSelection(before, after) {
+      var start = descTextarea.selectionStart;
+      var end = descTextarea.selectionEnd;
+      var value = descTextarea.value;
+      var selected = value.slice(start, end);
+      var replacement = before + selected + after;
+      descTextarea.value = value.slice(0, start) + replacement + value.slice(end);
+      descTextarea.focus();
+      descTextarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+    }
+    descBoldButton.addEventListener('click', function() {
+      wrapDescSelection('<b>', '</b>');
+    });
+    descBulletButton.addEventListener('click', function() {
+      var start = descTextarea.selectionStart;
+      var end = descTextarea.selectionEnd;
+      var value = descTextarea.value;
+      var selected = value.slice(start, end);
+      var lines = selected.length ? selected.split('\n') : [''];
+      var listHtml = '<ul>' + lines.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>';
+      descTextarea.value = value.slice(0, start) + listHtml + value.slice(end);
+      descTextarea.focus();
+      var pos = start + listHtml.length;
+      descTextarea.setSelectionRange(pos, pos);
+    });
+
+    function extractDescFromHtml(html) {
+      var match = /<p>([\s\S]*)<\/p>\s*$/.exec(html || '');
+      return match ? match[1] : (html || '');
+    }
+    function rebuildDescHtml(originalHtml, newInner) {
+      var imgMatch = /^\s*(<img[^>]*>)/.exec(originalHtml || '');
+      var imgTag = imgMatch ? imgMatch[1] : '';
+      return imgTag + '<p>' + newInner + '</p>';
+    }
+
     function setBadge(label) {
       if (!editingEntry || editingEntry.kind !== 'info') return;
       var entryRef = editingEntry;
@@ -1068,6 +1155,11 @@
         return;
       }
       if (event.key === 'Escape') {
+        if (pendingMove) {
+          pendingMove = null;
+          listStatus.textContent = 'Taşıma iptal edildi.';
+          return;
+        }
         // Cancel whatever add/edit is in progress without committing it.
         if (pendingCoords || editingEntry) {
           pendingCoords = null;
@@ -1259,6 +1351,68 @@
         settingsChanges = afterSnapshot;
         saveSettingsChanges();
         settingsStatus.textContent = enabled ? 'Fon müziği düğmesi açıldı.' : 'Fon müziği düğmesi kapatıldı.';
+      });
+    });
+
+    // -- Hotspot icon size (link arrows + product info icons) --
+    var HOTSPOT_SCALE_OPTIONS = [
+      { key: 'small', label: 'Küçük', value: 0.8 },
+      { key: 'normal', label: 'Normal', value: 1 },
+      { key: 'large', label: 'Büyük', value: 1.3 }
+    ];
+    var hotspotScaleSection = settingsSection('Ok/bilgi ikonu boyutu', '🔍');
+    var hotspotScaleRow = document.createElement('div');
+    hotspotScaleRow.className = 'posFinderTransitionRow';
+    var hotspotScaleButtonsByKey = {};
+    var selectedHotspotScale = HOTSPOT_SCALE_OPTIONS[1];
+    HOTSPOT_SCALE_OPTIONS.forEach(function(opt) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'posFinderTransitionButton';
+      btn.textContent = opt.label;
+      btn.addEventListener('click', function() {
+        selectedHotspotScale = opt;
+        Object.keys(hotspotScaleButtonsByKey).forEach(function(k) {
+          hotspotScaleButtonsByKey[k].classList.toggle('active', k === opt.key);
+        });
+        // Live preview immediately, same session, no save needed to look.
+        document.documentElement.style.setProperty('--hotspot-icon-scale', String(opt.value));
+      });
+      hotspotScaleRow.appendChild(btn);
+      hotspotScaleButtonsByKey[opt.key] = btn;
+    });
+    var hotspotScaleButton = document.createElement('button');
+    hotspotScaleButton.textContent = 'Kaydet';
+    var hotspotScaleHint = document.createElement('div');
+    hotspotScaleHint.className = 'posFinderPasswordHint';
+    hotspotScaleHint.textContent = 'Seçtiğinde ikonlar hemen büyüyüp küçülür, canlı görürsün. "Kaydet" siteye kalıcı olarak yansıtır.';
+    hotspotScaleSection.appendChild(hotspotScaleRow);
+    hotspotScaleSection.appendChild(hotspotScaleButton);
+    hotspotScaleSection.appendChild(hotspotScaleHint);
+
+    function getEffectiveHotspotScale() {
+      var pending = settingsChanges.filter(function(c) { return c.type === 'hotspotIconScale'; }).pop();
+      if (pending) return pending.value;
+      return (data.settings && data.settings.hotspotIconScale) || 1;
+    }
+
+    hotspotScaleButton.addEventListener('click', function() {
+      var beforeSnapshot = settingsChanges.slice();
+      var beforeScale = (data.settings && data.settings.hotspotIconScale) || 1;
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'hotspotIconScale'; });
+      settingsChanges.push({ type: 'hotspotIconScale', value: selectedHotspotScale.value, label: selectedHotspotScale.label });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = 'İkon boyutu kaydedildi: ' + selectedHotspotScale.label;
+      pushHistory('ikon boyutu ayarı', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+        document.documentElement.style.setProperty('--hotspot-icon-scale', String(beforeScale));
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        document.documentElement.style.setProperty('--hotspot-icon-scale', String(selectedHotspotScale.value));
+        settingsStatus.textContent = 'İkon boyutu kaydedildi: ' + selectedHotspotScale.label;
       });
     });
 
@@ -1566,12 +1720,41 @@
     notesTextarea.rows = 3;
     var notesSaveButton = document.createElement('button');
     notesSaveButton.textContent = 'Notu Kaydet';
+    var notesExportButton = document.createElement('button');
+    notesExportButton.type = 'button';
+    notesExportButton.textContent = 'Tüm Notları Dışa Aktar';
     notesSection.appendChild(notesSceneSelect);
     notesSection.appendChild(notesTextarea);
     notesSection.appendChild(notesSaveButton);
+    notesSection.appendChild(notesExportButton);
 
     notesSceneSelect.addEventListener('change', function() {
       notesTextarea.value = sceneNotes[notesSceneSelect.value] || '';
+    });
+
+    notesExportButton.addEventListener('click', function() {
+      var lines = [];
+      data.scenes.forEach(function(s, i) {
+        var note = sceneNotes[s.id];
+        if (note && note.trim()) {
+          lines.push((i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, '') + ':');
+          lines.push(note.trim());
+          lines.push('');
+        }
+      });
+      if (!lines.length) { settingsStatus.textContent = 'Henüz kaydedilmiş bir sahne notu yok.'; return; }
+      var text = lines.join('\n');
+      var blob = new Blob([text], { type: 'text/plain' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      var today = new Date().toISOString().slice(0, 10);
+      a.download = 'enza-manavgat-sahne-notlari-' + today + '.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      settingsStatus.textContent = 'Tüm notlar indirildi.';
     });
 
     notesSaveButton.addEventListener('click', function() {
@@ -1709,6 +1892,7 @@
     settingsPanel.appendChild(seasonalSection._accordionWrapper);
     settingsPanel.appendChild(musicSection._accordionWrapper);
     settingsPanel.appendChild(kioskSection._accordionWrapper);
+    settingsPanel.appendChild(hotspotScaleSection._accordionWrapper);
 
     settingsPanel.appendChild(settingsGroupHeader('İletişim & Pazarlama'));
     settingsPanel.appendChild(campaignSection._accordionWrapper);
@@ -1866,11 +2050,156 @@
     listSearchInput.id = 'posFinderListSearch';
     listSearchInput.placeholder = 'Ürün veya sahne adına göre ara...';
 
+    var listStatus = document.createElement('div');
+    listStatus.id = 'posFinderListStatus';
+
+    var listMoveFlyout = document.createElement('div');
+    listMoveFlyout.id = 'posFinderListMoveFlyout';
+    listMoveFlyout.style.display = 'none';
+    var listMoveFlyoutTitle = document.createElement('div');
+    listMoveFlyoutTitle.id = 'posFinderListMoveFlyoutTitle';
+    var listMoveSceneSelect = document.createElement('select');
+    listMoveSceneSelect.id = 'posFinderListMoveSceneSelect';
+    var listMoveFlyoutButtons = document.createElement('div');
+    listMoveFlyoutButtons.id = 'posFinderListMoveFlyoutButtons';
+    var listMoveGoButton = document.createElement('button');
+    listMoveGoButton.type = 'button';
+    listMoveGoButton.textContent = 'Sahneye Git ve Konum Seç';
+    var listMoveCancelButton = document.createElement('button');
+    listMoveCancelButton.type = 'button';
+    listMoveCancelButton.textContent = 'İptal';
+    listMoveFlyoutButtons.appendChild(listMoveGoButton);
+    listMoveFlyoutButtons.appendChild(listMoveCancelButton);
+    listMoveFlyout.appendChild(listMoveFlyoutTitle);
+    listMoveFlyout.appendChild(listMoveSceneSelect);
+    listMoveFlyout.appendChild(listMoveFlyoutButtons);
+
     var listResults = document.createElement('div');
     listResults.id = 'posFinderListResults';
 
     listPanel.appendChild(listSearchInput);
+    listPanel.appendChild(listMoveFlyout);
+    listPanel.appendChild(listStatus);
     listPanel.appendChild(listResults);
+
+    var moveFlyoutItem = null;
+    function openMoveFlyout(item) {
+      moveFlyoutItem = item;
+      listMoveFlyoutTitle.textContent = '"' + item.title + '" hangi sahneye taşınsın?';
+      listMoveSceneSelect.innerHTML = '';
+      data.scenes.forEach(function(s, i) {
+        if (s.id === item.sceneId) return;
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = (i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, '');
+        listMoveSceneSelect.appendChild(opt);
+      });
+      listMoveFlyout.style.display = 'flex';
+    }
+    listMoveCancelButton.addEventListener('click', function() {
+      moveFlyoutItem = null;
+      listMoveFlyout.style.display = 'none';
+    });
+    listMoveGoButton.addEventListener('click', function() {
+      if (!moveFlyoutItem) return;
+      var targetId = listMoveSceneSelect.value;
+      var targetWrapper = findSceneById(targetId);
+      var sourceWrapper = findSceneById(moveFlyoutItem.sceneId);
+      if (!targetWrapper || !sourceWrapper) { listMoveFlyout.style.display = 'none'; return; }
+      var entry = sourceWrapper.editableHotspots.filter(function(e) {
+        return e.kind === 'info' && e.rawData === moveFlyoutItem.hotspot;
+      })[0];
+      if (!entry) {
+        // Product may have already been moved once this session, so its
+        // rawData is no longer the same object reference as data.js's copy -
+        // fall back to matching by title within the scene it's listed under.
+        entry = sourceWrapper.editableHotspots.filter(function(e) {
+          return e.kind === 'info' && e.rawData.title === moveFlyoutItem.title;
+        })[0];
+      }
+      listMoveFlyout.style.display = 'none';
+      if (!entry) {
+        listStatus.textContent = 'Bu ürün bulunamadı (belki zaten taşındı). Sayfayı yenileyip tekrar deneyin.';
+        moveFlyoutItem = null;
+        return;
+      }
+      pendingMove = { sourceSceneId: sourceWrapper.data.id, entry: entry, title: moveFlyoutItem.title };
+      switchScene(targetWrapper);
+      listStatus.textContent = '"' + moveFlyoutItem.title + '" için ' + targetWrapper.data.name.replace(/^\d+\.\s*/, '') + ' sahnesinde yeni konuma tıklayın (Esc: iptal).';
+      moveFlyoutItem = null;
+    });
+
+    function finalizeMoveHotspot(newYaw, newPitch) {
+      if (!pendingMove) return;
+      var move = pendingMove;
+      pendingMove = null;
+      var sourceWrapper = findSceneById(move.sourceSceneId);
+      var targetWrapper = currentSceneWrapper;
+      if (!sourceWrapper || !targetWrapper || sourceWrapper === targetWrapper) return;
+      var idx = sourceWrapper.editableHotspots.indexOf(move.entry);
+      if (idx === -1) return;
+
+      var oldYaw = move.entry.rawData.yaw;
+      var oldPitch = move.entry.rawData.pitch;
+      var title = move.entry.rawData.title;
+      var sourceSceneId = sourceWrapper.data.id;
+      var sourceSceneName = sourceWrapper.data.name.replace(/^\d+\.\s*/, '');
+      var targetSceneId = targetWrapper.data.id;
+      var targetSceneName = targetWrapper.data.name.replace(/^\d+\.\s*/, '');
+
+      function relocate(fromWrapper, toWrapper, movingEntry, yaw, pitch) {
+        var fi = fromWrapper.editableHotspots.indexOf(movingEntry);
+        if (fi !== -1) {
+          fromWrapper.scene.hotspotContainer().destroyHotspot(movingEntry.hotspot);
+          fromWrapper.editableHotspots.splice(fi, 1);
+        }
+        var newRawData = {};
+        for (var k in movingEntry.rawData) { if (movingEntry.rawData.hasOwnProperty(k)) newRawData[k] = movingEntry.rawData[k]; }
+        newRawData.yaw = yaw;
+        newRawData.pitch = pitch;
+        var el = createInfoHotspotElement(newRawData, toWrapper.data.name);
+        var newHotspot = toWrapper.scene.hotspotContainer().createHotspot(el, { yaw: yaw, pitch: pitch });
+        var newEntry = { hotspot: newHotspot, kind: 'info', label: movingEntry.label, rawData: newRawData };
+        toWrapper.editableHotspots.push(newEntry);
+        return newEntry;
+      }
+
+      var state = { entry: relocate(sourceWrapper, targetWrapper, move.entry, newYaw, newPitch), wrapper: targetWrapper };
+
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges.push({
+        type: 'moveProduct',
+        title: title,
+        sourceSceneId: sourceSceneId,
+        sourceSceneName: sourceSceneName,
+        targetSceneId: targetSceneId,
+        targetSceneName: targetSceneName,
+        oldYaw: oldYaw,
+        oldPitch: oldPitch,
+        newYaw: newYaw,
+        newPitch: newPitch
+      });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      listStatus.textContent = '"' + title + '" -> "' + targetSceneName + '" sahnesine taşındı.';
+      renderListResults(listSearchInput.value);
+
+      pushHistory('ürün taşıma (' + title + ')', function() {
+        state.entry = relocate(state.wrapper, sourceWrapper, state.entry, oldYaw, oldPitch);
+        state.wrapper = sourceWrapper;
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+        listStatus.textContent = '"' + title + '" taşıma geri alındı.';
+        renderListResults(listSearchInput.value);
+      }, function() {
+        state.entry = relocate(state.wrapper, targetWrapper, state.entry, newYaw, newPitch);
+        state.wrapper = targetWrapper;
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        listStatus.textContent = '"' + title + '" -> "' + targetSceneName + '" sahnesine taşındı.';
+        renderListResults(listSearchInput.value);
+      });
+    }
 
     function stripHtml(html) {
       var div = document.createElement('div');
@@ -1929,6 +2258,16 @@
           previewEl.textContent = item.preview;
           row.appendChild(previewEl);
         }
+        var moveBtn = document.createElement('button');
+        moveBtn.type = 'button';
+        moveBtn.className = 'posFinderListMoveButton';
+        moveBtn.textContent = '🔀 Taşı';
+        moveBtn.title = 'Başka bir sahneye taşı';
+        moveBtn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          openMoveFlyout(item);
+        });
+        row.appendChild(moveBtn);
         row.addEventListener('click', function() {
           var sceneWrapper = findSceneById(item.sceneId);
           if (!sceneWrapper) return;
@@ -2080,15 +2419,24 @@
         btnDown.textContent = '▼';
         btnDown.disabled = i === data.scenes.length - 1;
         btnDown.addEventListener('click', function() { moveScene(i, 1); });
+        var isHidden = !!hiddenSceneIds[s.id];
+        var btnVisibility = document.createElement('button');
+        btnVisibility.type = 'button';
+        btnVisibility.className = 'posFinderOrderMoveButton' + (isHidden ? ' posFinderOrderHiddenActive' : '');
+        btnVisibility.textContent = isHidden ? '🙈' : '👁';
+        btnVisibility.title = isHidden ? 'Sahneyi tekrar göster' : 'Sahneyi geçici gizle (bakımda)';
+        btnVisibility.addEventListener('click', function() { toggleSceneVisibility(s.id); });
         var btnDelete = document.createElement('button');
         btnDelete.type = 'button';
         btnDelete.className = 'posFinderOrderMoveButton posFinderOrderDeleteButton';
         btnDelete.textContent = '🗑';
         btnDelete.title = 'Sahneyi sil';
         btnDelete.addEventListener('click', function() { deleteScene(s.id); });
+        if (isHidden) row.classList.add('posFinderOrderRowHidden');
         row.appendChild(label);
         row.appendChild(btnUp);
         row.appendChild(btnDown);
+        row.appendChild(btnVisibility);
         row.appendChild(btnDelete);
         orderList.appendChild(row);
       });
@@ -2129,6 +2477,48 @@
         orderStatus.textContent = '"' + sceneName + '" geri getirildi.';
       }, function() {
         applyDelete();
+      });
+    }
+
+    function toggleSceneVisibility(sceneId) {
+      var sceneObj = data.scenes.filter(function(s) { return s.id === sceneId; })[0];
+      if (!sceneObj) return;
+      var sceneName = sceneObj.name.replace(/^\d+\.\s*/, '');
+      var wasHidden = !!hiddenSceneIds[sceneId];
+      var nowHidden = !wasHidden;
+      var beforeSnapshot = settingsChanges.slice();
+
+      function applyVisibility(hidden) {
+        if (hidden) { hiddenSceneIds[sceneId] = true; } else { delete hiddenSceneIds[sceneId]; }
+        applySceneVisibilityToDom(sceneId, hidden);
+        renderOrderList();
+        settingsChanges = settingsChanges.filter(function(c) { return !(c.type === 'sceneVisibility' && c.sceneId === sceneId); });
+        settingsChanges.push({ type: 'sceneVisibility', sceneId: sceneId, hidden: hidden, sceneName: sceneName });
+        saveSettingsChanges();
+        orderStatus.textContent = hidden
+          ? '"' + sceneName + '" geçici olarak gizlendi (bakımda).'
+          : '"' + sceneName + '" tekrar görünür yapıldı.';
+      }
+
+      applyVisibility(nowHidden);
+      var afterSnapshot = settingsChanges.slice();
+
+      pushHistory(nowHidden ? ('sahne gizleme (' + sceneName + ')') : ('sahne gösterme (' + sceneName + ')'), function() {
+        if (wasHidden) { hiddenSceneIds[sceneId] = true; } else { delete hiddenSceneIds[sceneId]; }
+        applySceneVisibilityToDom(sceneId, wasHidden);
+        renderOrderList();
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+        orderStatus.textContent = '"' + sceneName + '" görünürlüğü geri alındı.';
+      }, function() {
+        if (nowHidden) { hiddenSceneIds[sceneId] = true; } else { delete hiddenSceneIds[sceneId]; }
+        applySceneVisibilityToDom(sceneId, nowHidden);
+        renderOrderList();
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        orderStatus.textContent = nowHidden
+          ? '"' + sceneName + '" geçici olarak gizlendi (bakımda).'
+          : '"' + sceneName + '" tekrar görünür yapıldı.';
       });
     }
 
@@ -2180,13 +2570,42 @@
     var headerTitle = document.createElement('span');
     headerTitle.id = 'posFinderHeaderTitle';
     headerTitle.textContent = 'Yönetim Paneli';
+    var fontSizeButton = document.createElement('button');
+    fontSizeButton.type = 'button';
+    fontSizeButton.id = 'posFinderFontSize';
+    fontSizeButton.textContent = 'Aa';
+    fontSizeButton.title = 'Yazı boyutu';
     var minimizeButton = document.createElement('button');
     minimizeButton.type = 'button';
     minimizeButton.id = 'posFinderMinimize';
     minimizeButton.textContent = '–';
     minimizeButton.title = 'Küçült';
     header.appendChild(headerTitle);
+    header.appendChild(fontSizeButton);
     header.appendChild(minimizeButton);
+
+    // Admin panel's own text size (accessibility, e.g. for reading on a
+    // phone) - purely a local preference for this browser, cycles through
+    // three sizes and remembers the choice.
+    (function setupAdminFontSize() {
+      var FONT_SIZE_KEY = 'enzaAdminFontSize';
+      var SIZES = ['normal', 'large', 'xlarge'];
+      var stored = null;
+      try { stored = window.localStorage.getItem(FONT_SIZE_KEY); } catch (e) {}
+      var current = SIZES.indexOf(stored) !== -1 ? stored : 'normal';
+      function apply(size) {
+        current = size;
+        box.classList.remove('posFinderTextLarge', 'posFinderTextXLarge');
+        if (size === 'large') box.classList.add('posFinderTextLarge');
+        if (size === 'xlarge') box.classList.add('posFinderTextXLarge');
+        try { window.localStorage.setItem(FONT_SIZE_KEY, size); } catch (e) {}
+      }
+      apply(current);
+      fontSizeButton.addEventListener('click', function() {
+        var idx = SIZES.indexOf(current);
+        apply(SIZES[(idx + 1) % SIZES.length]);
+      });
+    })();
 
     // Category tabs group the 9 tools into 4 topics so they aren't all
     // fighting for attention in one flat row. Switching category shows only
@@ -2227,6 +2646,7 @@
     content.appendChild(coordsLine);
     content.appendChild(inputRow);
     content.appendChild(badgeRow);
+    content.appendChild(descRow);
     content.appendChild(photoPanel);
     content.appendChild(settingsPanel);
     content.appendChild(newScenePanel);
@@ -2285,6 +2705,8 @@
       addButton.textContent = 'Ekle';
       linkInput.value = '';
       badgeRow.style.display = 'none';
+      descRow.style.display = 'none';
+      descTextarea.value = '';
     }
 
     function setMode(newMode) {
@@ -2321,7 +2743,10 @@
       if (mode === 'list') renderListResults(listSearchInput.value);
       if (mode === 'map') renderMap();
       if (mode === 'order') renderOrderList();
-      if (mode !== 'settings') showCampaignBanner(getEffectiveCampaignText());
+      if (mode !== 'settings') {
+        showCampaignBanner(getEffectiveCampaignText());
+        document.documentElement.style.setProperty('--hotspot-icon-scale', String(getEffectiveHotspotScale()));
+      }
     }
     productModeButton.addEventListener('click', function() { setMode('product'); });
     linkModeButton.addEventListener('click', function() { setMode('link'); });
@@ -2399,6 +2824,15 @@
       if (!seasonalSelect.dataset.filled) {
         seasonalSelect.value = (data.settings && data.settings.seasonalEffect) || 'none';
         seasonalSelect.dataset.filled = '1';
+      }
+      if (!hotspotScaleRow.dataset.filled) {
+        var currentScaleValue = (data.settings && data.settings.hotspotIconScale) || 1;
+        var matchedScale = HOTSPOT_SCALE_OPTIONS.filter(function(o) { return o.value === currentScaleValue; })[0] || HOTSPOT_SCALE_OPTIONS[1];
+        selectedHotspotScale = matchedScale;
+        Object.keys(hotspotScaleButtonsByKey).forEach(function(k) {
+          hotspotScaleButtonsByKey[k].classList.toggle('active', k === matchedScale.key);
+        });
+        hotspotScaleRow.dataset.filled = '1';
       }
       if (!musicCheckbox.dataset.filled) {
         musicCheckbox.checked = !!(data.settings && data.settings.backgroundMusicEnabled);
@@ -2684,7 +3118,7 @@
       coordsLine.textContent = 'Ok eklendi (' + targetData.name + '). Şimdi sürükleyip tam yerine koyabilirsiniz.';
       coordsLine.classList.remove('ready');
       pushHistory('yön oku ekleme', function() {
-        marzipanoHotspot.destroy();
+        sceneWrapperForUndo.scene.hotspotContainer().destroyHotspot(marzipanoHotspot);
         sceneWrapperForUndo.editableHotspots = sceneWrapperForUndo.editableHotspots.filter(function(e) { return e !== newEditable; });
         arrows = arrows.filter(function(a) { return a !== arrowRecord; });
         saveArrows();
@@ -2704,29 +3138,53 @@
       if (!editingEntry) return;
       if (editingEntry.kind === 'info') {
         var newLink = linkInput.value.trim();
-        if (!newLink) return;
         var oldSourceLink = editingEntry.rawData.sourceLink;
+        var linkChanged = !!newLink && newLink !== oldSourceLink;
+        var oldDescHtml = editingEntry.rawData.text;
+        var newDescInner = descTextarea.value;
+        var oldDescInner = extractDescFromHtml(oldDescHtml);
+        var descChanged = newDescInner !== oldDescInner;
+        if (!linkChanged && !descChanged) return;
+        var newDescHtml = descChanged ? rebuildDescHtml(oldDescHtml, newDescInner) : oldDescHtml;
         var editRecord = {
           scene: currentSceneNumber,
           kind: 'info',
           oldTitle: editingEntry.rawData.title,
-          newLink: newLink
+          newLink: linkChanged ? newLink : undefined,
+          descChanged: descChanged,
+          newDescHtml: descChanged ? newDescHtml : undefined
         };
         edits.push(editRecord);
         saveEdits();
         // Live-remembered so re-opening this product for editing later in the
-        // same session prefills the link instead of starting blank.
-        editingEntry.rawData.sourceLink = newLink;
-        coordsLine.textContent = 'Düzenleme kaydedildi: ' + editingEntry.rawData.title + ' -> yeni link';
+        // same session prefills the link/description instead of starting blank.
+        if (linkChanged) editingEntry.rawData.sourceLink = newLink;
+        if (descChanged) {
+          editingEntry.rawData.text = newDescHtml;
+          var descEl = editingEntry.hotspot.domElement().querySelector('.info-hotspot-text');
+          if (descEl) descEl.innerHTML = newDescHtml;
+        }
+        coordsLine.textContent = 'Düzenleme kaydedildi: ' + editingEntry.rawData.title +
+          (linkChanged && descChanged ? ' -> link ve açıklama güncellendi' : linkChanged ? ' -> yeni link' : ' -> açıklama güncellendi');
         var editedInfoEntryRef = editingEntry;
         pushHistory('ürün düzenleme', function() {
           edits = edits.filter(function(e) { return e !== editRecord; });
           saveEdits();
-          editedInfoEntryRef.rawData.sourceLink = oldSourceLink;
+          if (linkChanged) editedInfoEntryRef.rawData.sourceLink = oldSourceLink;
+          if (descChanged) {
+            editedInfoEntryRef.rawData.text = oldDescHtml;
+            var revertEl = editedInfoEntryRef.hotspot.domElement().querySelector('.info-hotspot-text');
+            if (revertEl) revertEl.innerHTML = oldDescHtml;
+          }
         }, function() {
           edits.push(editRecord);
           saveEdits();
-          editedInfoEntryRef.rawData.sourceLink = newLink;
+          if (linkChanged) editedInfoEntryRef.rawData.sourceLink = newLink;
+          if (descChanged) {
+            editedInfoEntryRef.rawData.text = newDescHtml;
+            var redoEl = editedInfoEntryRef.hotspot.domElement().querySelector('.info-hotspot-text');
+            if (redoEl) redoEl.innerHTML = newDescHtml;
+          }
         });
       } else if (editingEntry.kind === 'link') {
         var newTargetId = sceneSelect.value;
@@ -2774,6 +3232,18 @@
         event.preventDefault();
         return;
       }
+      if (pendingMove) {
+        event.stopPropagation();
+        event.preventDefault();
+        if (!currentView || !currentView.screenToCoordinates) { pendingMove = null; return; }
+        var moveRect = element.getBoundingClientRect();
+        var moveCoords = currentView.screenToCoordinates({
+          x: event.clientX - moveRect.left,
+          y: event.clientY - moveRect.top
+        });
+        finalizeMoveHotspot(moveCoords.yaw, moveCoords.pitch);
+        return;
+      }
       var clickedHotspotEl = event.target.closest && event.target.closest('.hotspot');
       if (clickedHotspotEl) {
         if ((mode === 'product' || mode === 'link') && currentSceneWrapper) {
@@ -2800,6 +3270,8 @@
               Array.prototype.forEach.call(badgeRow.querySelectorAll('.posFinderBadgeButton'), function(btn) {
                 btn.classList.toggle('active', btn.getAttribute('data-badge') === (editMatch.rawData.badge || null));
               });
+              descRow.style.display = 'block';
+              descTextarea.value = extractDescFromHtml(editMatch.rawData.text);
             } else {
               populateSceneSelect();
               var oldTargetData = findSceneDataById(editMatch.rawData.target);
@@ -2819,7 +3291,7 @@
             event.stopPropagation();
             event.preventDefault();
             if (!window.confirm('"' + removedEntry.label + '" silinsin mi?')) return;
-            removedEntry.hotspot.destroy();
+            sceneWrapperForUndo.scene.hotspotContainer().destroyHotspot(removedEntry.hotspot);
             sceneWrapperForUndo.editableHotspots.splice(idx, 1);
             var removalRecord = null;
             if (removedEntry.ownRecord) {
@@ -2861,7 +3333,7 @@
                 saveArrows();
               }
             }, function() {
-              if (restoredHotspot) restoredHotspot.destroy();
+              if (restoredHotspot) sceneWrapperForUndo.scene.hotspotContainer().destroyHotspot(restoredHotspot);
               sceneWrapperForUndo.editableHotspots = sceneWrapperForUndo.editableHotspots.filter(function(e) { return e !== restoredEditable; });
               if (removalRecord) {
                 removals.push(removalRecord);
@@ -2934,7 +3406,10 @@
         lines.push('--- DÜZENLENENLER ---');
         edits.forEach(function(e) {
           if (e.kind === 'info') {
-            lines.push(e.scene + '  "' + e.oldTitle + '"  ->  yeni link: ' + e.newLink);
+            if (e.newLink) lines.push(e.scene + '  "' + e.oldTitle + '"  ->  yeni link: ' + e.newLink);
+            if (e.descChanged) {
+              lines.push(e.scene + '  "' + e.oldTitle + '"  YENİ AÇIKLAMA HTML: ' + e.newDescHtml);
+            }
           } else if (e.kind === 'badge') {
             lines.push(e.scene + '  "' + e.title + '"  rozet: ' + (e.oldBadge || '(yok)') + ' -> ' + (e.newBadge || '(yok)'));
           } else {
@@ -2974,6 +3449,15 @@
             lines.push('Fon müziği düğmesi: ' + (c.enabled ? 'açık' : 'kapalı'));
           } else if (c.type === 'seasonalEffect') {
             lines.push('Sezonluk dekorasyon efekti: ' + c.label);
+          } else if (c.type === 'hotspotIconScale') {
+            lines.push('Ok/bilgi ikonu boyutu: ' + c.label + ' (' + c.value + 'x)');
+          } else if (c.type === 'sceneVisibility') {
+            lines.push(c.hidden
+              ? ('SAHNE GİZLENDİ (bakımda): "' + c.sceneName + '" (' + c.sceneId + ') — site canlıya alınırken sidebar/vitrin modundan çıkarılmalı, sahne silinmemeli')
+              : ('Sahne tekrar görünür yapıldı: "' + c.sceneName + '" (' + c.sceneId + ')'));
+          } else if (c.type === 'moveProduct') {
+            lines.push('ÜRÜN TAŞINDI: "' + c.title + '"  ' + c.sourceSceneName + ' (' + c.sourceSceneId + ') -> ' +
+              c.targetSceneName + ' (' + c.targetSceneId + ')  yeni konum yaw:' + c.newYaw.toFixed(4) + ' pitch:' + c.newPitch.toFixed(4));
           }
         });
       }
@@ -3560,7 +4044,11 @@
       kioskTimer = setTimeout(advance, intervalSeconds * 1000);
     }
     function advance() {
-      kioskIndex = (kioskIndex + 1) % scenes.length;
+      var attempts = 0;
+      do {
+        kioskIndex = (kioskIndex + 1) % scenes.length;
+        attempts++;
+      } while (hiddenSceneIds[scenes[kioskIndex].data.id] && attempts <= scenes.length);
       switchScene(scenes[kioskIndex]);
       scheduleNext();
     }
