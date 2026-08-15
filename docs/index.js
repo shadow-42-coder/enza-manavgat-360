@@ -25,6 +25,7 @@
   // 1000ms, a soft cross-fade - that's what "classic" maps to below).
   var currentTransitionDuration = (data.settings && data.settings.sceneTransitionDuration != null)
     ? data.settings.sceneTransitionDuration : 1000;
+  var currentTransitionKey = (data.settings && data.settings.sceneTransitionKey) || 'classic';
 
   // Scenes temporarily hidden ("under maintenance") - excluded from the
   // sidebar list and kiosk rotation, but not deleted; a scene keeps its
@@ -188,6 +189,16 @@
     autorotateToggleElement.classList.add('enabled');
   }
 
+  // Very gentle ambient drift, active whenever the full autorotate toggle is
+  // off - makes an untouched scene feel alive during a demo without being as
+  // assertive as a full 360 spin.
+  var idlePan = Marzipano.autorotate({
+    yawSpeed: 0.008,
+    targetPitch: 0,
+    targetFov: Math.PI/2
+  });
+  viewer.setIdleMovement(6000, idlePan);
+
   // Set handler for autorotate toggle.
   autorotateToggleElement.addEventListener('click', toggleAutorotate);
 
@@ -318,6 +329,11 @@
   // copy the link to the clipboard with a brief visual confirmation.
   function shareTour(triggerEl) {
     var url = window.location.href.split('?')[0];
+    if (currentSceneWrapper && currentView) {
+      var viewParams = currentView.parameters();
+      url += '?scene=' + encodeURIComponent(currentSceneWrapper.data.id) +
+        '&yaw=' + viewParams.yaw.toFixed(4) + '&pitch=' + viewParams.pitch.toFixed(4);
+    }
     var shareText = uiText('shareText', 'enza HOME Manavgat 360° sanal mağaza turuna göz atın!');
     if (navigator.share) {
       navigator.share({ title: document.title, text: shareText, url: url }).catch(function() {});
@@ -376,6 +392,33 @@
     return (div.textContent || div.innerText || '').trim();
   }
 
+  // Voices load asynchronously in most browsers - an empty getVoices() on
+  // first call is normal, not an error, and by the time a visitor actually
+  // taps "listen" the list has settled. Without picking a matching voice
+  // explicitly, an utterance can silently fall back to a non-Turkish voice
+  // that mispronounces every Turkish letter/word.
+  function pickVoiceForLang(langTag) {
+    if (!window.speechSynthesis) return null;
+    var voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+    var exact = voices.filter(function(v) { return v.lang && v.lang.toLowerCase() === langTag.toLowerCase(); });
+    if (exact.length) return exact[0];
+    var prefix = langTag.split('-')[0].toLowerCase();
+    var loose = voices.filter(function(v) { return v.lang && v.lang.toLowerCase().indexOf(prefix) === 0; });
+    return loose.length ? loose[0] : null;
+  }
+
+  // Splits narration text into a short opening line plus the rest, so
+  // listening starts with one sentence instead of a whole paragraph - the
+  // rest is only spoken if the visitor asks for it.
+  function splitNarrationTeaser(fullText) {
+    var m = /^([\s\S]{0,140}?[.!?])\s*([\s\S]*)$/.exec(fullText);
+    if (m && m[2] && m[2].trim().length > 0) {
+      return { teaser: m[1], rest: m[2].trim() };
+    }
+    return { teaser: fullText, rest: '' };
+  }
+
   // Visitor-side favorite products list (their own browser only, nothing
   // sent anywhere until they choose to send it via WhatsApp).
   var FAVORITES_KEY = 'enzaFavoriteProducts';
@@ -392,6 +435,19 @@
     else favs.push({ title: stripHtmlForSpeech(title), sceneName: sceneName });
     window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
     updateFavoritesButton();
+  }
+
+  // Small floating-heart burst for instant feedback when a product is
+  // favorited, positioned relative to the button that was tapped.
+  function spawnHeartBurst(anchorEl) {
+    var rect = anchorEl.getBoundingClientRect();
+    var heart = document.createElement('div');
+    heart.className = 'heartBurst';
+    heart.textContent = '♥';
+    heart.style.left = (rect.left + rect.width / 2) + 'px';
+    heart.style.top = rect.top + 'px';
+    document.body.appendChild(heart);
+    setTimeout(function() { if (heart.parentNode) heart.parentNode.removeChild(heart); }, 900);
   }
 
   var favoritesButton = document.createElement('button');
@@ -682,6 +738,64 @@
     tipClose.addEventListener('click', dismiss);
     setTimeout(function() { tip.classList.add('visible'); }, 1200);
     setTimeout(dismiss, 9000);
+  })();
+
+  // Shared one-time dismissible tip banner (localStorage-tracked per key) -
+  // used for anything shown once to explain a feature the visitor might not
+  // otherwise notice, without stacking multiple tip mechanisms on top of
+  // each other.
+  function showOneTimeTip(id, storageKey, text, visibleDelayMs, autoDismissMs) {
+    var already = null;
+    try { already = window.localStorage.getItem(storageKey); } catch (e) {}
+    if (already) return;
+    try { window.localStorage.setItem(storageKey, '1'); } catch (e) {}
+    var tip = document.createElement('div');
+    tip.id = id;
+    tip.className = 'miniTip';
+    var tipTextEl = document.createElement('span');
+    tipTextEl.textContent = text;
+    var tipClose = document.createElement('button');
+    tipClose.type = 'button';
+    tipClose.textContent = uiText('closeLabel', 'Anladım');
+    tip.appendChild(tipTextEl);
+    tip.appendChild(tipClose);
+    document.body.appendChild(tip);
+    function dismiss() {
+      tip.classList.remove('visible');
+      setTimeout(function() { if (tip.parentNode) tip.parentNode.removeChild(tip); }, 400);
+    }
+    tipClose.addEventListener('click', dismiss);
+    setTimeout(function() { tip.classList.add('visible'); }, visibleDelayMs);
+    setTimeout(dismiss, autoDismissMs);
+  }
+
+  // Voice-narration tip: shown once, the first time a visitor opens any
+  // product card, pointing out the 🔊 listen button rather than at page
+  // load (before there's anything on screen to point at).
+  var voiceTipEligible = true;
+  try { voiceTipEligible = !window.localStorage.getItem('enzaVoiceTipShown'); } catch (e) {}
+  function showVoiceTipOnce() {
+    if (!voiceTipEligible) return;
+    voiceTipEligible = false;
+    showOneTimeTip('voiceTip', 'enzaVoiceTipShown',
+      uiText('voiceTipText', '🔊 simgesine dokunarak ürünü sesli dinleyebilirsin.'), 500, 7000);
+  }
+
+  // Suggest landscape on mobile if the visitor is in portrait - a wider
+  // view shows more of each room.
+  if (document.body.classList.contains('mobile') && window.innerHeight > window.innerWidth) {
+    showOneTimeTip('rotateTip', 'enzaRotateTipShown',
+      uiText('rotateTipText', '📱 Daha geniş bir görünüm için telefonunu yatay çevirebilirsin.'), 2500, 9000);
+  }
+
+  // "Add to home screen" hint, mobile only, shown a bit later so it doesn't
+  // compete with the drag/rotate tips right at open.
+  (function setupHomeScreenTip() {
+    if (!document.body.classList.contains('mobile')) return;
+    var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+    if (isStandalone) return;
+    showOneTimeTip('homeScreenTip', 'enzaHomeScreenTipShown',
+      uiText('homeScreenTipText', 'Bu turu bir uygulama gibi kullanmak için tarayıcı menüsünden "Ana Ekrana Ekle"yi deneyebilirsin.'), 16000, 24000);
   })();
 
   // Mobile: pinch with two fingers to zoom; release to snap back to the
@@ -1459,6 +1573,7 @@
       { key: 'classic', label: 'Klasik (mevcut)', duration: 1000 },
       { key: 'fast', label: 'Hızlı', duration: 400 },
       { key: 'slow', label: 'Yavaş / Sinematik', duration: 2000 },
+      { key: 'zoom', label: 'Yakınlaşarak Geçiş', duration: 900 },
       { key: 'instant', label: 'Anında (efektsiz)', duration: 0 }
     ];
     var selectedTransitionPreset = TRANSITION_PRESETS[0];
@@ -1506,27 +1621,34 @@
       var nextSceneWrapper = findSceneById(nextSceneData.id);
       if (!nextSceneWrapper) return;
       var savedDuration = currentTransitionDuration;
+      var savedKey = currentTransitionKey;
       currentTransitionDuration = selectedTransitionPreset.duration;
+      currentTransitionKey = selectedTransitionPreset.key;
       switchScene(nextSceneWrapper);
       currentTransitionDuration = savedDuration;
+      currentTransitionKey = savedKey;
     });
 
     transitionSaveButton.addEventListener('click', function() {
       var beforeSnapshot = settingsChanges.slice();
       var beforeDuration = currentTransitionDuration;
+      var beforeKey = currentTransitionKey;
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'sceneTransition'; });
-      settingsChanges.push({ type: 'sceneTransition', duration: selectedTransitionPreset.duration, label: selectedTransitionPreset.label });
+      settingsChanges.push({ type: 'sceneTransition', duration: selectedTransitionPreset.duration, key: selectedTransitionPreset.key, label: selectedTransitionPreset.label });
       var afterSnapshot = settingsChanges.slice();
       currentTransitionDuration = selectedTransitionPreset.duration;
+      currentTransitionKey = selectedTransitionPreset.key;
       saveSettingsChanges();
       settingsStatus.textContent = 'Geçiş efekti kaydedildi: ' + selectedTransitionPreset.label;
       pushHistory('sahne geçiş efekti kaydetme', function() {
         settingsChanges = beforeSnapshot;
         currentTransitionDuration = beforeDuration;
+        currentTransitionKey = beforeKey;
         saveSettingsChanges();
       }, function() {
         settingsChanges = afterSnapshot;
         currentTransitionDuration = selectedTransitionPreset.duration;
+        currentTransitionKey = selectedTransitionPreset.key;
         saveSettingsChanges();
         settingsStatus.textContent = 'Geçiş efekti kaydedildi: ' + selectedTransitionPreset.label;
       });
@@ -3676,10 +3798,49 @@
     return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;');
   }
 
+  // "Az önce buradaydın" breadcrumb: small thumbnails of the last few scenes
+  // visited this session (not persisted), for quickly hopping back.
+  var recentSceneIds = [];
+  var recentScenesBar = document.createElement('div');
+  recentScenesBar.id = 'recentScenesBar';
+  document.body.appendChild(recentScenesBar);
+  function renderRecentScenesBar() {
+    recentScenesBar.innerHTML = '';
+    if (!recentSceneIds.length) { recentScenesBar.classList.remove('visible'); return; }
+    recentSceneIds.forEach(function(id) {
+      var sceneData = findSceneDataById(id);
+      if (!sceneData) return;
+      var thumb = document.createElement('div');
+      thumb.className = 'recentSceneThumb';
+      thumb.title = sceneData.name.replace(/^\d+\.\s*/, '');
+      thumb.style.backgroundImage = "url('tiles/" + id + "/preview.jpg')";
+      thumb.addEventListener('click', function() {
+        var wrapper = findSceneById(id);
+        if (wrapper) switchScene(wrapper);
+      });
+      recentScenesBar.appendChild(thumb);
+    });
+    recentScenesBar.classList.add('visible');
+  }
+  function trackRecentScene(newSceneId) {
+    if (!currentSceneWrapper) return;
+    var leavingId = currentSceneWrapper.data.id;
+    if (leavingId === newSceneId) return;
+    recentSceneIds = recentSceneIds.filter(function(id) { return id !== leavingId && id !== newSceneId; });
+    recentSceneIds.unshift(leavingId);
+    recentSceneIds = recentSceneIds.slice(0, 3);
+    renderRecentScenesBar();
+  }
+
   function switchScene(scene) {
     stopAutorotate();
+    var outgoingWrapper = currentSceneWrapper;
+    if (outgoingWrapper && outgoingWrapper !== scene) trackRecentScene(scene.data.id);
     scene.view.setParameters(scene.data.initialViewParameters);
     scene.scene.switchTo({ transitionDuration: currentTransitionDuration });
+    if (currentTransitionKey === 'zoom' && outgoingWrapper && outgoingWrapper !== scene) {
+      animateZoomPush(outgoingWrapper.view, currentTransitionDuration);
+    }
     startAutorotate();
     updateSceneName(scene);
     updateSceneList(scene);
@@ -3689,6 +3850,23 @@
     currentSceneWrapper = scene;
     maybeOpenFeaturedProduct(scene);
     setTimeout(function() { prefetchNeighborTiles(scene); }, 800);
+  }
+
+  // "Yakınlaşarak Geçiş" transition preset: as the outgoing scene crossfades
+  // out, push its own view in slightly (narrower fov) so the room feels like
+  // it's being walked through rather than just dissolving flatly.
+  function animateZoomPush(view, duration) {
+    var params = view.parameters();
+    var startFov = params.fov;
+    var targetFov = startFov * 0.82;
+    var startTime = null;
+    function step(ts) {
+      if (startTime === null) startTime = ts;
+      var t = Math.min(1, (ts - startTime) / duration);
+      view.setParameters({ fov: startFov + (targetFov - startFov) * t });
+      if (t < 1) window.requestAnimationFrame(step);
+    }
+    window.requestAnimationFrame(step);
   }
 
   // Warm the browser's HTTP cache with the lowest tile level (single
@@ -3762,7 +3940,7 @@
 
   function stopAutorotate() {
     viewer.stopMovement();
-    viewer.setIdleMovement(Infinity);
+    viewer.setIdleMovement(6000, idlePan);
   }
 
   function toggleAutorotate() {
@@ -3885,8 +4063,10 @@
     }
     favBtn.addEventListener('click', function(event) {
       event.stopPropagation();
+      var wasFav = isProductFavorited(hotspot.title);
       toggleProductFavorite(hotspot.title, sceneName);
       refreshFavButton();
+      if (!wasFav) spawnHeartBurst(favBtn);
     });
     refreshFavButton();
     actionsRow.appendChild(favBtn);
@@ -3897,6 +4077,27 @@
       listenBtn.classList.add('info-hotspot-listen');
       listenBtn.textContent = '🔊';
       listenBtn.title = uiText('listenLabel', 'Sesli dinle');
+
+      var listenMoreBtn = document.createElement('button');
+      listenMoreBtn.type = 'button';
+      listenMoreBtn.classList.add('info-hotspot-listen-more');
+      listenMoreBtn.textContent = uiText('listenMoreLabel', '▶ Devamını dinle');
+      listenMoreBtn.style.display = 'none';
+
+      var plainTitleForSpeech = stripHtmlForSpeech(hotspot.title);
+      var narrationTeaser = splitNarrationTeaser(stripHtmlForSpeech(hotspot.text));
+
+      function speakText(text, onEnd) {
+        var utter = new SpeechSynthesisUtterance(text);
+        utter.lang = currentLang === 'en' ? 'en-US' : (currentLang === 'ru' ? 'ru-RU' : 'tr-TR');
+        var matchedVoice = pickVoiceForLang(utter.lang);
+        if (matchedVoice) utter.voice = matchedVoice;
+        utter.onend = function() { listenBtn.classList.remove('speaking'); if (onEnd) onEnd(); };
+        utter.onerror = function() { listenBtn.classList.remove('speaking'); };
+        listenBtn.classList.add('speaking');
+        window.speechSynthesis.speak(utter);
+      }
+
       listenBtn.addEventListener('click', function(event) {
         event.stopPropagation();
         if (window.speechSynthesis.speaking) {
@@ -3904,15 +4105,20 @@
           listenBtn.classList.remove('speaking');
           return;
         }
-        var plainText = stripHtmlForSpeech(hotspot.text);
-        var utter = new SpeechSynthesisUtterance(stripHtmlForSpeech(hotspot.title) + '. ' + plainText);
-        utter.lang = currentLang === 'en' ? 'en-US' : (currentLang === 'ru' ? 'ru-RU' : 'tr-TR');
-        utter.onend = function() { listenBtn.classList.remove('speaking'); };
-        utter.onerror = function() { listenBtn.classList.remove('speaking'); };
-        listenBtn.classList.add('speaking');
-        window.speechSynthesis.speak(utter);
+        listenMoreBtn.style.display = 'none';
+        speakText(plainTitleForSpeech + '. ' + narrationTeaser.teaser, function() {
+          if (narrationTeaser.rest) listenMoreBtn.style.display = 'inline-block';
+        });
       });
       actionsRow.appendChild(listenBtn);
+
+      listenMoreBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+        listenMoreBtn.style.display = 'none';
+        speakText(narrationTeaser.rest, null);
+      });
+      actionsRow.appendChild(listenMoreBtn);
     }
     text.appendChild(actionsRow);
 
@@ -3951,8 +4157,9 @@
     document.body.appendChild(modal);
 
     var toggle = function() {
-      wrapper.classList.toggle('visible');
+      var opening = wrapper.classList.toggle('visible');
       modal.classList.toggle('visible');
+      if (opening && window.speechSynthesis) showVoiceTipOnce();
     };
 
     // Show content when hotspot is clicked.
@@ -4016,8 +4223,40 @@
     return null;
   }
 
-  // Display the initial scene.
-  switchScene(scenes[0]);
+  // Very subtle, time-of-day-tinted wash over the whole view - a nod to how
+  // the actual showroom looks different in morning/evening light. Picked
+  // once per page load, not updated live while browsing.
+  (function applyTimeOfDayOverlay() {
+    var overlay = document.createElement('div');
+    overlay.id = 'timeOfDayOverlay';
+    document.body.appendChild(overlay);
+    var h = new Date().getHours();
+    var color, opacity;
+    if (h >= 5 && h < 10) { color = '#cfe8ff'; opacity = 0.06; }
+    else if (h >= 17 && h < 21) { color = '#ffb35c'; opacity = 0.07; }
+    else if (h >= 21 || h < 5) { color = '#1a2440'; opacity = 0.12; }
+    else { color = 'transparent'; opacity = 0; }
+    overlay.style.backgroundColor = color;
+    overlay.style.opacity = String(opacity);
+  })();
+
+  // Display the initial scene - a shared link's ?scene=&yaw=&pitch= (see
+  // shareTour()) overrides the normal opening scene so the exact view a
+  // visitor shared is what the next person lands on.
+  (function() {
+    var sceneMatch = /[?&]scene=([^&]+)/.exec(window.location.search);
+    var deepLinkTarget = sceneMatch ? findSceneById(decodeURIComponent(sceneMatch[1])) : null;
+    switchScene(deepLinkTarget || scenes[0]);
+    if (deepLinkTarget) {
+      var yawMatch = /[?&]yaw=([^&]+)/.exec(window.location.search);
+      var pitchMatch = /[?&]pitch=([^&]+)/.exec(window.location.search);
+      var yaw = yawMatch ? parseFloat(yawMatch[1]) : NaN;
+      var pitch = pitchMatch ? parseFloat(pitchMatch[1]) : NaN;
+      if (!isNaN(yaw) && !isNaN(pitch)) {
+        deepLinkTarget.view.setParameters({ yaw: yaw, pitch: pitch });
+      }
+    }
+  })();
 
   // Hide the branded splash screen once the first scene has had a moment to render.
   var splashElement = document.querySelector('#splash');
@@ -4026,6 +4265,28 @@
       splashElement.classList.add('hidden');
     }, 700);
   }
+
+  // One-time "door opening" reveal for the very first scene only: two panels
+  // covering the pano slide apart right as the splash fades, instead of the
+  // first room just appearing flatly underneath.
+  (function setupDoorReveal() {
+    var doorLeft = document.createElement('div');
+    doorLeft.className = 'doorPanel';
+    doorLeft.id = 'doorLeft';
+    var doorRight = document.createElement('div');
+    doorRight.className = 'doorPanel';
+    doorRight.id = 'doorRight';
+    document.body.appendChild(doorLeft);
+    document.body.appendChild(doorRight);
+    setTimeout(function() {
+      doorLeft.classList.add('opening');
+      doorRight.classList.add('opening');
+      setTimeout(function() {
+        if (doorLeft.parentNode) doorLeft.parentNode.removeChild(doorLeft);
+        if (doorRight.parentNode) doorRight.parentNode.removeChild(doorRight);
+      }, 1300);
+    }, 750);
+  })();
 
   // Kiosk/showroom mode: add ?kiosk=1 to the URL on a screen left running in
   // the store, and the tour advances through every scene on its own. Pauses
