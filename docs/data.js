@@ -1048,7 +1048,17 @@ var APP_DATA = {
         "whatsappProductButton": "Get more info about this product",
         "shareLabel": "Share the Virtual Tour",
         "shareText": "Take a look at the enza HOME Manavgat 360° virtual store tour!",
-        "shareCopied": "Link copied!"
+        "shareCopied": "Link copied!",
+        "favoriteLabel": "Add to favorites",
+        "unfavoriteLabel": "Remove from favorites",
+        "listenLabel": "Listen",
+        "favoritesTitle": "My Favorite Products",
+        "favoritesSendLabel": "Send All via WhatsApp",
+        "favoritesMessage": "Hello, I would like information about these products:",
+        "closeLabel": "Close",
+        "whatsappSoldOutMessage": "Hello, the \"{title}\" product looks sold out. Could you notify me when it's back in stock? (Virtual tour: {scene})",
+        "whatsappSoldOutButton": "Notify me when back in stock",
+        "tourTipText": "Drag to look around. Tap the arrows to move between rooms."
       }
     },
     "ru": {
@@ -1083,7 +1093,17 @@ var APP_DATA = {
         "whatsappProductButton": "Узнать больше об этом товаре",
         "shareLabel": "Поделиться виртуальным туром",
         "shareText": "Посмотрите виртуальный 360° тур по магазину enza HOME Manavgat!",
-        "shareCopied": "Ссылка скопирована!"
+        "shareCopied": "Ссылка скопирована!",
+        "favoriteLabel": "Добавить в избранное",
+        "unfavoriteLabel": "Удалить из избранного",
+        "listenLabel": "Слушать",
+        "favoritesTitle": "Мои избранные товары",
+        "favoritesSendLabel": "Отправить все через WhatsApp",
+        "favoritesMessage": "Здравствуйте, хочу узнать больше об этих товарах:",
+        "closeLabel": "Закрыть",
+        "whatsappSoldOutMessage": "Здравствуйте, товар «{title}» похоже закончился. Сообщите мне, когда он снова появится в наличии? (Виртуальный тур: {scene})",
+        "whatsappSoldOutButton": "Сообщить о поступлении",
+        "tourTipText": "Проведите пальцем, чтобы осмотреться. Нажимайте на стрелки, чтобы перейти в другую комнату."
       }
     }
   }

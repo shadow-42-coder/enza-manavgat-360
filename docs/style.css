@@ -82,6 +82,48 @@ body.multiple-scenes.mobile #titleBar {
   left: 50px;
 }
 
+#campaignBanner {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 40px 8px 14px;
+  background-color: var(--brand-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+#campaignBanner.visible {
+  display: flex;
+}
+
+.mobile #campaignBanner {
+  top: 50px;
+}
+
+#campaignBannerClose {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background-color: rgba(0,0,0,0.2);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
 #titleBar .sceneName {
   width: 100%;
   height: 100%;
@@ -1262,23 +1304,77 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   overflow-y: auto;
 }
 
-.posFinderSettingsSection {
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.12);
-}
-
-.posFinderSettingsSection:last-of-type {
-  border-bottom: none;
-}
-
-.posFinderSettingsTitle {
-  font-size: 13px;
+.posFinderGroupHeader {
+  font-size: 11px;
   font-weight: 700;
   color: var(--brand-text-muted);
-  margin-bottom: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
+  margin: 14px 0 6px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.posFinderGroupHeader:first-child {
+  margin-top: 0;
+}
+
+.posFinderAccordionItem {
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background-color: rgba(255,255,255,0.04);
+  overflow: hidden;
+}
+
+.posFinderAccordionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.posFinderAccordionHeader:hover {
+  background-color: rgba(255,255,255,0.06);
+}
+
+.posFinderAccordionIcon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.posFinderAccordionTitleText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.posFinderAccordionChevron {
+  flex-shrink: 0;
+  color: rgba(255,255,255,0.5);
+  font-size: 11px;
+}
+
+.posFinderAccordionBody.posFinderSettingsSection {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 10px;
+  margin-bottom: 0;
+  border-bottom: none;
+  transition: max-height 0.2s ease, padding 0.2s ease;
+}
+
+.posFinderAccordionItem.open .posFinderAccordionBody.posFinderSettingsSection {
+  max-height: 600px;
+  padding: 0 10px 12px 10px;
 }
 
 .posFinderSettingsSection select,
@@ -1580,6 +1676,47 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   color: #ccc;
 }
 
+.posFinderTransitionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.posFinderTransitionButton {
+  flex: 1 1 45%;
+  padding: 8px 4px;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-color: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.posFinderTransitionButton.active {
+  border-color: var(--brand-accent);
+  background-color: rgba(47,143,214,0.35);
+}
+
+.posFinderCheckboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #ccc;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.posFinderCheckboxLabel input[type="checkbox"] {
+  width: auto;
+  margin: 2px 0 0 0;
+  flex-shrink: 0;
+}
+
 .posFinderPasswordHint {
   font-size: 11px;
   color: #ccc;
@@ -1700,4 +1837,195 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 
 .no-touch .info-hotspot-whatsapp:hover {
   background-color: #1ebe57;
+}
+
+.info-hotspot-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.info-hotspot-favorite,
+.info-hotspot-listen {
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
+  border: none;
+  background-color: rgba(0,0,0,0.06);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.info-hotspot-favorite.active {
+  color: #e0432c;
+}
+
+.info-hotspot-listen.speaking {
+  background-color: var(--brand-accent);
+}
+
+#favoritesButton {
+  position: absolute;
+  left: 0;
+  bottom: 34px;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  background-color: rgba(224,67,44,0.92);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#musicToggle {
+  position: absolute;
+  left: 0;
+  bottom: 68px;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background-color: rgba(41,56,72,0.92);
+  color: rgba(255,255,255,0.6);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#musicToggle.playing {
+  color: #fff;
+  background-color: var(--brand-accent);
+}
+
+#seasonalEffectCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 15000;
+  pointer-events: none;
+}
+
+#tourTip {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translate(-50%, 20px);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 90%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background-color: rgba(10,14,18,0.92);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#tourTip.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+#tourTipClose {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 5px;
+  background-color: var(--brand-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#favoritesOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 40000;
+  background-color: rgba(10,14,18,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#favoritesBox {
+  background-color: var(--brand-panel);
+  color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  width: 90%;
+  max-width: 360px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+#favoritesTitle {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+#favoritesList {
+  margin-bottom: 12px;
+}
+
+.favoritesRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-size: 14px;
+}
+
+.favoritesRow button {
+  border: none;
+  background-color: rgba(255,255,255,0.12);
+  color: #fff;
+  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#favoritesSendButton {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: none;
+  background-color: #25d366;
+  color: #06210f;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+#favoritesClose {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border-radius: 5px;
+  border: none;
+  background-color: rgba(255,255,255,0.12);
+  color: #fff;
+  cursor: pointer;
 }

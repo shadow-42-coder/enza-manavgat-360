@@ -21,6 +21,11 @@
   var screenfull = window.screenfull;
   var data = window.APP_DATA;
 
+  // Scene-to-scene transition duration in ms (Marzipano's own default is
+  // 1000ms, a soft cross-fade - that's what "classic" maps to below).
+  var currentTransitionDuration = (data.settings && data.settings.sceneTransitionDuration != null)
+    ? data.settings.sceneTransitionDuration : 1000;
+
   // Visitor-facing language: TR (default site language) / EN / RU. Detected
   // once from the browser's language on first visit, remembered afterwards,
   // switchable via the on-page language buttons. Admin panel text and the
@@ -219,6 +224,19 @@
   var sceneListFooterShareLink = document.querySelector('#sceneListFooter #shareLink');
   var contactBarShareBtn = document.querySelector('#contactBar #shareButton');
 
+  // iOS doesn't have Google Maps installed by default and often opens Google
+  // Maps links in a slow web view - point iPhones/iPads at Apple Maps
+  // instead. No stored lat/long, so this searches by business name (still
+  // reliable for a real, named business) rather than guessing coordinates.
+  (function useNativeMapsLinkOnIOS() {
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isIOS) return;
+    var appleMapsUrl = 'https://maps.apple.com/?q=' + encodeURIComponent('enza HOME Manavgat');
+    if (sceneListFooterMapsLink) sceneListFooterMapsLink.href = appleMapsUrl;
+    if (contactBarMapsBtn) contactBarMapsBtn.href = appleMapsUrl;
+  })();
+
   // Captured once, before any translation runs, so switching back to
   // Turkish can restore the original text/links instead of leaving
   // whatever language was applied last.
@@ -333,6 +351,321 @@
   });
   document.body.appendChild(langSwitcher);
 
+  // Strip HTML tags for speech synthesis / plain-text uses.
+  function stripHtmlForSpeech(html) {
+    var div = document.createElement('div');
+    div.innerHTML = html || '';
+    return (div.textContent || div.innerText || '').trim();
+  }
+
+  // Visitor-side favorite products list (their own browser only, nothing
+  // sent anywhere until they choose to send it via WhatsApp).
+  var FAVORITES_KEY = 'enzaFavoriteProducts';
+  function getFavorites() {
+    try { return JSON.parse(window.localStorage.getItem(FAVORITES_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function isProductFavorited(title) {
+    return getFavorites().some(function(f) { return f.title === title; });
+  }
+  function toggleProductFavorite(title, sceneName) {
+    var favs = getFavorites();
+    var idx = favs.findIndex(function(f) { return f.title === title; });
+    if (idx !== -1) favs.splice(idx, 1);
+    else favs.push({ title: stripHtmlForSpeech(title), sceneName: sceneName });
+    window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+    updateFavoritesButton();
+  }
+
+  var favoritesButton = document.createElement('button');
+  favoritesButton.type = 'button';
+  favoritesButton.id = 'favoritesButton';
+  document.body.appendChild(favoritesButton);
+
+  function updateFavoritesButton() {
+    var favs = getFavorites();
+    if (!favs.length) {
+      favoritesButton.style.display = 'none';
+    } else {
+      favoritesButton.style.display = 'flex';
+      favoritesButton.textContent = '♥ ' + favs.length;
+    }
+  }
+  updateFavoritesButton();
+
+  favoritesButton.addEventListener('click', function() {
+    var favs = getFavorites();
+    var overlay = document.createElement('div');
+    overlay.id = 'favoritesOverlay';
+    var box = document.createElement('div');
+    box.id = 'favoritesBox';
+    var boxTitle = document.createElement('div');
+    boxTitle.id = 'favoritesTitle';
+    boxTitle.textContent = uiText('favoritesTitle', 'Favori Ürünlerim');
+    var list = document.createElement('div');
+    list.id = 'favoritesList';
+    favs.forEach(function(f) {
+      var row = document.createElement('div');
+      row.className = 'favoritesRow';
+      var label = document.createElement('span');
+      label.textContent = f.title;
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', function() {
+        toggleProductFavorite(f.title, f.sceneName);
+        row.parentNode.removeChild(row);
+        if (!getFavorites().length) overlay.remove();
+      });
+      row.appendChild(label);
+      row.appendChild(removeBtn);
+      list.appendChild(row);
+    });
+    var sendBtn = document.createElement('button');
+    sendBtn.type = 'button';
+    sendBtn.id = 'favoritesSendButton';
+    sendBtn.textContent = uiText('favoritesSendLabel', "Hepsini WhatsApp'tan Gönder");
+    sendBtn.addEventListener('click', function() {
+      var lines = getFavorites().map(function(f) { return '- ' + f.title; });
+      var msg = uiText('favoritesMessage', 'Merhaba, aşağıdaki ürünler hakkında bilgi almak istiyorum:') + '\n' + lines.join('\n');
+      window.open('https://wa.me/905493320707?text=' + encodeURIComponent(msg), '_blank');
+    });
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.id = 'favoritesClose';
+    closeBtn.textContent = uiText('closeLabel', 'Kapat');
+    closeBtn.addEventListener('click', function() { overlay.remove(); });
+
+    box.appendChild(boxTitle);
+    box.appendChild(list);
+    box.appendChild(sendBtn);
+    box.appendChild(closeBtn);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', function(event) { if (event.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  });
+
+  // Campaign/announcement banner. Text lives in data.settings.campaignText -
+  // empty/missing means no banner. Dismissing it is remembered per exact
+  // text, so a new announcement always shows even if an old one was closed.
+  var campaignBanner = document.createElement('div');
+  campaignBanner.id = 'campaignBanner';
+  var campaignBannerText = document.createElement('span');
+  campaignBannerText.id = 'campaignBannerText';
+  var campaignBannerClose = document.createElement('button');
+  campaignBannerClose.type = 'button';
+  campaignBannerClose.id = 'campaignBannerClose';
+  campaignBannerClose.textContent = '✕';
+  campaignBanner.appendChild(campaignBannerText);
+  campaignBanner.appendChild(campaignBannerClose);
+  document.body.appendChild(campaignBanner);
+
+  var CAMPAIGN_DISMISS_KEY = 'enzaCampaignDismissed';
+  function showCampaignBanner(text) {
+    if (!text) { campaignBanner.classList.remove('visible'); return; }
+    var dismissed = null;
+    try { dismissed = window.sessionStorage.getItem(CAMPAIGN_DISMISS_KEY); } catch (e) {}
+    if (dismissed === text) { campaignBanner.classList.remove('visible'); return; }
+    campaignBannerText.textContent = text;
+    campaignBanner.classList.add('visible');
+  }
+  campaignBannerClose.addEventListener('click', function() {
+    try { window.sessionStorage.setItem(CAMPAIGN_DISMISS_KEY, campaignBannerText.textContent); } catch (e) {}
+    campaignBanner.classList.remove('visible');
+  });
+  showCampaignBanner(data.settings && data.settings.campaignText);
+
+  // Live preview from the admin settings panel - doesn't touch sessionStorage
+  // dismissal state, just shows/hides the banner on this screen right now.
+  function previewCampaignBanner(text) {
+    if (!text) { campaignBanner.classList.remove('visible'); return; }
+    campaignBannerText.textContent = text;
+    campaignBanner.classList.add('visible');
+  }
+
+  // Background music: one persistent <audio> element, entirely decoupled
+  // from switchScene(), so playback never restarts or stops when moving
+  // between scenes. The button only appears if the admin has turned this on
+  // AND an actual audio file has been placed at docs/audio/background-music.mp3
+  // (a static site can't synthesize music - that file has to be supplied).
+  var bgMusic = document.createElement('audio');
+  bgMusic.loop = true;
+  bgMusic.preload = 'none';
+  bgMusic.src = 'audio/background-music.mp3';
+
+  var musicToggle = document.createElement('button');
+  musicToggle.type = 'button';
+  musicToggle.id = 'musicToggle';
+  musicToggle.title = 'Fon Müziği';
+  musicToggle.textContent = '🎵';
+  musicToggle.style.display = 'none';
+
+  var musicFileMissing = false;
+  bgMusic.addEventListener('error', function() {
+    musicFileMissing = true;
+    musicToggle.style.display = 'none';
+  });
+
+  function updateMusicToggleVisibility() {
+    var enabled = !!(data.settings && data.settings.backgroundMusicEnabled);
+    musicToggle.style.display = (enabled && !musicFileMissing) ? 'flex' : 'none';
+  }
+
+  musicToggle.addEventListener('click', function() {
+    if (bgMusic.paused) {
+      bgMusic.play().catch(function() { musicFileMissing = true; updateMusicToggleVisibility(); });
+      musicToggle.classList.add('playing');
+    } else {
+      bgMusic.pause();
+      musicToggle.classList.remove('playing');
+    }
+  });
+
+  document.body.appendChild(bgMusic);
+  document.body.appendChild(musicToggle);
+  updateMusicToggleVisibility();
+
+  // Seasonal decoration overlay: a purely cosmetic, pointer-events-none
+  // canvas of falling/floating particles over the whole viewport. Picked
+  // per-effect from data.settings.seasonalEffect ('none' or missing = off).
+  (function setupSeasonalEffect() {
+    var key = data.settings && data.settings.seasonalEffect;
+    if (!key || key === 'none') return;
+    var EFFECT_DEFS = {
+      snow: { count: 60, shape: 'circle', colors: ['rgba(255,255,255,0.85)'], size: [2, 5], speedY: [20, 50], speedX: [-10, 10], sway: false, twinkle: false },
+      confetti: { count: 50, shape: 'rect', colors: ['#e0432c', '#ffd23f', '#25d366', '#2f8fd6', '#ffffff'], size: [4, 8], speedY: [40, 90], speedX: [-30, 30], sway: false, twinkle: false, spin: true },
+      hearts: { count: 25, shape: 'heart', colors: ['#e0432c', '#ff7a6b'], size: [10, 16], speedY: [-25, -12], speedX: [-8, 8], sway: true, twinkle: false },
+      leaves: { count: 35, shape: 'leaf', colors: ['#c9762a', '#a85428', '#d99a3d'], size: [7, 12], speedY: [15, 35], speedX: [-5, 5], sway: true, twinkle: false, spin: true },
+      sparkles: { count: 45, shape: 'circle', colors: ['#ffd23f', '#fff4c2'], size: [2, 4], speedY: [5, 15], speedX: [-5, 5], sway: false, twinkle: true }
+    };
+    var def = EFFECT_DEFS[key];
+    if (!def) return;
+
+    var canvas = document.createElement('canvas');
+    canvas.id = 'seasonalEffectCanvas';
+    document.body.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    function spawnParticle(recycle) {
+      var p = recycle || {};
+      p.x = Math.random() * canvas.width;
+      p.y = recycle ? -10 : Math.random() * canvas.height;
+      p.size = rand(def.size[0], def.size[1]);
+      p.speedY = rand(def.speedY[0], def.speedY[1]);
+      p.speedX = rand(def.speedX[0], def.speedX[1]);
+      p.rotation = Math.random() * Math.PI * 2;
+      p.rotationSpeed = rand(-2, 2);
+      p.color = def.colors[Math.floor(Math.random() * def.colors.length)];
+      p.phase = Math.random() * Math.PI * 2;
+      p.opacity = 1;
+      return p;
+    }
+
+    var particles = [];
+    for (var i = 0; i < def.count; i++) particles.push(spawnParticle());
+
+    function drawHeart(x, y, size, color) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(size / 16, size / 16);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, 4);
+      ctx.bezierCurveTo(0, 2, -2, 0, -5, 0);
+      ctx.bezierCurveTo(-9, 0, -9, 5, -9, 5);
+      ctx.bezierCurveTo(-9, 9, -5, 12, 0, 16);
+      ctx.bezierCurveTo(5, 12, 9, 9, 9, 5);
+      ctx.bezierCurveTo(9, 5, 9, 0, 5, 0);
+      ctx.bezierCurveTo(2, 0, 0, 2, 0, 4);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawParticle(p) {
+      ctx.save();
+      ctx.globalAlpha = p.opacity;
+      if (def.shape === 'circle') {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (def.shape === 'rect') {
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      } else if (def.shape === 'leaf') {
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.size, p.size / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (def.shape === 'heart') {
+        drawHeart(p.x, p.y, p.size, p.color);
+      }
+      ctx.restore();
+    }
+
+    var lastTimestamp = null;
+    function loop(timestamp) {
+      if (lastTimestamp == null) lastTimestamp = timestamp;
+      var dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+      lastTimestamp = timestamp;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (var i = 0; i < particles.length; i++) {
+        var p = particles[i];
+        p.y += p.speedY * dt;
+        p.x += p.speedX * dt + (def.sway ? Math.sin(p.phase + timestamp / 800) * 8 * dt : 0);
+        if (def.spin) p.rotation += p.rotationSpeed * dt;
+        if (def.twinkle) p.opacity = 0.4 + 0.6 * Math.abs(Math.sin(p.phase + timestamp / 500));
+        if (p.y > canvas.height + 20 || p.y < -20 || p.x < -20 || p.x > canvas.width + 20) {
+          spawnParticle(p);
+        }
+        drawParticle(p);
+      }
+      window.requestAnimationFrame(loop);
+    }
+    window.requestAnimationFrame(loop);
+  })();
+
+  // First-visit tip: shown once (localStorage-tracked), explains dragging to
+  // look around and tapping arrows to move between rooms.
+  (function setupTourTip() {
+    var TOUR_TIP_KEY = 'enzaTourTipShown';
+    var shown = null;
+    try { shown = window.localStorage.getItem(TOUR_TIP_KEY); } catch (e) {}
+    if (shown) return;
+    var tip = document.createElement('div');
+    tip.id = 'tourTip';
+    var tipTextEl = document.createElement('span');
+    tipTextEl.textContent = uiText('tourTipText', 'Etrafa bakmak için sürükleyin. Odalar arasında geçmek için oklara dokunun.');
+    var tipClose = document.createElement('button');
+    tipClose.type = 'button';
+    tipClose.id = 'tourTipClose';
+    tipClose.textContent = uiText('closeLabel', 'Anladım');
+    tip.appendChild(tipTextEl);
+    tip.appendChild(tipClose);
+    document.body.appendChild(tip);
+
+    function dismiss() {
+      tip.classList.remove('visible');
+      try { window.localStorage.setItem(TOUR_TIP_KEY, '1'); } catch (e) {}
+      setTimeout(function() { if (tip.parentNode) tip.parentNode.removeChild(tip); }, 400);
+    }
+    tipClose.addEventListener('click', dismiss);
+    setTimeout(function() { tip.classList.add('visible'); }, 1200);
+    setTimeout(dismiss, 9000);
+  })();
+
   // Mobile: pinch with two fingers to zoom; release to snap back to the
   // scene's normal view instead of staying zoomed in.
   var currentView = null;
@@ -340,6 +673,57 @@
   var currentSceneNumber = null;
   var currentSceneWrapper = null;
   setupPinchZoom(panoElement);
+
+  // Keyboard look controls for visitors: arrow keys and WASD both pan the
+  // view (W/up = look up, S/down = look down, A/left = turn left, D/right =
+  // turn right). Runs as a continuous loop so holding a key pans smoothly.
+  (function setupKeyboardLook() {
+    var PAN_SPEED = 1.1; // radians per second
+    var keys = { up: false, down: false, left: false, right: false };
+    var KEY_MAP = {
+      arrowup: 'up', w: 'up',
+      arrowdown: 'down', s: 'down',
+      arrowleft: 'left', a: 'left',
+      arrowright: 'right', d: 'right'
+    };
+    document.addEventListener('keydown', function(event) {
+      var mapped = KEY_MAP[event.key.toLowerCase()];
+      if (!mapped) return;
+      var activeTag = document.activeElement && document.activeElement.tagName;
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+      keys[mapped] = true;
+      event.preventDefault();
+    });
+    document.addEventListener('keyup', function(event) {
+      var mapped = KEY_MAP[event.key.toLowerCase()];
+      if (mapped) keys[mapped] = false;
+    });
+    window.addEventListener('blur', function() {
+      keys.up = keys.down = keys.left = keys.right = false;
+    });
+
+    var lastTimestamp = null;
+    function loop(timestamp) {
+      var active = keys.up || keys.down || keys.left || keys.right;
+      if (active && currentView) {
+        if (lastTimestamp == null) lastTimestamp = timestamp;
+        var dt = Math.min(0.1, (timestamp - lastTimestamp) / 1000);
+        lastTimestamp = timestamp;
+        var params = currentView.parameters();
+        var yaw = params.yaw, pitch = params.pitch;
+        if (keys.left) yaw -= PAN_SPEED * dt;
+        if (keys.right) yaw += PAN_SPEED * dt;
+        if (keys.up) pitch += PAN_SPEED * dt;
+        if (keys.down) pitch -= PAN_SPEED * dt;
+        pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+        currentView.setParameters({ yaw: yaw, pitch: pitch });
+      } else {
+        lastTimestamp = null;
+      }
+      window.requestAnimationFrame(loop);
+    }
+    window.requestAnimationFrame(loop);
+  })();
 
   // TEMP: product-link collector tool, remove once all product hotspots
   // are placed. Add ?pos=1 to the URL: tap anywhere on the pano, paste the
@@ -735,18 +1119,49 @@
     settingsPanel.id = 'posFinderSettingsPanel';
     settingsPanel.style.display = 'none';
 
-    function settingsSection(titleText) {
-      var section = document.createElement('div');
-      section.className = 'posFinderSettingsSection';
-      var title = document.createElement('div');
-      title.className = 'posFinderSettingsTitle';
-      title.textContent = titleText;
-      section.appendChild(title);
-      return section;
+    // Collapsible accordion item: a clickable icon+title header that shows/
+    // hides its body. Returns the body element (existing call sites keep
+    // doing bodyEl.appendChild(...) unchanged); the full header+body wrapper
+    // that actually needs to go into the panel is on body._accordionWrapper.
+    function settingsSection(titleText, icon, defaultOpen) {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'posFinderAccordionItem' + (defaultOpen ? ' open' : '');
+      var header = document.createElement('button');
+      header.type = 'button';
+      header.className = 'posFinderAccordionHeader';
+      var iconEl = document.createElement('span');
+      iconEl.className = 'posFinderAccordionIcon';
+      iconEl.textContent = icon || '•';
+      var titleEl = document.createElement('span');
+      titleEl.className = 'posFinderAccordionTitleText';
+      titleEl.textContent = titleText;
+      var chevron = document.createElement('span');
+      chevron.className = 'posFinderAccordionChevron';
+      chevron.textContent = defaultOpen ? '▾' : '▸';
+      header.appendChild(iconEl);
+      header.appendChild(titleEl);
+      header.appendChild(chevron);
+      header.addEventListener('click', function() {
+        var isOpen = wrapper.classList.toggle('open');
+        chevron.textContent = isOpen ? '▾' : '▸';
+      });
+      var body = document.createElement('div');
+      body.className = 'posFinderSettingsSection posFinderAccordionBody';
+      wrapper.appendChild(header);
+      wrapper.appendChild(body);
+      body._accordionWrapper = wrapper;
+      return body;
+    }
+
+    function settingsGroupHeader(text) {
+      var el = document.createElement('div');
+      el.className = 'posFinderGroupHeader';
+      el.textContent = text;
+      return el;
     }
 
     // -- Rename scene --
-    var renameSection = settingsSection('Sahne adını değiştir');
+    var renameSection = settingsSection('Sahne adını değiştir', '✏️');
     var renameSceneSelect = document.createElement('select');
     var renameInput = document.createElement('input');
     renameInput.type = 'text';
@@ -758,15 +1173,322 @@
     renameSection.appendChild(renameButton);
 
     // -- Default start scene --
-    var startSection = settingsSection('Varsayılan açılış sahnesi');
+    var startSection = settingsSection('Varsayılan açılış sahnesi', '🏠');
     var startSceneSelect = document.createElement('select');
     var startButton = document.createElement('button');
     startButton.textContent = 'Varsayılan Yap';
     startSection.appendChild(startSceneSelect);
     startSection.appendChild(startButton);
 
+    // -- Seasonal decoration effect --
+    var SEASONAL_OPTIONS = [
+      { key: 'none', label: 'Kapalı' },
+      { key: 'snow', label: 'Kar' },
+      { key: 'confetti', label: 'Konfeti' },
+      { key: 'hearts', label: 'Kalpler' },
+      { key: 'leaves', label: 'Yapraklar' },
+      { key: 'sparkles', label: 'Parıltılar' }
+    ];
+    var seasonalSection = settingsSection('Sezonluk dekorasyon efekti', '🎉');
+    var seasonalSelect = document.createElement('select');
+    SEASONAL_OPTIONS.forEach(function(opt) {
+      var el = document.createElement('option');
+      el.value = opt.key;
+      el.textContent = opt.label;
+      seasonalSelect.appendChild(el);
+    });
+    var seasonalButton = document.createElement('button');
+    seasonalButton.textContent = 'Kaydet';
+    var seasonalHint = document.createElement('div');
+    seasonalHint.className = 'posFinderPasswordHint';
+    seasonalHint.textContent = 'Ekranın üzerinde hafif bir dekor efekti (kar, konfeti, kalp, yaprak, parıltı) uçuşur. Kaydettikten sonra siteye yansıması için her zamanki gibi "Kopyala" ile gönder.';
+    seasonalSection.appendChild(seasonalSelect);
+    seasonalSection.appendChild(seasonalButton);
+    seasonalSection.appendChild(seasonalHint);
+
+    seasonalButton.addEventListener('click', function() {
+      var key = seasonalSelect.value;
+      var label = SEASONAL_OPTIONS.filter(function(o) { return o.key === key; })[0].label;
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'seasonalEffect'; });
+      settingsChanges.push({ type: 'seasonalEffect', key: key, label: label });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = 'Sezonluk efekt kaydedildi: ' + label;
+      pushHistory('sezonluk efekt ayarı', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'Sezonluk efekt kaydedildi: ' + label;
+      });
+    });
+
+    // -- Background music toggle button --
+    var musicSection = settingsSection('Fon müziği', '🎵');
+    var musicCheckboxLabel = document.createElement('label');
+    musicCheckboxLabel.className = 'posFinderCheckboxLabel';
+    var musicCheckbox = document.createElement('input');
+    musicCheckbox.type = 'checkbox';
+    var musicCheckboxText = document.createElement('span');
+    musicCheckboxText.textContent = 'Açık olursa: ziyaretçiler için 🎵 fon müziği aç/kapa düğmesi görünür. Sahneler arası geçince müzik kesilmeden devam eder.';
+    musicCheckboxLabel.appendChild(musicCheckbox);
+    musicCheckboxLabel.appendChild(musicCheckboxText);
+    var musicButton = document.createElement('button');
+    musicButton.textContent = 'Kaydet';
+    var musicHint = document.createElement('div');
+    musicHint.className = 'posFinderPasswordHint';
+    musicHint.textContent = 'Bunun çalışması için bir müzik dosyası gerekiyor. Bana bir mp3 gönder, "docs/audio/background-music.mp3" olarak ekleyeyim.';
+    musicSection.appendChild(musicCheckboxLabel);
+    musicSection.appendChild(musicButton);
+    musicSection.appendChild(musicHint);
+
+    musicButton.addEventListener('click', function() {
+      var enabled = musicCheckbox.checked;
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'backgroundMusic'; });
+      settingsChanges.push({ type: 'backgroundMusic', enabled: enabled });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = enabled ? 'Fon müziği düğmesi açıldı.' : 'Fon müziği düğmesi kapatıldı.';
+      pushHistory('fon müziği ayarı', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = enabled ? 'Fon müziği düğmesi açıldı.' : 'Fon müziği düğmesi kapatıldı.';
+      });
+    });
+
+    // -- Featured product: auto-opens its bubble when its scene is entered --
+    var featuredSection = settingsSection('Öne çıkan ürün', '⭐');
+    var featuredCheckboxLabel = document.createElement('label');
+    featuredCheckboxLabel.className = 'posFinderCheckboxLabel';
+    var featuredCheckbox = document.createElement('input');
+    featuredCheckbox.type = 'checkbox';
+    var featuredCheckboxText = document.createElement('span');
+    featuredCheckboxText.textContent = 'Açık olursa: seçtiğin ürünün bulunduğu sahneye girildiğinde balonu otomatik açılır.';
+    featuredCheckboxLabel.appendChild(featuredCheckbox);
+    featuredCheckboxLabel.appendChild(featuredCheckboxText);
+    var featuredSelect = document.createElement('select');
+    var featuredButton = document.createElement('button');
+    featuredButton.textContent = 'Kaydet';
+    featuredSection.appendChild(featuredCheckboxLabel);
+    featuredSection.appendChild(featuredSelect);
+    featuredSection.appendChild(featuredButton);
+
+    featuredButton.addEventListener('click', function() {
+      var enabled = featuredCheckbox.checked;
+      var title = featuredSelect.value;
+      if (enabled && !title) { settingsStatus.textContent = 'Lütfen bir ürün seç.'; return; }
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'featuredProduct'; });
+      settingsChanges.push({ type: 'featuredProduct', enabled: enabled, title: title });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = enabled ? ('Öne çıkan ürün kaydedildi: "' + title + '"') : 'Öne çıkan ürün kapatıldı.';
+      pushHistory('öne çıkan ürün ayarı', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = enabled ? ('Öne çıkan ürün kaydedildi: "' + title + '"') : 'Öne çıkan ürün kapatıldı.';
+      });
+    });
+
+    // -- Scene transition effect: pick a preset, test it live on a real
+    // scene switch without saving, only commit with "Kaydet". --
+    var TRANSITION_PRESETS = [
+      { key: 'classic', label: 'Klasik (mevcut)', duration: 1000 },
+      { key: 'fast', label: 'Hızlı', duration: 400 },
+      { key: 'slow', label: 'Yavaş / Sinematik', duration: 2000 },
+      { key: 'instant', label: 'Anında (efektsiz)', duration: 0 }
+    ];
+    var selectedTransitionPreset = TRANSITION_PRESETS[0];
+
+    var transitionSection = settingsSection('Sahne geçiş efekti', '🎞️');
+    var transitionButtonsRow = document.createElement('div');
+    transitionButtonsRow.className = 'posFinderTransitionRow';
+    var transitionButtonsByKey = {};
+    TRANSITION_PRESETS.forEach(function(preset) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'posFinderTransitionButton';
+      btn.textContent = preset.label;
+      btn.addEventListener('click', function() {
+        selectedTransitionPreset = preset;
+        Object.keys(transitionButtonsByKey).forEach(function(k) {
+          transitionButtonsByKey[k].classList.toggle('active', k === preset.key);
+        });
+      });
+      transitionButtonsRow.appendChild(btn);
+      transitionButtonsByKey[preset.key] = btn;
+    });
+    var transitionActionRow = document.createElement('div');
+    transitionActionRow.className = 'posFinderTransitionRow';
+    var transitionTestButton = document.createElement('button');
+    transitionTestButton.type = 'button';
+    transitionTestButton.textContent = 'Test Et (sıradaki sahneye geç)';
+    var transitionSaveButton = document.createElement('button');
+    transitionSaveButton.type = 'button';
+    transitionSaveButton.textContent = 'Bu Efekti Kaydet';
+    transitionActionRow.appendChild(transitionTestButton);
+    transitionActionRow.appendChild(transitionSaveButton);
+    var transitionHint = document.createElement('div');
+    transitionHint.className = 'posFinderPasswordHint';
+    transitionHint.textContent = 'Bir efekt seç, "Test Et" ile hemen dene (kaydetmeden). Beğenirsen "Kaydet"e bas; beğenmezsen "Klasik"i seçip eski haline dönebilirsin.';
+    transitionSection.appendChild(transitionButtonsRow);
+    transitionSection.appendChild(transitionActionRow);
+    transitionSection.appendChild(transitionHint);
+
+    transitionTestButton.addEventListener('click', function() {
+      if (!currentSceneWrapper) return;
+      var idx = data.scenes.findIndex(function(s) { return s.id === currentSceneWrapper.data.id; });
+      if (idx === -1) return;
+      var nextSceneData = data.scenes[(idx + 1) % data.scenes.length];
+      var nextSceneWrapper = findSceneById(nextSceneData.id);
+      if (!nextSceneWrapper) return;
+      var savedDuration = currentTransitionDuration;
+      currentTransitionDuration = selectedTransitionPreset.duration;
+      switchScene(nextSceneWrapper);
+      currentTransitionDuration = savedDuration;
+    });
+
+    transitionSaveButton.addEventListener('click', function() {
+      var beforeSnapshot = settingsChanges.slice();
+      var beforeDuration = currentTransitionDuration;
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'sceneTransition'; });
+      settingsChanges.push({ type: 'sceneTransition', duration: selectedTransitionPreset.duration, label: selectedTransitionPreset.label });
+      var afterSnapshot = settingsChanges.slice();
+      currentTransitionDuration = selectedTransitionPreset.duration;
+      saveSettingsChanges();
+      settingsStatus.textContent = 'Geçiş efekti kaydedildi: ' + selectedTransitionPreset.label;
+      pushHistory('sahne geçiş efekti kaydetme', function() {
+        settingsChanges = beforeSnapshot;
+        currentTransitionDuration = beforeDuration;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        currentTransitionDuration = selectedTransitionPreset.duration;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'Geçiş efekti kaydedildi: ' + selectedTransitionPreset.label;
+      });
+    });
+
+    // -- Campaign/announcement banner --
+    var campaignSection = settingsSection('Kampanya/duyuru şeridi', '📢');
+    var campaignInput = document.createElement('input');
+    campaignInput.type = 'text';
+    campaignInput.placeholder = 'Örn: Bu hafta sonu tüm oturma gruplarında %10 indirim!';
+    campaignInput.maxLength = 140;
+    var campaignButton = document.createElement('button');
+    campaignButton.textContent = 'Duyuruyu Yayınla';
+    var campaignClearButton = document.createElement('button');
+    campaignClearButton.textContent = 'Duyuruyu Kaldır';
+    var campaignHint = document.createElement('div');
+    campaignHint.className = 'posFinderPasswordHint';
+    campaignHint.textContent = 'Yazarken üstte canlı önizlemesini görürsün. "Duyuruyu Yayınla" bilgiyi kaydeder — siteye kalıcı olarak yansıması için her zamanki gibi "Kopyala" ile gönderip uygulamamı bekle.';
+    campaignSection.appendChild(campaignInput);
+    campaignSection.appendChild(campaignButton);
+    campaignSection.appendChild(campaignClearButton);
+    campaignSection.appendChild(campaignHint);
+
+    // The "true" campaign text right now: a pending (unsaved-to-data.js but
+    // already recorded) settingsChanges entry wins over the static one baked
+    // into data.js, so the banner reflects what's really about to be applied.
+    function getEffectiveCampaignText() {
+      var pending = settingsChanges.filter(function(c) { return c.type === 'campaignText'; }).pop();
+      if (pending) return pending.text;
+      return (data.settings && data.settings.campaignText) || '';
+    }
+
+    campaignInput.addEventListener('input', function() {
+      previewCampaignBanner(campaignInput.value.trim());
+    });
+
+    campaignButton.addEventListener('click', function() {
+      var text = campaignInput.value.trim();
+      if (!text) { settingsStatus.textContent = 'Duyuru metni boş olamaz.'; return; }
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'campaignText'; });
+      settingsChanges.push({ type: 'campaignText', text: text });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = 'Duyuru kaydedildi.';
+      showCampaignBanner(text);
+      pushHistory('kampanya duyurusu yayınlama', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+        showCampaignBanner(getEffectiveCampaignText());
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'Duyuru kaydedildi.';
+        showCampaignBanner(text);
+      });
+    });
+
+    campaignClearButton.addEventListener('click', function() {
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'campaignText'; });
+      settingsChanges.push({ type: 'campaignText', text: '' });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      campaignInput.value = '';
+      previewCampaignBanner('');
+      settingsStatus.textContent = 'Duyuru kaldırıldı.';
+      pushHistory('kampanya duyurusu kaldırma', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+        showCampaignBanner(getEffectiveCampaignText());
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'Duyuru kaldırıldı.';
+        showCampaignBanner('');
+      });
+    });
+
+    // -- "Tükendi" restock-notification toggle (off by default: badge alone
+    // doesn't mean the warehouse is actually empty, so this must be an
+    // explicit, separate opt-in). --
+    var tukendiSection = settingsSection('"Tükendi" rozetinde otomatik bildirim', '📴');
+    var tukendiCheckboxLabel = document.createElement('label');
+    tukendiCheckboxLabel.className = 'posFinderCheckboxLabel';
+    var tukendiCheckbox = document.createElement('input');
+    tukendiCheckbox.type = 'checkbox';
+    var tukendiCheckboxText = document.createElement('span');
+    tukendiCheckboxText.textContent = 'Açık olursa: "Tükendi" etiketli ürünlerde WhatsApp butonu otomatik olarak "stoğa gelince haber ver" mesajına döner.';
+    tukendiCheckboxLabel.appendChild(tukendiCheckbox);
+    tukendiCheckboxLabel.appendChild(tukendiCheckboxText);
+    var tukendiButton = document.createElement('button');
+    tukendiButton.textContent = 'Kaydet';
+    tukendiSection.appendChild(tukendiCheckboxLabel);
+    tukendiSection.appendChild(tukendiButton);
+
+    tukendiButton.addEventListener('click', function() {
+      var enabled = tukendiCheckbox.checked;
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'tukendiNotify'; });
+      settingsChanges.push({ type: 'tukendiNotify', enabled: enabled });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = enabled ? 'Tükendi bildirimi açıldı.' : 'Tükendi bildirimi kapatıldı.';
+      pushHistory('tükendi bildirimi ayarı', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+        settingsStatus.textContent = enabled ? 'Tükendi bildirimi açıldı.' : 'Tükendi bildirimi kapatıldı.';
+      });
+    });
+
     // -- Kiosk/showroom mode interval --
-    var kioskSection = settingsSection('Vitrin modu geçiş süresi');
+    var kioskSection = settingsSection('Vitrin modu geçiş süresi', '🕐');
     var kioskIntervalInput = document.createElement('input');
     kioskIntervalInput.type = 'number';
     kioskIntervalInput.min = '3';
@@ -801,7 +1523,7 @@
     });
 
     // -- Opening view angle for the currently viewed scene --
-    var openingViewSection = settingsSection('Sahnenin açılış açısı');
+    var openingViewSection = settingsSection('Sahnenin açılış açısı', '👁️');
     var openingViewButton = document.createElement('button');
     openingViewButton.textContent = 'Şu Anki Görünümü Bu Sahnenin Açılışı Yap';
     var openingViewHint = document.createElement('div');
@@ -837,7 +1559,7 @@
     try { sceneNotes = JSON.parse(window.localStorage.getItem(NOTES_KEY) || '{}'); } catch (e) { sceneNotes = {}; }
     function saveSceneNotes() { window.localStorage.setItem(NOTES_KEY, JSON.stringify(sceneNotes)); }
 
-    var notesSection = settingsSection('Sahne notu (sadece sen görürsün, siteye yansımaz)');
+    var notesSection = settingsSection('Sahne notu (sadece sen görürsün, siteye yansımaz)', '📝');
     var notesSceneSelect = document.createElement('select');
     var notesTextarea = document.createElement('textarea');
     notesTextarea.placeholder = 'Bu sahneyle ilgili kendine not bırak (ör. "yeniden çekilecek", "açı düzeltilmeli")...';
@@ -874,7 +1596,7 @@
     });
 
     // -- Contact info --
-    var contactSection = settingsSection('İletişim bilgileri');
+    var contactSection = settingsSection('İletişim bilgileri', '📞');
     var phone1Input = document.createElement('input');
     phone1Input.type = 'text';
     phone1Input.placeholder = 'Telefon 1 (ör. 0549 332 07 07)';
@@ -896,7 +1618,7 @@
     contactSection.appendChild(contactButton);
 
     // -- Backup --
-    var backupSection = settingsSection('Yedekleme');
+    var backupSection = settingsSection('Yedekleme', '💾');
     var backupButton = document.createElement('button');
     backupButton.id = 'posFinderBackup';
     backupButton.textContent = 'Tüm Veriyi Yedekle (JSON indir)';
@@ -917,7 +1639,7 @@
     });
 
     // -- Change admin password --
-    var passwordSection = settingsSection('Yönetici şifresini değiştir');
+    var passwordSection = settingsSection('Yönetici şifresini değiştir', '🔑');
     var newUserInput = document.createElement('input');
     newUserInput.type = 'text';
     newUserInput.placeholder = 'Yeni kullanıcı adı';
@@ -961,7 +1683,7 @@
     });
 
     // -- Logout --
-    var logoutSection = settingsSection('Oturum');
+    var logoutSection = settingsSection('Oturum / Çıkış', '🚪');
     var logoutButton = document.createElement('button');
     logoutButton.id = 'posFinderLogout';
     logoutButton.textContent = 'Çıkış Yap';
@@ -975,15 +1697,29 @@
     var settingsStatus = document.createElement('div');
     settingsStatus.id = 'posFinderSettingsStatus';
 
-    settingsPanel.appendChild(renameSection);
-    settingsPanel.appendChild(startSection);
-    settingsPanel.appendChild(kioskSection);
-    settingsPanel.appendChild(openingViewSection);
-    settingsPanel.appendChild(notesSection);
-    settingsPanel.appendChild(contactSection);
-    settingsPanel.appendChild(backupSection);
-    settingsPanel.appendChild(passwordSection);
-    settingsPanel.appendChild(logoutSection);
+    settingsPanel.appendChild(settingsGroupHeader('Sahne Ayarları'));
+    settingsPanel.appendChild(renameSection._accordionWrapper);
+    settingsPanel.appendChild(startSection._accordionWrapper);
+    settingsPanel.appendChild(openingViewSection._accordionWrapper);
+    settingsPanel.appendChild(transitionSection._accordionWrapper);
+    settingsPanel.appendChild(notesSection._accordionWrapper);
+
+    settingsPanel.appendChild(settingsGroupHeader('Ziyaretçi Deneyimi'));
+    settingsPanel.appendChild(featuredSection._accordionWrapper);
+    settingsPanel.appendChild(seasonalSection._accordionWrapper);
+    settingsPanel.appendChild(musicSection._accordionWrapper);
+    settingsPanel.appendChild(kioskSection._accordionWrapper);
+
+    settingsPanel.appendChild(settingsGroupHeader('İletişim & Pazarlama'));
+    settingsPanel.appendChild(campaignSection._accordionWrapper);
+    settingsPanel.appendChild(tukendiSection._accordionWrapper);
+    settingsPanel.appendChild(contactSection._accordionWrapper);
+
+    settingsPanel.appendChild(settingsGroupHeader('Hesap & Yedekleme'));
+    settingsPanel.appendChild(backupSection._accordionWrapper);
+    settingsPanel.appendChild(passwordSection._accordionWrapper);
+    settingsPanel.appendChild(logoutSection._accordionWrapper);
+
     settingsPanel.appendChild(settingsStatus);
 
     // New scene creation panel: name + photo + which existing scenes to connect to.
@@ -991,7 +1727,7 @@
     newScenePanel.id = 'posFinderNewScenePanel';
     newScenePanel.style.display = 'none';
 
-    var newSceneInfoSection = settingsSection('Yeni sahne bilgisi');
+    var newSceneInfoSection = settingsSection('Yeni sahne bilgisi', '🖼️', true);
     var newSceneNameInput = document.createElement('input');
     newSceneNameInput.type = 'text';
     newSceneNameInput.placeholder = 'Yeni sahnenin adı (ör. Depo Girişi)';
@@ -1001,7 +1737,7 @@
     newSceneInfoSection.appendChild(newSceneNameInput);
     newSceneInfoSection.appendChild(newScenePhotoFile);
 
-    var newSceneConnSection = settingsSection('Hangi sahnelere bağlansın? (çift yönlü)');
+    var newSceneConnSection = settingsSection('Hangi sahnelere bağlansın? (çift yönlü)', '🔗', true);
     var newSceneConnList = document.createElement('div');
     newSceneConnList.id = 'posFinderNewSceneConnList';
     var newSceneAddConnButton = document.createElement('button');
@@ -1054,8 +1790,8 @@
     newSceneStatus.id = 'posFinderNewSceneStatus';
     newSceneStatus.textContent = 'Sahne adını girin, fotoğrafı seçin ve bağlanacağı sahneleri belirtin.';
 
-    newScenePanel.appendChild(newSceneInfoSection);
-    newScenePanel.appendChild(newSceneConnSection);
+    newScenePanel.appendChild(newSceneInfoSection._accordionWrapper);
+    newScenePanel.appendChild(newSceneConnSection._accordionWrapper);
     newScenePanel.appendChild(newSceneCreateButton);
     newScenePanel.appendChild(newSceneProgressOuter);
     newScenePanel.appendChild(newSceneDownloadLink);
@@ -1585,6 +2321,7 @@
       if (mode === 'list') renderListResults(listSearchInput.value);
       if (mode === 'map') renderMap();
       if (mode === 'order') renderOrderList();
+      if (mode !== 'settings') showCampaignBanner(getEffectiveCampaignText());
     }
     productModeButton.addEventListener('click', function() { setMode('product'); });
     linkModeButton.addEventListener('click', function() { setMode('link'); });
@@ -1650,6 +2387,42 @@
       if (!kioskIntervalInput.dataset.filled) {
         kioskIntervalInput.value = (data.settings && data.settings.kioskIntervalSeconds) || 8;
         kioskIntervalInput.dataset.filled = '1';
+      }
+      if (!tukendiCheckbox.dataset.filled) {
+        tukendiCheckbox.checked = !!(data.settings && data.settings.tukendiNotifyEnabled);
+        tukendiCheckbox.dataset.filled = '1';
+      }
+      if (!campaignInput.dataset.filled) {
+        campaignInput.value = (data.settings && data.settings.campaignText) || '';
+        campaignInput.dataset.filled = '1';
+      }
+      if (!seasonalSelect.dataset.filled) {
+        seasonalSelect.value = (data.settings && data.settings.seasonalEffect) || 'none';
+        seasonalSelect.dataset.filled = '1';
+      }
+      if (!musicCheckbox.dataset.filled) {
+        musicCheckbox.checked = !!(data.settings && data.settings.backgroundMusicEnabled);
+        musicCheckbox.dataset.filled = '1';
+      }
+      if (!featuredSelect.dataset.filled) {
+        buildProductIndex().forEach(function(item) {
+          var opt = document.createElement('option');
+          opt.value = item.title;
+          opt.textContent = item.title + ' (' + item.sceneName + ')';
+          featuredSelect.appendChild(opt);
+        });
+        featuredCheckbox.checked = !!(data.settings && data.settings.featuredProductEnabled);
+        if (data.settings && data.settings.featuredProductTitle) featuredSelect.value = data.settings.featuredProductTitle;
+        featuredSelect.dataset.filled = '1';
+      }
+      if (!transitionButtonsRow.dataset.filled) {
+        var currentDuration = (data.settings && data.settings.sceneTransitionDuration != null) ? data.settings.sceneTransitionDuration : 1000;
+        var matched = TRANSITION_PRESETS.filter(function(p) { return p.duration === currentDuration; })[0] || TRANSITION_PRESETS[0];
+        selectedTransitionPreset = matched;
+        Object.keys(transitionButtonsByKey).forEach(function(k) {
+          transitionButtonsByKey[k].classList.toggle('active', k === matched.key);
+        });
+        transitionButtonsRow.dataset.filled = '1';
       }
     }
 
@@ -2189,6 +2962,18 @@
             lines.push('Açılış görünümü: "' + c.sceneName + '" (' + c.sceneId + ') -> yaw:' + c.yaw.toFixed(4) + ' pitch:' + c.pitch.toFixed(4) + ' fov:' + c.fov.toFixed(4));
           } else if (c.type === 'kioskInterval') {
             lines.push('Vitrin modu geçiş süresi: ' + c.seconds + ' saniye');
+          } else if (c.type === 'tukendiNotify') {
+            lines.push('Tükendi bildirimi: ' + (c.enabled ? 'açık' : 'kapalı'));
+          } else if (c.type === 'campaignText') {
+            lines.push(c.text ? ('Kampanya duyurusu: "' + c.text + '"') : 'Kampanya duyurusu kaldırıldı');
+          } else if (c.type === 'sceneTransition') {
+            lines.push('Sahne geçiş efekti: ' + c.label + ' (' + c.duration + 'ms)');
+          } else if (c.type === 'featuredProduct') {
+            lines.push(c.enabled ? ('Öne çıkan ürün: "' + c.title + '"') : 'Öne çıkan ürün kapalı');
+          } else if (c.type === 'backgroundMusic') {
+            lines.push('Fon müziği düğmesi: ' + (c.enabled ? 'açık' : 'kapalı'));
+          } else if (c.type === 'seasonalEffect') {
+            lines.push('Sezonluk dekorasyon efekti: ' + c.label);
           }
         });
       }
@@ -2410,7 +3195,7 @@
   function switchScene(scene) {
     stopAutorotate();
     scene.view.setParameters(scene.data.initialViewParameters);
-    scene.scene.switchTo();
+    scene.scene.switchTo({ transitionDuration: currentTransitionDuration });
     startAutorotate();
     updateSceneName(scene);
     updateSceneList(scene);
@@ -2418,6 +3203,39 @@
     currentBaseFov = scene.data.initialViewParameters.fov;
     currentSceneNumber = scenes.indexOf(scene) + 1;
     currentSceneWrapper = scene;
+    maybeOpenFeaturedProduct(scene);
+    setTimeout(function() { prefetchNeighborTiles(scene); }, 800);
+  }
+
+  // Warm the browser's HTTP cache with the lowest tile level (single
+  // 512x512 tile per face) of every directly-connected neighboring scene,
+  // so clicking an arrow shows an immediate low-res preview instead of a
+  // blank pano while full-resolution tiles stream in. Only ever prefetches
+  // each scene once per page load, and only after the current scene's own
+  // transition has settled so it doesn't compete for bandwidth.
+  var prefetchedSceneIds = {};
+  function prefetchNeighborTiles(scene) {
+    (scene.data.linkHotspots || []).forEach(function(h) {
+      var targetId = h.target;
+      if (prefetchedSceneIds[targetId]) return;
+      prefetchedSceneIds[targetId] = true;
+      ['f', 'b', 'l', 'r', 'u', 'd'].forEach(function(face) {
+        var img = new Image();
+        img.src = 'tiles/' + targetId + '/1/' + face + '/0/0.jpg';
+      });
+    });
+  }
+
+  // If a featured product is set and enabled, and it lives in this scene,
+  // auto-open its info bubble shortly after arriving.
+  function maybeOpenFeaturedProduct(scene) {
+    if (!data.settings || !data.settings.featuredProductEnabled || !data.settings.featuredProductTitle) return;
+    var match = (scene.editableHotspots || []).filter(function(e) {
+      return e.kind === 'info' && e.rawData && e.rawData.title === data.settings.featuredProductTitle;
+    })[0];
+    if (!match) return;
+    var header = match.hotspot.domElement().querySelector('.info-hotspot-header');
+    if (header) setTimeout(function() { header.click(); }, 600);
   }
 
   function updateSceneName(scene) {
@@ -2566,19 +3384,75 @@
     text.classList.add('info-hotspot-text');
     text.innerHTML = hotspot.text;
 
-    // Create a WhatsApp "ask about this product" link, if requested.
+    // Small actions row: favorite toggle + listen-aloud, sitting above the
+    // WhatsApp link so neither the bubble layout nor the tap-to-open header
+    // interaction needs to change.
+    var actionsRow = document.createElement('div');
+    actionsRow.classList.add('info-hotspot-actions');
+
+    var favBtn = document.createElement('button');
+    favBtn.type = 'button';
+    favBtn.classList.add('info-hotspot-favorite');
+    function refreshFavButton() {
+      var isFav = isProductFavorited(hotspot.title);
+      favBtn.textContent = isFav ? '♥' : '♡';
+      favBtn.classList.toggle('active', isFav);
+      favBtn.title = isFav ? uiText('unfavoriteLabel', 'Favorilerden çıkar') : uiText('favoriteLabel', 'Favorilere ekle');
+    }
+    favBtn.addEventListener('click', function(event) {
+      event.stopPropagation();
+      toggleProductFavorite(hotspot.title, sceneName);
+      refreshFavButton();
+    });
+    refreshFavButton();
+    actionsRow.appendChild(favBtn);
+
+    if (window.speechSynthesis) {
+      var listenBtn = document.createElement('button');
+      listenBtn.type = 'button';
+      listenBtn.classList.add('info-hotspot-listen');
+      listenBtn.textContent = '🔊';
+      listenBtn.title = uiText('listenLabel', 'Sesli dinle');
+      listenBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          listenBtn.classList.remove('speaking');
+          return;
+        }
+        var plainText = stripHtmlForSpeech(hotspot.text);
+        var utter = new SpeechSynthesisUtterance(stripHtmlForSpeech(hotspot.title) + '. ' + plainText);
+        utter.lang = currentLang === 'en' ? 'en-US' : (currentLang === 'ru' ? 'ru-RU' : 'tr-TR');
+        utter.onend = function() { listenBtn.classList.remove('speaking'); };
+        utter.onerror = function() { listenBtn.classList.remove('speaking'); };
+        listenBtn.classList.add('speaking');
+        window.speechSynthesis.speak(utter);
+      });
+      actionsRow.appendChild(listenBtn);
+    }
+    text.appendChild(actionsRow);
+
+    // Create a WhatsApp "ask about this product" link, if requested. If the
+    // product is badged "Tükendi" AND the admin has explicitly turned on
+    // restock notifications (off by default - the badge alone doesn't mean
+    // the warehouse is actually empty), the message/button switch to asking
+    // to be notified instead of a generic info request.
     if (hotspot.whatsapp) {
-      var waTemplate = uiText('whatsappProductMessage', null);
+      var isSoldOutNotify = hotspot.badge === 'Tükendi' && !!(data.settings && data.settings.tukendiNotifyEnabled);
+      var waTemplate = uiText(isSoldOutNotify ? 'whatsappSoldOutMessage' : 'whatsappProductMessage', null);
       var waMessage = waTemplate
         ? waTemplate.replace('{title}', hotspot.title).replace('{scene}', sceneName)
-        : 'Merhaba, "' + hotspot.title + '" ürünü hakkında bilgi almak ' +
-          'istiyorum. (Sanal tur: ' + sceneName + ')';
+        : (isSoldOutNotify
+          ? 'Merhaba, "' + hotspot.title + '" ürünü tükenmiş görünüyor. Stoğa gelince haber verir misiniz? (Sanal tur: ' + sceneName + ')'
+          : 'Merhaba, "' + hotspot.title + '" ürünü hakkında bilgi almak istiyorum. (Sanal tur: ' + sceneName + ')');
       var waLink = document.createElement('a');
       waLink.href = 'https://wa.me/905493320707?text=' + encodeURIComponent(waMessage);
       waLink.target = '_blank';
       waLink.rel = 'noopener';
       waLink.classList.add('info-hotspot-whatsapp');
-      waLink.textContent = uiText('whatsappProductButton', 'Bu ürün hakkında daha fazla bilgi al');
+      waLink.textContent = isSoldOutNotify
+        ? uiText('whatsappSoldOutButton', 'Stoğa gelince haber ver')
+        : uiText('whatsappProductButton', 'Bu ürün hakkında daha fazla bilgi al');
       text.appendChild(waLink);
     }
 
