@@ -1144,6 +1144,60 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   cursor: pointer;
 }
 
+#capturePreviewOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 61000;
+  background-color: #000;
+}
+
+#capturePreviewPano {
+  position: absolute;
+  inset: 0;
+}
+
+#capturePreviewHint {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 88%;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background-color: rgba(10,14,18,0.75);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+#capturePreviewButtons {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+
+#capturePreviewButtons button {
+  padding: 12px 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#capturePreviewButtons button:first-child {
+  background-color: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+#capturePreviewButtons button:last-child {
+  background-color: var(--brand-accent);
+  color: #fff;
+}
+
 #posFinderNewSceneCaptureButton {
   display: block;
   width: 100%;

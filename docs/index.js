@@ -4334,6 +4334,55 @@
     return out;
   }
 
+  // Lets the admin actually look around the just-stitched panorama (a real
+  // drag-to-look 360 view via a throwaway Marzipano viewer, not just a flat
+  // distorted equirectangular image) before it's handed off to the tile
+  // pipeline - seams/misalignment are far easier to judge this way, and a
+  // bad take can be retried on the spot instead of discovered later.
+  function showCapturePreview(canvas, onAccept, onRetake) {
+    var overlay = document.createElement('div');
+    overlay.id = 'capturePreviewOverlay';
+    var previewPano = document.createElement('div');
+    previewPano.id = 'capturePreviewPano';
+    var hint = document.createElement('div');
+    hint.id = 'capturePreviewHint';
+    hint.textContent = 'Sürükleyip etrafa bakın. Dikiş/bozukluk görürseniz tekrar çekin.';
+    var buttons = document.createElement('div');
+    buttons.id = 'capturePreviewButtons';
+    var retakeBtn = document.createElement('button');
+    retakeBtn.type = 'button';
+    retakeBtn.textContent = '↻ Tekrar Çek';
+    var acceptBtn = document.createElement('button');
+    acceptBtn.type = 'button';
+    acceptBtn.textContent = '✓ Bunu Kullan';
+    buttons.appendChild(retakeBtn);
+    buttons.appendChild(acceptBtn);
+    overlay.appendChild(previewPano);
+    overlay.appendChild(hint);
+    overlay.appendChild(buttons);
+    document.body.appendChild(overlay);
+
+    var previewViewer = null;
+    try {
+      previewViewer = new Marzipano.Viewer(previewPano, {});
+      var source = Marzipano.ImageUrlSource.fromString(canvas.toDataURL('image/jpeg', 0.85));
+      var geometry = new Marzipano.EquirectGeometry([{ width: canvas.width }]);
+      var limiter = Marzipano.RectilinearView.limit.traditional(1024, 120 * Math.PI / 180);
+      var view = new Marzipano.RectilinearView({ yaw: 0, pitch: 0, fov: 100 * Math.PI / 180 }, limiter);
+      var scene = previewViewer.createScene({ source: source, geometry: geometry, view: view });
+      scene.switchTo();
+    } catch (e) {
+      hint.textContent = 'Önizleme yüklenemedi: ' + e.message;
+    }
+
+    function cleanup() {
+      if (previewViewer) previewViewer.destroy();
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    acceptBtn.addEventListener('click', function() { cleanup(); onAccept(); });
+    retakeBtn.addEventListener('click', function() { cleanup(); onRetake(); });
+  }
+
   function startGuidedCapture(onComplete) {
     var overlay = document.createElement('div');
     overlay.id = 'captureOverlay';
@@ -4414,6 +4463,18 @@
       }
     }
 
+    function resetTargets() {
+      targets.forEach(function(t) {
+        t.done = false;
+        t.canvas = null;
+        t.capturedYaw = null;
+        t.capturedPitch = null;
+      });
+      progressText.textContent = '0 / ' + targets.length;
+      statusText.textContent = 'Beyaz noktalara bakıp bir an sabit tutun - otomatik çekilecek.';
+      window.addEventListener('deviceorientation', onOrientation);
+    }
+
     function finish() {
       window.removeEventListener('deviceorientation', onOrientation);
       statusText.textContent = 'Birleştiriliyor, lütfen bekleyin...';
@@ -4421,10 +4482,14 @@
       var aspect = video.videoWidth / video.videoHeight;
       setTimeout(function() {
         var outCanvas = stitchCaptureTargets(targets, aspect);
-        outCanvas.toBlob(function(blob) {
-          cleanup();
-          if (onComplete) onComplete(blob);
-        }, 'image/jpeg', 0.9);
+        showCapturePreview(outCanvas, function accept() {
+          outCanvas.toBlob(function(blob) {
+            cleanup();
+            if (onComplete) onComplete(blob);
+          }, 'image/jpeg', 0.9);
+        }, function retake() {
+          resetTargets();
+        });
       }, 30);
     }
 
