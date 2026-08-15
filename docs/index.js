@@ -4581,8 +4581,14 @@
     var baseAlpha = null;
     var alignedSince = null;
     var lastAlpha = null, lastBeta = null;
-    var ALIGN_TOL = 6 * Math.PI / 180;
-    var DWELL_MS = 450;
+    // How close the phone has to point to a target before it auto-fires is
+    // *not* what determines final stitch accuracy - the actually-measured
+    // angle at the moment of capture is what gets used (and OpenCV
+    // refinement corrects it further from the images themselves - see
+    // finish()). So this can be generous without hurting quality; it only
+    // affects how fiddly the capture feels to use.
+    var ALIGN_TOL = 12 * Math.PI / 180;
+    var DWELL_MS = 400;
     // Kick this heavy (~10MB) load off in the background the moment capture
     // starts, so it's likely already warm by the time the last shot is
     // taken a minute or two later instead of stalling the finish step.
@@ -4641,7 +4647,7 @@
         t.capturedPitch = null;
       });
       progressText.textContent = '0 / ' + targets.length;
-      statusText.textContent = 'Beyaz noktalara bakıp bir an sabit tutun - otomatik çekilecek.';
+      statusText.textContent = 'Oku takip edip hedefi ekranın ortasına getirin, bir an sabit tutun - otomatik çekilecek.';
       window.addEventListener('deviceorientation', onOrientation);
     }
 
@@ -4703,6 +4709,27 @@
       }
     }
 
+    // Points a solid triangular arrow from the screen center toward angle
+    // `angle` (screen-space radians, 0 = right), stopping short of the
+    // edge - used when the next target isn't in view yet.
+    function drawDirectionArrow(ctx, w, h, angle, color) {
+      var cx = w / 2, cy = h / 2;
+      var dist = Math.min(w, h) * 0.34;
+      var tipX = cx + Math.cos(angle) * dist;
+      var tipY = cy + Math.sin(angle) * dist;
+      var back = dist - 46;
+      var backX = cx + Math.cos(angle) * back;
+      var backY = cy + Math.sin(angle) * back;
+      var perpX = -Math.sin(angle) * 22, perpY = Math.cos(angle) * 22;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(backX + perpX, backY + perpY);
+      ctx.lineTo(backX - perpX, backY - perpY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     function drawGuide() {
       var ctx = guideCanvas.getContext('2d');
       var w = guideCanvas.width, h = guideCanvas.height;
@@ -4714,29 +4741,39 @@
       ctx.moveTo(w / 2, h / 2 - 14); ctx.lineTo(w / 2, h / 2 + 14);
       ctx.stroke();
 
+      var target = nearestIncompleteTarget();
+      if (!target) return;
+
       var halfFovH = CAPTURE_FOV_H_DEFAULT / 2;
       var halfFovV = halfFovH * (h / w);
+      var dYaw = wrapAngle(target.yaw - currentYaw);
+      var dPitch = target.pitch - currentPitch;
+      var closeness = Math.max(0, 1 - Math.max(Math.abs(dYaw), Math.abs(dPitch)) / ALIGN_TOL);
+      // red while far, green once well inside the auto-capture tolerance.
+      var color = 'rgb(' + Math.round(230 - 170 * closeness) + ',' + Math.round(70 + 150 * closeness) + ',80)';
 
-      targets.forEach(function(t) {
-        var dYaw = wrapAngle(t.yaw - currentYaw);
-        var dPitch = t.pitch - currentPitch;
-        if (Math.abs(dYaw) < halfFovH * 1.4 && Math.abs(dPitch) < halfFovV * 1.4) {
-          var sx = w / 2 + (dYaw / halfFovH) * (w / 2);
-          var sy = h / 2 - (dPitch / halfFovV) * (h / 2);
-          ctx.fillStyle = t.done ? 'rgba(60,200,100,0.9)' : 'rgba(255,255,255,0.9)';
-          ctx.beginPath();
-          ctx.arc(sx, sy, t.done ? 7 : 12, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (!t.done) {
-          var angle = Math.atan2(-dPitch, dYaw);
-          var ex = Math.max(24, Math.min(w - 24, w / 2 + Math.cos(angle) * (w * 0.42)));
-          var ey = Math.max(24, Math.min(h - 24, h / 2 + Math.sin(angle) * (h * 0.42)));
-          ctx.fillStyle = 'rgba(255,255,255,0.5)';
-          ctx.beginPath();
-          ctx.arc(ex, ey, 6, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
+      if (Math.abs(dYaw) < halfFovH * 1.15 && Math.abs(dPitch) < halfFovV * 1.15) {
+        // Target is on screen - show a single clear ring to move the
+        // center reticle into, filling in as you get closer.
+        var sx = w / 2 + (dYaw / halfFovH) * (w / 2);
+        var sy = h / 2 - (dPitch / halfFovV) * (h / 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 34, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.25 + 0.55 * closeness;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 34, 0, Math.PI * 2 * closeness);
+        ctx.lineTo(sx, sy);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      } else {
+        // Off-screen - point a big arrow the way to turn.
+        var angle = Math.atan2(-dPitch, dYaw);
+        drawDirectionArrow(ctx, w, h, angle, color);
+      }
     }
 
     function onOrientation(event) {
@@ -4747,7 +4784,7 @@
       currentPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, currentPitch));
 
       var now = window.performance.now();
-      var moving = lastAlpha !== null && (Math.abs(event.alpha - lastAlpha) > 1.2 || Math.abs(event.beta - lastBeta) > 1.2);
+      var moving = lastAlpha !== null && (Math.abs(event.alpha - lastAlpha) > 2 || Math.abs(event.beta - lastBeta) > 2);
       lastAlpha = event.alpha;
       lastBeta = event.beta;
 
@@ -4760,7 +4797,7 @@
       video.srcObject = s;
       return video.play();
     }).then(function() {
-      statusText.textContent = 'Beyaz noktalara bakıp bir an sabit tutun - otomatik çekilecek.';
+      statusText.textContent = 'Oku takip edip hedefi ekranın ortasına getirin, bir an sabit tutun - otomatik çekilecek.';
       progressText.textContent = '0 / ' + targets.length;
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         return DeviceOrientationEvent.requestPermission();
