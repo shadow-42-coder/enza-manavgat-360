@@ -467,6 +467,66 @@
   }
   updateFavoritesButton();
 
+  function findProductDataByTitle(title) {
+    for (var i = 0; i < data.scenes.length; i++) {
+      var hotspots = data.scenes[i].infoHotspots || [];
+      for (var j = 0; j < hotspots.length; j++) {
+        if (hotspots[j].title === title) return hotspots[j];
+      }
+    }
+    return null;
+  }
+
+  function showCompareOverlay(titleA, titleB) {
+    var overlay = document.createElement('div');
+    overlay.id = 'compareOverlay';
+    var box = document.createElement('div');
+    box.id = 'compareBox';
+    var boxTitle = document.createElement('div');
+    boxTitle.id = 'compareTitle';
+    boxTitle.textContent = uiText('compareTitle', 'Ürünleri Karşılaştır');
+    var cardsRow = document.createElement('div');
+    cardsRow.id = 'compareCardsRow';
+    [titleA, titleB].forEach(function(title) {
+      var product = findProductDataByTitle(title);
+      var card = document.createElement('div');
+      card.className = 'compareCard';
+      if (product) {
+        var imgMatch = /<img[^>]*src="([^"]+)"/.exec(product.text || '');
+        if (imgMatch) {
+          var img = document.createElement('img');
+          img.src = imgMatch[1];
+          card.appendChild(img);
+        }
+        var cardTitle = document.createElement('div');
+        cardTitle.className = 'compareCardTitle';
+        cardTitle.textContent = stripHtmlForSpeech(title);
+        card.appendChild(cardTitle);
+        var cardDesc = document.createElement('div');
+        cardDesc.className = 'compareCardDesc';
+        cardDesc.textContent = stripHtmlForSpeech(product.text).slice(0, 160);
+        card.appendChild(cardDesc);
+      } else {
+        var missing = document.createElement('div');
+        missing.className = 'compareCardTitle';
+        missing.textContent = stripHtmlForSpeech(title);
+        card.appendChild(missing);
+      }
+      cardsRow.appendChild(card);
+    });
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.id = 'compareClose';
+    closeBtn.textContent = uiText('closeLabel', 'Kapat');
+    closeBtn.addEventListener('click', function() { overlay.remove(); });
+    box.appendChild(boxTitle);
+    box.appendChild(cardsRow);
+    box.appendChild(closeBtn);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', function(event) { if (event.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
   favoritesButton.addEventListener('click', function() {
     var favs = getFavorites();
     var overlay = document.createElement('div');
@@ -478,9 +538,19 @@
     boxTitle.textContent = uiText('favoritesTitle', 'Favori Ürünlerim');
     var list = document.createElement('div');
     list.id = 'favoritesList';
+    var compareCheckboxes = [];
     favs.forEach(function(f) {
       var row = document.createElement('div');
       row.className = 'favoritesRow';
+      var compareCb = document.createElement('input');
+      compareCb.type = 'checkbox';
+      compareCb.className = 'favoritesCompareCheckbox';
+      compareCb.addEventListener('change', function() {
+        var checked = compareCheckboxes.filter(function(cb) { return cb.checked; });
+        if (checked.length > 2) { compareCb.checked = false; return; }
+        compareBtn.disabled = checked.length !== 2;
+      });
+      compareCheckboxes.push(compareCb);
       var label = document.createElement('span');
       label.textContent = f.title;
       var removeBtn = document.createElement('button');
@@ -491,6 +561,7 @@
         row.parentNode.removeChild(row);
         if (!getFavorites().length) overlay.remove();
       });
+      row.appendChild(compareCb);
       row.appendChild(label);
       row.appendChild(removeBtn);
       list.appendChild(row);
@@ -506,6 +577,17 @@
       var msg = uiText('favoritesMessage', 'Merhaba, aşağıdaki ürünler hakkında bilgi almak istiyorum:') + '\n' + lines.join('\n');
       window.open('https://wa.me/905493320707?text=' + encodeURIComponent(msg), '_blank');
     });
+    var compareBtn = document.createElement('button');
+    compareBtn.type = 'button';
+    compareBtn.id = 'favoritesCompareButton';
+    compareBtn.textContent = uiText('favoritesCompareLabel', 'Karşılaştır (2 ürün seç)');
+    compareBtn.disabled = true;
+    compareBtn.addEventListener('click', function() {
+      var checkedRows = compareCheckboxes.filter(function(cb) { return cb.checked; });
+      if (checkedRows.length !== 2) return;
+      var titles = checkedRows.map(function(cb) { return cb.parentNode.querySelector('span').textContent; });
+      showCompareOverlay(titles[0], titles[1]);
+    });
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.id = 'favoritesClose';
@@ -515,6 +597,7 @@
     box.appendChild(boxTitle);
     box.appendChild(list);
     box.appendChild(sendBtn);
+    box.appendChild(compareBtn);
     box.appendChild(closeBtn);
     overlay.appendChild(box);
     overlay.addEventListener('click', function(event) { if (event.target === overlay) overlay.remove(); });
@@ -536,13 +619,28 @@
   campaignBanner.appendChild(campaignBannerClose);
   document.body.appendChild(campaignBanner);
 
+  // Optional end date for a countdown suffix on the banner - a plain client-
+  // side day count, purely for urgency, not tied to any real inventory/offer
+  // system.
+  var campaignEndDate = (data.settings && data.settings.campaignEndDate) || null;
+  function formatCampaignText(text) {
+    if (!campaignEndDate) return text;
+    var end = new Date(campaignEndDate + 'T23:59:59');
+    var daysLeft = Math.ceil((end - new Date()) / 86400000);
+    if (isNaN(daysLeft) || daysLeft < 0) return text;
+    var suffix = daysLeft === 0 ? uiText('campaignLastDay', 'Bugün son gün!') :
+      (daysLeft === 1 ? uiText('campaignOneDayLeft', 'Yarın sona eriyor!') :
+      uiText('campaignDaysLeft', '{n} gün kaldı').replace('{n}', daysLeft));
+    return text + ' · ' + suffix;
+  }
+
   var CAMPAIGN_DISMISS_KEY = 'enzaCampaignDismissed';
   function showCampaignBanner(text) {
     if (!text) { campaignBanner.classList.remove('visible'); return; }
     var dismissed = null;
     try { dismissed = window.sessionStorage.getItem(CAMPAIGN_DISMISS_KEY); } catch (e) {}
     if (dismissed === text) { campaignBanner.classList.remove('visible'); return; }
-    campaignBannerText.textContent = text;
+    campaignBannerText.textContent = formatCampaignText(text);
     campaignBanner.classList.add('visible');
   }
   campaignBannerClose.addEventListener('click', function() {
@@ -555,7 +653,7 @@
   // dismissal state, just shows/hides the banner on this screen right now.
   function previewCampaignBanner(text) {
     if (!text) { campaignBanner.classList.remove('visible'); return; }
-    campaignBannerText.textContent = text;
+    campaignBannerText.textContent = formatCampaignText(text);
     campaignBanner.classList.add('visible');
   }
 
@@ -1676,6 +1774,12 @@
     campaignInput.type = 'text';
     campaignInput.placeholder = 'Örn: Bu hafta sonu tüm oturma gruplarında %10 indirim!';
     campaignInput.maxLength = 140;
+    var campaignEndDateLabel = document.createElement('label');
+    campaignEndDateLabel.className = 'posFinderCampaignDateLabel';
+    campaignEndDateLabel.textContent = 'Bitiş tarihi (isteğe bağlı, geri sayım eklenir):';
+    var campaignEndDateInput = document.createElement('input');
+    campaignEndDateInput.type = 'date';
+    campaignEndDateLabel.appendChild(campaignEndDateInput);
     var campaignButton = document.createElement('button');
     campaignButton.textContent = 'Duyuruyu Yayınla';
     var campaignClearButton = document.createElement('button');
@@ -1684,9 +1788,15 @@
     campaignHint.className = 'posFinderPasswordHint';
     campaignHint.textContent = 'Yazarken üstte canlı önizlemesini görürsün. "Duyuruyu Yayınla" bilgiyi kaydeder — siteye kalıcı olarak yansıması için her zamanki gibi "Kopyala" ile gönderip uygulamamı bekle.';
     campaignSection.appendChild(campaignInput);
+    campaignSection.appendChild(campaignEndDateLabel);
     campaignSection.appendChild(campaignButton);
     campaignSection.appendChild(campaignClearButton);
     campaignSection.appendChild(campaignHint);
+
+    campaignEndDateInput.addEventListener('input', function() {
+      campaignEndDate = campaignEndDateInput.value || null;
+      previewCampaignBanner(campaignInput.value.trim());
+    });
 
     // The "true" campaign text right now: a pending (unsaved-to-data.js but
     // already recorded) settingsChanges entry wins over the static one baked
@@ -1696,6 +1806,11 @@
       if (pending) return pending.text;
       return (data.settings && data.settings.campaignText) || '';
     }
+    function getEffectiveCampaignEndDate() {
+      var pending = settingsChanges.filter(function(c) { return c.type === 'campaignText'; }).pop();
+      if (pending) return pending.endDate || null;
+      return (data.settings && data.settings.campaignEndDate) || null;
+    }
 
     campaignInput.addEventListener('input', function() {
       previewCampaignBanner(campaignInput.value.trim());
@@ -1704,19 +1819,24 @@
     campaignButton.addEventListener('click', function() {
       var text = campaignInput.value.trim();
       if (!text) { settingsStatus.textContent = 'Duyuru metni boş olamaz.'; return; }
+      var endDate = campaignEndDateInput.value || null;
       var beforeSnapshot = settingsChanges.slice();
+      var beforeEndDate = campaignEndDate;
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'campaignText'; });
-      settingsChanges.push({ type: 'campaignText', text: text });
+      settingsChanges.push({ type: 'campaignText', text: text, endDate: endDate });
       var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
+      campaignEndDate = endDate;
       settingsStatus.textContent = 'Duyuru kaydedildi.';
       showCampaignBanner(text);
       pushHistory('kampanya duyurusu yayınlama', function() {
         settingsChanges = beforeSnapshot;
+        campaignEndDate = beforeEndDate;
         saveSettingsChanges();
         showCampaignBanner(getEffectiveCampaignText());
       }, function() {
         settingsChanges = afterSnapshot;
+        campaignEndDate = endDate;
         saveSettingsChanges();
         settingsStatus.textContent = 'Duyuru kaydedildi.';
         showCampaignBanner(text);
@@ -1725,19 +1845,24 @@
 
     campaignClearButton.addEventListener('click', function() {
       var beforeSnapshot = settingsChanges.slice();
+      var beforeEndDate = campaignEndDate;
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'campaignText'; });
-      settingsChanges.push({ type: 'campaignText', text: '' });
+      settingsChanges.push({ type: 'campaignText', text: '', endDate: null });
       var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
+      campaignEndDate = null;
       campaignInput.value = '';
+      campaignEndDateInput.value = '';
       previewCampaignBanner('');
       settingsStatus.textContent = 'Duyuru kaldırıldı.';
       pushHistory('kampanya duyurusu kaldırma', function() {
         settingsChanges = beforeSnapshot;
+        campaignEndDate = beforeEndDate;
         saveSettingsChanges();
         showCampaignBanner(getEffectiveCampaignText());
       }, function() {
         settingsChanges = afterSnapshot;
+        campaignEndDate = null;
         saveSettingsChanges();
         settingsStatus.textContent = 'Duyuru kaldırıldı.';
         showCampaignBanner('');
@@ -1975,6 +2100,54 @@
     });
 
     // -- Contact info --
+    // -- QR code for a specific scene, for print materials / in-store signage.
+    // Builds on the same ?scene= deep link the public "paylaş" button uses,
+    // via a free public QR-image service (just an <img>, no library to ship,
+    // no account/backend on our side). --
+    var qrSection = settingsSection('Sahne QR Kodu', '🔗');
+    var qrSceneSelect = document.createElement('select');
+    var qrGenerateButton = document.createElement('button');
+    qrGenerateButton.type = 'button';
+    qrGenerateButton.textContent = 'QR Kod Oluştur';
+    var qrResult = document.createElement('div');
+    qrResult.id = 'posFinderQrResult';
+    var qrHint = document.createElement('div');
+    qrHint.className = 'posFinderPasswordHint';
+    qrHint.textContent = 'Oluşan kodu telefonla okutan kişi doğrudan o sahneye açılan siteye gider. Mağaza içi tabelalarda veya kartvizitte kullanabilirsin.';
+    qrSection.appendChild(qrSceneSelect);
+    qrSection.appendChild(qrGenerateButton);
+    qrSection.appendChild(qrResult);
+    qrSection.appendChild(qrHint);
+
+    function populateQrSceneSelect() {
+      if (qrSceneSelect.options.length) return;
+      data.scenes.forEach(function(s, i) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = (i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, '');
+        qrSceneSelect.appendChild(opt);
+      });
+    }
+
+    qrGenerateButton.addEventListener('click', function() {
+      var sceneId = qrSceneSelect.value;
+      if (!sceneId) return;
+      var baseUrl = window.location.href.split('?')[0];
+      var targetUrl = baseUrl + '?scene=' + encodeURIComponent(sceneId);
+      var qrImgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(targetUrl);
+      qrResult.innerHTML = '';
+      var img = document.createElement('img');
+      img.src = qrImgUrl;
+      img.alt = 'QR kod';
+      img.width = 180;
+      img.height = 180;
+      var link = document.createElement('div');
+      link.className = 'posFinderQrLink';
+      link.textContent = targetUrl;
+      qrResult.appendChild(img);
+      qrResult.appendChild(link);
+    });
+
     var contactSection = settingsSection('İletişim bilgileri', '📞');
     var phone1Input = document.createElement('input');
     phone1Input.type = 'text';
@@ -2095,6 +2268,7 @@
     settingsPanel.appendChild(campaignSection._accordionWrapper);
     settingsPanel.appendChild(tukendiSection._accordionWrapper);
     settingsPanel.appendChild(contactSection._accordionWrapper);
+    settingsPanel.appendChild(qrSection._accordionWrapper);
 
     settingsPanel.appendChild(settingsGroupHeader('Hesap & Yedekleme'));
     settingsPanel.appendChild(backupSection._accordionWrapper);
@@ -2974,6 +3148,7 @@
       if (mode === 'map') renderMap();
       if (mode === 'order') renderOrderList();
       if (mode !== 'settings') {
+        campaignEndDate = getEffectiveCampaignEndDate();
         showCampaignBanner(getEffectiveCampaignText());
         document.documentElement.style.setProperty('--hotspot-icon-scale', String(getEffectiveHotspotScale()));
       }
@@ -3012,6 +3187,7 @@
 
     function populateSettingsPanel() {
       populatePresentationList();
+      populateQrSceneSelect();
       if (!renameSceneSelect.options.length) {
         data.scenes.forEach(function(s, i) {
           var opt1 = document.createElement('option');
@@ -3050,6 +3226,7 @@
       }
       if (!campaignInput.dataset.filled) {
         campaignInput.value = (data.settings && data.settings.campaignText) || '';
+        campaignEndDateInput.value = (data.settings && data.settings.campaignEndDate) || '';
         campaignInput.dataset.filled = '1';
       }
       if (!seasonalSelect.dataset.filled) {
@@ -3673,7 +3850,9 @@
           } else if (c.type === 'tukendiNotify') {
             lines.push('Tükendi bildirimi: ' + (c.enabled ? 'açık' : 'kapalı'));
           } else if (c.type === 'campaignText') {
-            lines.push(c.text ? ('Kampanya duyurusu: "' + c.text + '"') : 'Kampanya duyurusu kaldırıldı');
+            lines.push(c.text
+              ? ('Kampanya duyurusu: "' + c.text + '"' + (c.endDate ? (' — bitiş tarihi: ' + c.endDate + ' (campaignEndDate)') : ''))
+              : 'Kampanya duyurusu kaldırıldı');
           } else if (c.type === 'sceneTransition') {
             lines.push('Sahne geçiş efekti: ' + c.label + ' (' + c.duration + 'ms)');
           } else if (c.type === 'featuredProduct') {
@@ -3915,6 +4094,68 @@
   function sanitize(s) {
     return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;');
   }
+
+  // Story-format share image: draws the current pano view onto a 9:16
+  // branded canvas (logo strip + scene name) and downloads it as a PNG the
+  // visitor can post straight to Instagram/WhatsApp Stories.
+  var storyImageButton = document.createElement('button');
+  storyImageButton.type = 'button';
+  storyImageButton.id = 'storyImageButton';
+  storyImageButton.title = uiText('storyImageLabel', 'Hikaye görseli oluştur');
+  storyImageButton.textContent = '📸';
+  document.body.appendChild(storyImageButton);
+  storyImageButton.addEventListener('click', function() {
+    var sourceCanvas = document.querySelector('#pano canvas');
+    if (!sourceCanvas) return;
+    // The pano's WebGL context isn't created with preserveDrawingBuffer, so
+    // its pixel data is only reliably readable right after a fresh render,
+    // before the browser clears it for the next frame. If the view isn't
+    // actively animating there's nothing forcing a new render at all, so a
+    // synthetic resize (which Marzipano's stage listens for) forces one,
+    // and waiting a few animation frames past that is what makes the
+    // capture below actually contain the room instead of coming out blank.
+    window.dispatchEvent(new Event('resize'));
+    window.requestAnimationFrame(function() {
+      window.requestAnimationFrame(function() {
+        window.requestAnimationFrame(function() {
+        var outW = 1080, outH = 1920;
+        var out = document.createElement('canvas');
+        out.width = outW;
+        out.height = outH;
+        var ctx = out.getContext('2d');
+        ctx.fillStyle = '#17202a';
+        ctx.fillRect(0, 0, outW, outH);
+        try {
+          var srcW = sourceCanvas.width, srcH = sourceCanvas.height;
+          var scale = Math.max(outW / srcW, outH / srcH);
+          var drawW = srcW * scale, drawH = srcH * scale;
+          ctx.drawImage(sourceCanvas, (outW - drawW) / 2, (outH - drawH) / 2, drawW, drawH);
+        } catch (e) { return; }
+        var gradient = ctx.createLinearGradient(0, outH - 320, 0, outH);
+        gradient.addColorStop(0, 'rgba(23,32,42,0)');
+        gradient.addColorStop(1, 'rgba(23,32,42,0.85)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, outH - 320, outW, 320);
+        ctx.fillStyle = '#fff';
+        ctx.font = '700 46px sans-serif';
+        ctx.fillText('enza HOME Manavgat', 48, outH - 180);
+        ctx.font = '400 34px sans-serif';
+        var sceneLabel = (currentSceneWrapper ? currentSceneWrapper.data.name.replace(/^\d+\.\s*/, '') : '');
+        ctx.fillText(sceneLabel, 48, outH - 120);
+        ctx.font = '300 26px sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fillText('360° Sanal Mağaza Turu', 48, outH - 70);
+
+        var link = document.createElement('a');
+        link.href = out.toDataURL('image/png');
+        link.download = 'enza-home-hikaye.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        });
+      });
+    });
+  });
 
   // "Az önce buradaydın" breadcrumb: small thumbnails of the last few scenes
   // visited this session (not persisted), for quickly hopping back.

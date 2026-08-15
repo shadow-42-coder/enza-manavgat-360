@@ -1048,6 +1048,20 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   gap: 6px;
 }
 
+#storyImageButton {
+  position: absolute;
+  top: 0;
+  right: 40px;
+  width: 40px;
+  height: 40px;
+  z-index: 90;
+  border: none;
+  background-color: rgba(41,56,72,0.92);
+  color: #fff;
+  font-size: 17px;
+  cursor: pointer;
+}
+
 #recentScenesBar.visible {
   display: flex;
 }
@@ -1625,6 +1639,39 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   font-size: 14px;
   margin-bottom: 8px;
   box-sizing: border-box;
+}
+
+#posFinderQrResult {
+  margin-top: 10px;
+  text-align: center;
+}
+
+#posFinderQrResult img {
+  background-color: #fff;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.posFinderQrLink {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #ccc;
+  word-break: break-all;
+}
+
+.posFinderCampaignDateLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #ccc;
+  margin: 4px 0 10px;
+}
+
+.posFinderCampaignDateLabel input[type="date"] {
+  padding: 5px 6px;
+  border-radius: 5px;
+  border: none;
 }
 
 #posFinderListCategoryRow {
@@ -2469,6 +2516,96 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   height: 26px;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.favoritesRow span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favoritesCompareCheckbox {
+  flex-shrink: 0;
+}
+
+#favoritesCompareButton {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: none;
+  background-color: rgba(255,255,255,0.12);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+#favoritesCompareButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#compareOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 40000;
+  background-color: rgba(10,14,18,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#compareBox {
+  background-color: var(--brand-panel);
+  color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  width: 92%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+#compareTitle {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+#compareCardsRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.compareCard {
+  flex: 1;
+  min-width: 0;
+  background-color: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.compareCard img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.compareCardTitle {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.compareCardDesc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  line-height: 1.4;
 }
 
 #favoritesSendButton {
