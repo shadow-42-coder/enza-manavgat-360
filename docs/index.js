@@ -191,12 +191,72 @@
   // product link, tap "Ekle". Walk through the whole store this way, then
   // tap "Kopyala" to copy every entry as text and send it back in one go.
   if (/[?&]pos=1/.test(window.location.search)) {
+    if (window.sessionStorage.getItem('enzaAdminAuthed') === '1') {
+      initAdminPanel();
+    } else {
+      showAdminLogin(initAdminPanel);
+    }
+  }
+
+  function initAdminPanel() {
     setupPositionCollector(panoElement);
     loadScript('vendor/jszip.min.js', function() {
       loadScript('photo-tool.js', function() {
         document.body.classList.add('photo-tool-ready');
         document.dispatchEvent(new Event('enzaPhotoToolReady'));
       });
+    });
+  }
+
+  function showAdminLogin(onSuccess) {
+    var ADMIN_USER = 'ENZAHOME-MANAVGAT';
+    var ADMIN_PASS = 'yedi10077';
+
+    var overlay = document.createElement('div');
+    overlay.id = 'adminLoginOverlay';
+    var box = document.createElement('div');
+    box.id = 'adminLoginBox';
+    var title = document.createElement('div');
+    title.id = 'adminLoginTitle';
+    title.textContent = 'Yönetim Paneli Girişi';
+    var userInput = document.createElement('input');
+    userInput.type = 'text';
+    userInput.placeholder = 'Kullanıcı adı';
+    userInput.autocomplete = 'off';
+    var passInput = document.createElement('input');
+    passInput.type = 'password';
+    passInput.placeholder = 'Şifre';
+    var errorLine = document.createElement('div');
+    errorLine.id = 'adminLoginError';
+    var submitButton = document.createElement('button');
+    submitButton.textContent = 'Giriş';
+
+    box.appendChild(title);
+    box.appendChild(userInput);
+    box.appendChild(passInput);
+    box.appendChild(errorLine);
+    box.appendChild(submitButton);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    userInput.focus();
+
+    function attempt() {
+      if (userInput.value === ADMIN_USER && passInput.value === ADMIN_PASS) {
+        window.sessionStorage.setItem('enzaAdminAuthed', '1');
+        overlay.remove();
+        onSuccess();
+      } else {
+        errorLine.textContent = 'Kullanıcı adı veya şifre yanlış.';
+        passInput.value = '';
+      }
+    }
+
+    submitButton.addEventListener('click', attempt);
+    passInput.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') attempt();
+    });
+    userInput.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') passInput.focus();
     });
   }
 
@@ -210,27 +270,44 @@
   function setupPositionCollector(element) {
     document.body.classList.add('admin-mode');
 
+    // Single-level-per-step undo history for this session. Each performed
+    // action pushes { label, undo } here; the "Geri Al" button pops and
+    // runs the most recent one.
+    var history = [];
+    function pushHistory(label, undoFn) {
+      history.push({ label: label, undo: undoFn });
+      updateUndoButton();
+    }
+    function updateUndoButton() {
+      if (!undoButton) return;
+      undoButton.disabled = history.length === 0;
+      undoButton.title = history.length ? ('Geri al: ' + history[history.length - 1].label) : '';
+    }
+
     var ADD_KEY = 'enzaPosCollectorEntries';
     var MOVE_KEY = 'enzaPosCollectorMoves';
     var ARROW_KEY = 'enzaPosCollectorArrows';
     var REMOVE_KEY = 'enzaPosCollectorRemovals';
     var EDIT_KEY = 'enzaPosCollectorEdits';
     var SETTINGS_KEY = 'enzaPosCollectorSettings';
+    var NEW_SCENE_KEY = 'enzaPosCollectorNewScenes';
     var entries = [];
     var moves = [];
     var arrows = [];
     var removals = [];
     var edits = [];
     var settingsChanges = [];
+    var newScenes = [];
     try { entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]'); } catch (e) { entries = []; }
     try { moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]'); } catch (e) { moves = []; }
     try { arrows = JSON.parse(window.localStorage.getItem(ARROW_KEY) || '[]'); } catch (e) { arrows = []; }
     try { removals = JSON.parse(window.localStorage.getItem(REMOVE_KEY) || '[]'); } catch (e) { removals = []; }
     try { edits = JSON.parse(window.localStorage.getItem(EDIT_KEY) || '[]'); } catch (e) { edits = []; }
     try { settingsChanges = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || '[]'); } catch (e) { settingsChanges = []; }
+    try { newScenes = JSON.parse(window.localStorage.getItem(NEW_SCENE_KEY) || '[]'); } catch (e) { newScenes = []; }
     var pendingCoords = null;
     var editingEntry = null;
-    var mode = 'product'; // 'product' | 'link' | 'delete' | 'photo' | 'settings'
+    var mode = 'product'; // 'product' | 'link' | 'delete' | 'photo' | 'settings' | 'newScene'
 
     var box = document.createElement('div');
     box.id = 'posFinderBox';
@@ -252,11 +329,27 @@
     var settingsModeButton = document.createElement('button');
     settingsModeButton.textContent = 'Ayarlar';
     settingsModeButton.className = 'posFinderModeButton';
+    var newSceneModeButton = document.createElement('button');
+    newSceneModeButton.textContent = 'Yeni Sahne';
+    newSceneModeButton.className = 'posFinderModeButton';
+    var listModeButton = document.createElement('button');
+    listModeButton.textContent = 'Ürün Listesi';
+    listModeButton.className = 'posFinderModeButton';
+    var mapModeButton = document.createElement('button');
+    mapModeButton.textContent = 'Bağlantı Haritası';
+    mapModeButton.className = 'posFinderModeButton';
+    var orderModeButton = document.createElement('button');
+    orderModeButton.textContent = 'Sahne Sırası';
+    orderModeButton.className = 'posFinderModeButton';
     modeRow.appendChild(productModeButton);
     modeRow.appendChild(linkModeButton);
     modeRow.appendChild(deleteModeButton);
     modeRow.appendChild(photoModeButton);
     modeRow.appendChild(settingsModeButton);
+    modeRow.appendChild(newSceneModeButton);
+    modeRow.appendChild(listModeButton);
+    modeRow.appendChild(mapModeButton);
+    modeRow.appendChild(orderModeButton);
 
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
@@ -288,9 +381,21 @@
     var clearButton = document.createElement('button');
     clearButton.textContent = 'Temizle';
     clearButton.id = 'posFinderClear';
+    var undoButton = document.createElement('button');
+    undoButton.textContent = 'Geri Al';
+    undoButton.id = 'posFinderUndo';
+    undoButton.disabled = true;
     actionRow.appendChild(countLabel);
+    actionRow.appendChild(undoButton);
     actionRow.appendChild(copyButton);
     actionRow.appendChild(clearButton);
+
+    undoButton.addEventListener('click', function() {
+      var last = history.pop();
+      if (!last) return;
+      last.undo();
+      updateUndoButton();
+    });
 
     // Photo replacement panel (its own tile-generation UI, no pano clicking).
     var photoPanel = document.createElement('div');
@@ -392,11 +497,407 @@
     settingsPanel.appendChild(contactSection);
     settingsPanel.appendChild(settingsStatus);
 
+    // New scene creation panel: name + photo + which existing scenes to connect to.
+    var newScenePanel = document.createElement('div');
+    newScenePanel.id = 'posFinderNewScenePanel';
+    newScenePanel.style.display = 'none';
+
+    var newSceneInfoSection = settingsSection('Yeni sahne bilgisi');
+    var newSceneNameInput = document.createElement('input');
+    newSceneNameInput.type = 'text';
+    newSceneNameInput.placeholder = 'Yeni sahnenin adı (ör. Depo Girişi)';
+    var newScenePhotoFile = document.createElement('input');
+    newScenePhotoFile.type = 'file';
+    newScenePhotoFile.accept = 'image/*';
+    newSceneInfoSection.appendChild(newSceneNameInput);
+    newSceneInfoSection.appendChild(newScenePhotoFile);
+
+    var newSceneConnSection = settingsSection('Hangi sahnelere bağlansın? (çift yönlü)');
+    var newSceneConnList = document.createElement('div');
+    newSceneConnList.id = 'posFinderNewSceneConnList';
+    var newSceneAddConnButton = document.createElement('button');
+    newSceneAddConnButton.type = 'button';
+    newSceneAddConnButton.id = 'posFinderNewSceneAddConn';
+    newSceneAddConnButton.textContent = '+ Bağlantı Ekle';
+    newSceneConnSection.appendChild(newSceneConnList);
+    newSceneConnSection.appendChild(newSceneAddConnButton);
+
+    function addNewSceneConnRow() {
+      var row = document.createElement('div');
+      row.className = 'posFinderNewSceneConnRow';
+      var sel = document.createElement('select');
+      data.scenes.forEach(function(s, i) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = (i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, '');
+        sel.appendChild(opt);
+      });
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'posFinderNewSceneConnRemove';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', function() {
+        if (newSceneConnList.children.length > 1) newSceneConnList.removeChild(row);
+      });
+      row.appendChild(sel);
+      row.appendChild(removeBtn);
+      newSceneConnList.appendChild(row);
+    }
+    newSceneAddConnButton.addEventListener('click', addNewSceneConnRow);
+
+    var newSceneCreateButton = document.createElement('button');
+    newSceneCreateButton.id = 'posFinderNewSceneCreate';
+    newSceneCreateButton.textContent = 'Sahneyi Oluştur';
+
+    var newSceneProgressOuter = document.createElement('div');
+    newSceneProgressOuter.id = 'posFinderNewSceneProgressOuter';
+    var newSceneProgressInner = document.createElement('div');
+    newSceneProgressInner.id = 'posFinderNewSceneProgressInner';
+    newSceneProgressOuter.appendChild(newSceneProgressInner);
+    newSceneProgressOuter.style.display = 'none';
+
+    var newSceneDownloadLink = document.createElement('a');
+    newSceneDownloadLink.id = 'posFinderNewSceneDownload';
+    newSceneDownloadLink.textContent = 'ZIP dosyasını indir';
+    newSceneDownloadLink.style.display = 'none';
+
+    var newSceneStatus = document.createElement('div');
+    newSceneStatus.id = 'posFinderNewSceneStatus';
+    newSceneStatus.textContent = 'Sahne adını girin, fotoğrafı seçin ve bağlanacağı sahneleri belirtin.';
+
+    newScenePanel.appendChild(newSceneInfoSection);
+    newScenePanel.appendChild(newSceneConnSection);
+    newScenePanel.appendChild(newSceneCreateButton);
+    newScenePanel.appendChild(newSceneProgressOuter);
+    newScenePanel.appendChild(newSceneDownloadLink);
+    newScenePanel.appendChild(newSceneStatus);
+
+    function saveNewScenes() { window.localStorage.setItem(NEW_SCENE_KEY, JSON.stringify(newScenes)); updateCount(); }
+
+    newSceneCreateButton.addEventListener('click', function() {
+      var name = newSceneNameInput.value.trim();
+      var file = newScenePhotoFile.files[0];
+      var connSelects = newSceneConnList.querySelectorAll('select');
+      var connections = [];
+      connSelects.forEach(function(sel) {
+        if (sel.value && connections.indexOf(sel.value) === -1) connections.push(sel.value);
+      });
+      if (!name) { newSceneStatus.textContent = 'Lütfen sahne adı girin.'; return; }
+      if (!file) { newSceneStatus.textContent = 'Lütfen bir fotoğraf seçin.'; return; }
+      if (!connections.length) { newSceneStatus.textContent = 'Lütfen en az bir bağlantı seçin.'; return; }
+      if (!window.EnzaPhotoTool) { newSceneStatus.textContent = 'Araç henüz hazır değil, birkaç saniye bekleyip tekrar deneyin.'; return; }
+
+      var tempId = 'new-' + Date.now();
+      newSceneDownloadLink.style.display = 'none';
+      newSceneProgressOuter.style.display = 'block';
+      newSceneProgressInner.style.width = '0%';
+      newSceneStatus.textContent = 'İşleniyor, sayfayı kapatmayın...';
+      newSceneCreateButton.disabled = true;
+
+      window.EnzaPhotoTool.buildSceneTiles(file, tempId, function(fraction) {
+        newSceneProgressInner.style.width = Math.round(fraction * 100) + '%';
+      }).then(function(blob) {
+        var url = URL.createObjectURL(blob);
+        newSceneDownloadLink.href = url;
+        newSceneDownloadLink.download = tempId + '-tiles.zip';
+        newSceneDownloadLink.style.display = 'block';
+        var record = {
+          tempId: tempId,
+          name: name,
+          connections: connections.map(function(id) {
+            var s = findSceneDataById(id);
+            return { sceneId: id, sceneName: s ? s.name : id };
+          })
+        };
+        newScenes.push(record);
+        saveNewScenes();
+        newSceneStatus.textContent = 'Hazır! ZIP\'i indirin, "Kopyala" ile bilgileri kopyalayın ve ikisini de Claude\'a gönderip "yeni sahne ekledim" yazın.';
+        newSceneCreateButton.disabled = false;
+        pushHistory('yeni sahne oluşturma (' + name + ')', function() {
+          newScenes = newScenes.filter(function(r) { return r !== record; });
+          saveNewScenes();
+        });
+        newSceneNameInput.value = '';
+        newScenePhotoFile.value = '';
+        newSceneConnList.innerHTML = '';
+        addNewSceneConnRow();
+      }).catch(function(err) {
+        newSceneStatus.textContent = 'Hata: ' + err;
+        newSceneCreateButton.disabled = false;
+        console.error(err);
+      });
+    });
+
+    // Product list panel: search across every info-hotspot in every scene, click to jump.
+    var listPanel = document.createElement('div');
+    listPanel.id = 'posFinderListPanel';
+    listPanel.style.display = 'none';
+
+    var listSearchInput = document.createElement('input');
+    listSearchInput.type = 'text';
+    listSearchInput.id = 'posFinderListSearch';
+    listSearchInput.placeholder = 'Ürün veya sahne adına göre ara...';
+
+    var listResults = document.createElement('div');
+    listResults.id = 'posFinderListResults';
+
+    listPanel.appendChild(listSearchInput);
+    listPanel.appendChild(listResults);
+
+    function stripHtml(html) {
+      var div = document.createElement('div');
+      div.innerHTML = html || '';
+      return (div.textContent || div.innerText || '').trim();
+    }
+
+    function buildProductIndex() {
+      var items = [];
+      data.scenes.forEach(function(s, i) {
+        (s.infoHotspots || []).forEach(function(h) {
+          items.push({
+            sceneId: s.id,
+            sceneName: (i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, ''),
+            title: h.title || '(başlıksız)',
+            preview: stripHtml(h.text).slice(0, 80),
+            hotspot: h
+          });
+        });
+      });
+      return items;
+    }
+
+    function renderListResults(filterText) {
+      var items = buildProductIndex();
+      var q = (filterText || '').trim().toLocaleLowerCase('tr');
+      if (q) {
+        items = items.filter(function(item) {
+          return item.title.toLocaleLowerCase('tr').indexOf(q) !== -1 ||
+                 item.sceneName.toLocaleLowerCase('tr').indexOf(q) !== -1 ||
+                 item.preview.toLocaleLowerCase('tr').indexOf(q) !== -1;
+        });
+      }
+      listResults.innerHTML = '';
+      if (!items.length) {
+        var empty = document.createElement('div');
+        empty.id = 'posFinderListEmpty';
+        empty.textContent = 'Sonuç bulunamadı.';
+        listResults.appendChild(empty);
+        return;
+      }
+      items.forEach(function(item) {
+        var row = document.createElement('div');
+        row.className = 'posFinderListRow';
+        var titleEl = document.createElement('div');
+        titleEl.className = 'posFinderListRowTitle';
+        titleEl.textContent = item.title;
+        var sceneEl = document.createElement('div');
+        sceneEl.className = 'posFinderListRowScene';
+        sceneEl.textContent = item.sceneName;
+        row.appendChild(titleEl);
+        row.appendChild(sceneEl);
+        if (item.preview) {
+          var previewEl = document.createElement('div');
+          previewEl.className = 'posFinderListRowPreview';
+          previewEl.textContent = item.preview;
+          row.appendChild(previewEl);
+        }
+        row.addEventListener('click', function() {
+          var sceneWrapper = findSceneById(item.sceneId);
+          if (!sceneWrapper) return;
+          switchScene(sceneWrapper);
+          sceneWrapper.view.setParameters({ yaw: item.hotspot.yaw, pitch: item.hotspot.pitch });
+        });
+        listResults.appendChild(row);
+      });
+    }
+
+    listSearchInput.addEventListener('input', function() {
+      renderListResults(listSearchInput.value);
+    });
+
+    // Connection map panel: topology diagram of which scenes link to which
+    // (scenes placed on a circle in list order — NOT a scaled floor plan).
+    var mapPanel = document.createElement('div');
+    mapPanel.id = 'posFinderMapPanel';
+    mapPanel.style.display = 'none';
+
+    var mapCaption = document.createElement('div');
+    mapCaption.id = 'posFinderMapCaption';
+    mapCaption.textContent = 'Sahneler arası bağlantı şeması (gerçek ölçekli kat planı değildir). Bir daireye tıklayıp o sahneye gidin.';
+
+    var mapSvgWrapper = document.createElement('div');
+    mapSvgWrapper.id = 'posFinderMapSvgWrapper';
+
+    mapPanel.appendChild(mapCaption);
+    mapPanel.appendChild(mapSvgWrapper);
+
+    function renderMap() {
+      mapSvgWrapper.innerHTML = '';
+      var size = 320;
+      var center = size / 2;
+      var radius = size / 2 - 28;
+      var n = data.scenes.length;
+      var positions = {};
+      data.scenes.forEach(function(s, i) {
+        var angle = (i / n) * 2 * Math.PI - Math.PI / 2;
+        positions[s.id] = {
+          x: center + radius * Math.cos(angle),
+          y: center + radius * Math.sin(angle)
+        };
+      });
+
+      var svgNS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
+      svg.setAttribute('width', '100%');
+      svg.id = 'posFinderMapSvg';
+
+      var drawn = {};
+      data.scenes.forEach(function(s) {
+        (s.linkHotspots || []).forEach(function(h) {
+          var a = s.id, b = h.target;
+          var key = [a, b].sort().join('|');
+          if (drawn[key]) return;
+          drawn[key] = true;
+          var pa = positions[a], pb = positions[b];
+          if (!pa || !pb) return;
+          var line = document.createElementNS(svgNS, 'line');
+          line.setAttribute('x1', pa.x); line.setAttribute('y1', pa.y);
+          line.setAttribute('x2', pb.x); line.setAttribute('y2', pb.y);
+          line.setAttribute('class', 'posFinderMapLine');
+          svg.appendChild(line);
+        });
+      });
+
+      data.scenes.forEach(function(s, i) {
+        var p = positions[s.id];
+        var isCurrent = currentSceneWrapper && currentSceneWrapper.data.id === s.id;
+        var g = document.createElementNS(svgNS, 'g');
+        g.setAttribute('class', 'posFinderMapNode' + (isCurrent ? ' posFinderMapNodeCurrent' : ''));
+        var circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('cx', p.x); circle.setAttribute('cy', p.y); circle.setAttribute('r', 12);
+        var text = document.createElementNS(svgNS, 'text');
+        text.setAttribute('x', p.x); text.setAttribute('y', p.y);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.textContent = String(i + 1);
+        var title = document.createElementNS(svgNS, 'title');
+        title.textContent = s.name;
+        g.appendChild(circle);
+        g.appendChild(text);
+        g.appendChild(title);
+        g.addEventListener('click', function() {
+          var sceneWrapper = findSceneById(s.id);
+          if (sceneWrapper) switchScene(sceneWrapper);
+          renderMap();
+        });
+        svg.appendChild(g);
+      });
+
+      mapSvgWrapper.appendChild(svg);
+    }
+
+    // Scene order panel: reorder the sidebar list with up/down buttons.
+    var orderPanel = document.createElement('div');
+    orderPanel.id = 'posFinderOrderPanel';
+    orderPanel.style.display = 'none';
+
+    var orderCaption = document.createElement('div');
+    orderCaption.id = 'posFinderOrderCaption';
+    orderCaption.textContent = 'Sahnelerin listede görünme sırasını ok tuşlarıyla değiştirin, sonra "Sırayı Kaydet" butonuna basın.';
+
+    var orderList = document.createElement('div');
+    orderList.id = 'posFinderOrderList';
+
+    var orderSaveButton = document.createElement('button');
+    orderSaveButton.id = 'posFinderOrderSave';
+    orderSaveButton.textContent = 'Sırayı Kaydet';
+
+    var orderStatus = document.createElement('div');
+    orderStatus.id = 'posFinderOrderStatus';
+
+    orderPanel.appendChild(orderCaption);
+    orderPanel.appendChild(orderList);
+    orderPanel.appendChild(orderSaveButton);
+    orderPanel.appendChild(orderStatus);
+
+    var orderBaseline = data.scenes.slice();
+
+    function reorderSidebarDom() {
+      var container = document.querySelector('#sceneList .scenes');
+      if (!container) return;
+      data.scenes.forEach(function(s) {
+        var el = container.querySelector('.scene[data-id="' + s.id + '"]');
+        if (el) container.appendChild(el);
+      });
+    }
+
+    function renderOrderList() {
+      orderList.innerHTML = '';
+      data.scenes.forEach(function(s, i) {
+        var row = document.createElement('div');
+        row.className = 'posFinderOrderRow';
+        var label = document.createElement('span');
+        label.className = 'posFinderOrderRowLabel';
+        label.textContent = (i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, '');
+        var btnUp = document.createElement('button');
+        btnUp.type = 'button';
+        btnUp.className = 'posFinderOrderMoveButton';
+        btnUp.textContent = '▲';
+        btnUp.disabled = i === 0;
+        btnUp.addEventListener('click', function() { moveScene(i, -1); });
+        var btnDown = document.createElement('button');
+        btnDown.type = 'button';
+        btnDown.className = 'posFinderOrderMoveButton';
+        btnDown.textContent = '▼';
+        btnDown.disabled = i === data.scenes.length - 1;
+        btnDown.addEventListener('click', function() { moveScene(i, 1); });
+        row.appendChild(label);
+        row.appendChild(btnUp);
+        row.appendChild(btnDown);
+        orderList.appendChild(row);
+      });
+    }
+
+    function moveScene(index, delta) {
+      var newIndex = index + delta;
+      if (newIndex < 0 || newIndex >= data.scenes.length) return;
+      var tmp = data.scenes[index];
+      data.scenes[index] = data.scenes[newIndex];
+      data.scenes[newIndex] = tmp;
+      reorderSidebarDom();
+      renderOrderList();
+      orderStatus.textContent = 'Sıralama değişti (henüz kaydedilmedi).';
+    }
+
+    orderSaveButton.addEventListener('click', function() {
+      var beforeSnapshot = settingsChanges.slice();
+      var beforeOrder = orderBaseline.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'sceneOrder'; });
+      var newOrder = data.scenes.map(function(s) { return s.id; });
+      settingsChanges.push({ type: 'sceneOrder', order: newOrder });
+      saveSettingsChanges();
+      orderBaseline = data.scenes.slice();
+      orderStatus.textContent = 'Yeni sıralama kaydedildi.';
+      pushHistory('sahne sırası değiştirme', function() {
+        data.scenes = beforeOrder;
+        orderBaseline = beforeOrder.slice();
+        reorderSidebarDom();
+        renderOrderList();
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      });
+    });
+
     box.appendChild(modeRow);
     box.appendChild(coordsLine);
     box.appendChild(inputRow);
     box.appendChild(photoPanel);
     box.appendChild(settingsPanel);
+    box.appendChild(newScenePanel);
+    box.appendChild(listPanel);
+    box.appendChild(mapPanel);
+    box.appendChild(orderPanel);
     box.appendChild(actionRow);
     document.body.appendChild(box);
 
@@ -413,13 +914,21 @@
       deleteModeButton.classList.toggle('active', mode === 'delete');
       photoModeButton.classList.toggle('active', mode === 'photo');
       settingsModeButton.classList.toggle('active', mode === 'settings');
+      newSceneModeButton.classList.toggle('active', mode === 'newScene');
+      listModeButton.classList.toggle('active', mode === 'list');
+      mapModeButton.classList.toggle('active', mode === 'map');
+      orderModeButton.classList.toggle('active', mode === 'order');
       linkInput.style.display = mode === 'product' ? '' : 'none';
       sceneSelect.style.display = mode === 'link' ? '' : 'none';
-      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings') ? 'none' : 'flex';
+      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order') ? 'none' : 'flex';
       photoPanel.style.display = mode === 'photo' ? 'block' : 'none';
       settingsPanel.style.display = mode === 'settings' ? 'block' : 'none';
-      actionRow.style.display = (mode === 'photo' || mode === 'settings') ? 'none' : 'flex';
-      coordsLine.style.display = (mode === 'photo' || mode === 'settings') ? 'none' : '';
+      newScenePanel.style.display = mode === 'newScene' ? 'block' : 'none';
+      listPanel.style.display = mode === 'list' ? 'block' : 'none';
+      mapPanel.style.display = mode === 'map' ? 'block' : 'none';
+      orderPanel.style.display = mode === 'order' ? 'block' : 'none';
+      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order') ? 'none' : 'flex';
+      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order') ? 'none' : '';
       pendingCoords = null;
       resetInputRowForAdd();
       coordsLine.classList.remove('ready');
@@ -428,12 +937,20 @@
       else if (mode === 'delete') coordsLine.textContent = 'Silmek istediğiniz ikona dokunun';
       if (mode === 'photo') populatePhotoSceneSelect();
       if (mode === 'settings') populateSettingsPanel();
+      if (mode === 'newScene' && !newSceneConnList.children.length) addNewSceneConnRow();
+      if (mode === 'list') renderListResults(listSearchInput.value);
+      if (mode === 'map') renderMap();
+      if (mode === 'order') renderOrderList();
     }
     productModeButton.addEventListener('click', function() { setMode('product'); });
     linkModeButton.addEventListener('click', function() { setMode('link'); });
     deleteModeButton.addEventListener('click', function() { setMode('delete'); });
     photoModeButton.addEventListener('click', function() { setMode('photo'); });
     settingsModeButton.addEventListener('click', function() { setMode('settings'); });
+    newSceneModeButton.addEventListener('click', function() { setMode('newScene'); });
+    listModeButton.addEventListener('click', function() { setMode('list'); });
+    mapModeButton.addEventListener('click', function() { setMode('map'); });
+    orderModeButton.addEventListener('click', function() { setMode('order'); });
 
     function populateSceneSelect() {
       sceneSelect.innerHTML = '';
@@ -493,22 +1010,33 @@
       var newName = renameInput.value.trim();
       if (!sceneId || !newName) return;
       var s = findSceneDataById(sceneId);
+      var beforeSnapshot = settingsChanges.slice();
       settingsChanges.push({ type: 'rename', sceneId: sceneId, oldName: s ? s.name : sceneId, newName: newName });
       saveSettingsChanges();
       settingsStatus.textContent = 'Kaydedildi: ' + sceneId + ' -> "' + newName + '"';
+      pushHistory('sahne adı değiştirme', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      });
     });
 
     startButton.addEventListener('click', function() {
       var sceneId = startSceneSelect.value;
       if (!sceneId) return;
       var s = findSceneDataById(sceneId);
+      var beforeSnapshot = settingsChanges.slice();
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'startScene'; });
       settingsChanges.push({ type: 'startScene', sceneId: sceneId, sceneName: s ? s.name : sceneId });
       saveSettingsChanges();
       settingsStatus.textContent = 'Varsayılan açılış sahnesi: ' + (s ? s.name : sceneId);
+      pushHistory('varsayılan sahne değiştirme', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      });
     });
 
     contactButton.addEventListener('click', function() {
+      var beforeSnapshot = settingsChanges.slice();
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'contact'; });
       settingsChanges.push({
         type: 'contact',
@@ -518,6 +1046,10 @@
         mapsLink: mapsInput.value.trim()
       });
       saveSettingsChanges();
+      pushHistory('iletişim bilgisi değiştirme', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      });
       settingsStatus.textContent = 'İletişim bilgileri güncellemesi kaydedildi.';
     });
 
@@ -573,7 +1105,11 @@
           startY: event.clientY,
           barLeft: rect.left,
           barTop: rect.top,
-          moved: false
+          moved: false,
+          originalLeft: bar.style.left,
+          originalTop: bar.style.top,
+          originalRight: bar.style.right,
+          originalBottom: bar.style.bottom
         };
       }, true);
 
@@ -595,12 +1131,27 @@
           var rect = bar.getBoundingClientRect();
           var right = Math.round(window.innerWidth - rect.right);
           var bottom = Math.round(window.innerHeight - rect.bottom);
+          var beforeSnapshot = settingsChanges.slice();
+          var undoStyle = {
+            left: dragging.originalLeft,
+            top: dragging.originalTop,
+            right: dragging.originalRight,
+            bottom: dragging.originalBottom
+          };
           settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'contactBarPosition'; });
           settingsChanges.push({ type: 'contactBarPosition', right: right, bottom: bottom });
           saveSettingsChanges();
           settingsStatus.textContent = 'İletişim ikon grubunun yeni konumu kaydedildi (right:' + right + 'px, bottom:' + bottom + 'px).';
           coordsLine.textContent = 'İletişim ikon grubu taşındı ve kaydedildi.';
           suppressBarClick = true;
+          pushHistory('iletişim çubuğu taşıma', function() {
+            bar.style.left = undoStyle.left;
+            bar.style.top = undoStyle.top;
+            bar.style.right = undoStyle.right;
+            bar.style.bottom = undoStyle.bottom;
+            settingsChanges = beforeSnapshot;
+            saveSettingsChanges();
+          });
         }
         dragging = null;
       });
@@ -617,7 +1168,8 @@
     function updateCount() {
       countLabel.textContent = entries.length + ' ürün, ' + arrows.length + ' yeni ok, ' +
         moves.length + ' taşındı, ' + removals.length + ' silindi, ' +
-        edits.length + ' düzenlendi, ' + settingsChanges.length + ' ayar';
+        edits.length + ' düzenlendi, ' + settingsChanges.length + ' ayar, ' +
+        newScenes.length + ' yeni sahne';
     }
 
     function saveEntries() { window.localStorage.setItem(ADD_KEY, JSON.stringify(entries)); updateCount(); }
@@ -628,17 +1180,22 @@
     function addEntry() {
       var link = linkInput.value.trim();
       if (!pendingCoords || !link) return;
-      entries.push({
+      var record = {
         scene: pendingCoords.scene,
         yaw: pendingCoords.yaw,
         pitch: pendingCoords.pitch,
         link: link
-      });
+      };
+      entries.push(record);
       saveEntries();
       linkInput.value = '';
       pendingCoords = null;
       coordsLine.textContent = 'Eklendi. Bir sonraki ürüne tıklayın...';
       coordsLine.classList.remove('ready');
+      pushHistory('ürün ekleme', function() {
+        entries = entries.filter(function(e) { return e !== record; });
+        saveEntries();
+      });
     }
 
     function addArrow() {
@@ -657,17 +1214,25 @@
         targetScene: targetId,
         targetName: targetData ? targetData.name : targetId
       };
-      currentSceneWrapper.editableHotspots.push({
+      var newEditable = {
         hotspot: marzipanoHotspot,
         kind: 'link',
         label: 'Yön oku → ' + targetId,
         ownRecord: arrowRecord // if dragged, update this record instead of logging a separate move
-      });
+      };
+      var sceneWrapperForUndo = currentSceneWrapper;
+      sceneWrapperForUndo.editableHotspots.push(newEditable);
       arrows.push(arrowRecord);
       saveArrows();
       pendingCoords = null;
       coordsLine.textContent = 'Ok eklendi (' + targetData.name + '). Şimdi sürükleyip tam yerine koyabilirsiniz.';
       coordsLine.classList.remove('ready');
+      pushHistory('yön oku ekleme', function() {
+        marzipanoHotspot.destroy();
+        sceneWrapperForUndo.editableHotspots = sceneWrapperForUndo.editableHotspots.filter(function(e) { return e !== newEditable; });
+        arrows = arrows.filter(function(a) { return a !== arrowRecord; });
+        saveArrows();
+      });
     }
 
     function saveEdit() {
@@ -675,32 +1240,52 @@
       if (editingEntry.kind === 'info') {
         var newLink = linkInput.value.trim();
         if (!newLink) return;
-        edits.push({
+        var oldSourceLink = editingEntry.rawData.sourceLink;
+        var editRecord = {
           scene: currentSceneNumber,
           kind: 'info',
           oldTitle: editingEntry.rawData.title,
           newLink: newLink
-        });
+        };
+        edits.push(editRecord);
         saveEdits();
+        // Live-remembered so re-opening this product for editing later in the
+        // same session prefills the link instead of starting blank.
+        editingEntry.rawData.sourceLink = newLink;
         coordsLine.textContent = 'Düzenleme kaydedildi: ' + editingEntry.rawData.title + ' -> yeni link';
+        var editedInfoEntryRef = editingEntry;
+        pushHistory('ürün düzenleme', function() {
+          edits = edits.filter(function(e) { return e !== editRecord; });
+          saveEdits();
+          editedInfoEntryRef.rawData.sourceLink = oldSourceLink;
+        });
       } else if (editingEntry.kind === 'link') {
         var newTargetId = sceneSelect.value;
         if (!newTargetId) return;
         var newTargetData = findSceneDataById(newTargetId);
         var oldTargetId = editingEntry.rawData.target;
-        edits.push({
+        var oldLabel = editingEntry.label;
+        var linkEditRecord = {
           scene: currentSceneNumber,
           kind: 'link',
           oldTarget: oldTargetId,
           newTarget: newTargetId,
           newTargetName: newTargetData ? newTargetData.name : newTargetId
-        });
+        };
+        edits.push(linkEditRecord);
         saveEdits();
         // Live-update: the click handler reads hotspot.target fresh each time,
         // so mutating the same object updates the arrow's behavior immediately.
         editingEntry.rawData.target = newTargetId;
         editingEntry.label = 'Yön oku → ' + newTargetId;
         coordsLine.textContent = 'Düzenleme kaydedildi: artık ' + (newTargetData ? newTargetData.name : newTargetId) + ' sahnesine gidiyor';
+        var editedEntryRef = editingEntry;
+        pushHistory('ok hedefi düzenleme', function() {
+          edits = edits.filter(function(e) { return e !== linkEditRecord; });
+          saveEdits();
+          editedEntryRef.rawData.target = oldTargetId;
+          editedEntryRef.label = oldLabel;
+        });
       }
       resetInputRowForAdd();
     }
@@ -730,10 +1315,13 @@
             pendingCoords = null;
             addButton.textContent = 'Güncelle';
             if (mode === 'product') {
-              linkInput.value = '';
-              coordsLine.textContent = 'DÜZENLE: "' + editMatch.rawData.title + '" — yeni ürün linkini girin';
+              linkInput.value = editMatch.rawData.sourceLink || '';
+              coordsLine.textContent = editMatch.rawData.sourceLink
+                ? 'DÜZENLE: "' + editMatch.rawData.title + '" — mevcut link dolduruldu, isterseniz değiştirin'
+                : 'DÜZENLE: "' + editMatch.rawData.title + '" — yeni ürün linkini girin';
               coordsLine.classList.add('ready');
               linkInput.focus();
+              linkInput.select();
             } else {
               populateSceneSelect();
               var oldTargetData = findSceneDataById(editMatch.rawData.target);
@@ -749,23 +1337,48 @@
           });
           if (idx !== -1) {
             var removedEntry = currentSceneWrapper.editableHotspots[idx];
+            var sceneWrapperForUndo = currentSceneWrapper;
             event.stopPropagation();
             event.preventDefault();
             removedEntry.hotspot.destroy();
-            currentSceneWrapper.editableHotspots.splice(idx, 1);
+            sceneWrapperForUndo.editableHotspots.splice(idx, 1);
+            var removalRecord = null;
             if (removedEntry.ownRecord) {
               // Was added earlier in this same session - just undo the add.
               arrows = arrows.filter(function(a) { return a !== removedEntry.ownRecord; });
               saveArrows();
             } else {
-              removals.push({
+              removalRecord = {
                 scene: currentSceneNumber,
                 kind: removedEntry.kind,
                 label: removedEntry.label
-              });
+              };
+              removals.push(removalRecord);
               saveRemovals();
             }
             coordsLine.textContent = 'Silindi: ' + removedEntry.label;
+            pushHistory('silme (' + removedEntry.label + ')', function() {
+              var el = removedEntry.kind === 'link'
+                ? createLinkHotspotElement(removedEntry.rawData)
+                : createInfoHotspotElement(removedEntry.rawData, sceneWrapperForUndo.data.name);
+              var restoredHotspot = sceneWrapperForUndo.scene.hotspotContainer().createHotspot(el, {
+                yaw: removedEntry.rawData.yaw, pitch: removedEntry.rawData.pitch
+              });
+              sceneWrapperForUndo.editableHotspots.push({
+                hotspot: restoredHotspot,
+                kind: removedEntry.kind,
+                label: removedEntry.label,
+                rawData: removedEntry.rawData,
+                ownRecord: removedEntry.ownRecord
+              });
+              if (removalRecord) {
+                removals = removals.filter(function(r) { return r !== removalRecord; });
+                saveRemovals();
+              } else if (removedEntry.ownRecord) {
+                arrows.push(removedEntry.ownRecord);
+                saveArrows();
+              }
+            });
           }
         }
         return;
@@ -844,7 +1457,19 @@
             lines.push('Varsayılan açılış sahnesi: ' + c.sceneName + ' (' + c.sceneId + ')');
           } else if (c.type === 'contact') {
             lines.push('İletişim: tel1=' + c.phone1 + ' tel2=' + c.phone2 + ' instagram=' + c.instagram + ' maps=' + c.mapsLink);
+          } else if (c.type === 'sceneOrder') {
+            lines.push('Yeni sahne sırası: ' + c.order.map(function(id) {
+              var s = findSceneDataById(id);
+              return s ? s.name.replace(/^\d+\.\s*/, '') : id;
+            }).join(' -> '));
           }
+        });
+      }
+      if (newScenes.length) {
+        lines.push('--- YENİ SAHNELER ---');
+        newScenes.forEach(function(ns) {
+          lines.push(ns.tempId + '  "' + ns.name + '"  bağlantılar: ' +
+            ns.connections.map(function(c) { return c.sceneName + ' (' + c.sceneId + ')'; }).join(', '));
         });
       }
       var text = lines.join('\n');
@@ -859,19 +1484,23 @@
     });
 
     clearButton.addEventListener('click', function() {
-      if (!window.confirm('Eklenenler, oklar, taşınanlar, silinenler, düzenlemeler ve ayarlar listesi temizlensin mi?')) return;
+      if (!window.confirm('Eklenenler, oklar, taşınanlar, silinenler, düzenlemeler, ayarlar ve yeni sahneler listesi temizlensin mi?')) return;
       entries = [];
       moves = [];
       arrows = [];
       removals = [];
       edits = [];
       settingsChanges = [];
+      newScenes = [];
       saveEntries();
       saveMoves();
       saveArrows();
       saveRemovals();
       saveEdits();
       saveSettingsChanges();
+      saveNewScenes();
+      history = [];
+      updateUndoButton();
     });
 
     updateCount();
@@ -888,17 +1517,21 @@
         return entry.hotspot.domElement() === hotspotEl;
       })[0];
       if (!match) return;
+      event.stopPropagation();
+      var livePos = match.hotspot.position();
       dragging = {
         entry: match,
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
+        startCoords: { yaw: livePos.yaw, pitch: livePos.pitch },
         moved: false
       };
     }, true);
 
     element.addEventListener('pointermove', function(event) {
       if (!dragging || event.pointerId !== dragging.pointerId) return;
+      event.stopPropagation();
       var dx = event.clientX - dragging.startX;
       var dy = event.clientY - dragging.startY;
       if (!dragging.moved && Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD) return;
@@ -918,24 +1551,40 @@
 
     element.addEventListener('pointerup', function(event) {
       if (!dragging || event.pointerId !== dragging.pointerId) return;
+      event.stopPropagation();
       if (dragging.moved && dragging.lastCoords) {
-        if (dragging.entry.ownRecord) {
+        var draggedEntry = dragging.entry;
+        var startCoords = dragging.startCoords;
+        if (draggedEntry.ownRecord) {
           // This hotspot was created earlier in this same session (e.g. a new
           // arrow) - update its own record instead of logging a separate move.
-          dragging.entry.ownRecord.yaw = dragging.lastCoords.yaw;
-          dragging.entry.ownRecord.pitch = dragging.lastCoords.pitch;
+          draggedEntry.ownRecord.yaw = dragging.lastCoords.yaw;
+          draggedEntry.ownRecord.pitch = dragging.lastCoords.pitch;
           saveArrows();
+          coordsLine.textContent = 'Taşındı: ' + draggedEntry.label + '. Kaydedildi.';
+          pushHistory('taşıma (' + draggedEntry.label + ')', function() {
+            draggedEntry.hotspot.setPosition(startCoords);
+            draggedEntry.ownRecord.yaw = startCoords.yaw;
+            draggedEntry.ownRecord.pitch = startCoords.pitch;
+            saveArrows();
+          });
         } else {
-          moves.push({
+          var moveRecord = {
             scene: currentSceneNumber,
-            kind: dragging.entry.kind,
-            label: dragging.entry.label,
+            kind: draggedEntry.kind,
+            label: draggedEntry.label,
             yaw: dragging.lastCoords.yaw,
             pitch: dragging.lastCoords.pitch
-          });
+          };
+          moves.push(moveRecord);
           saveMoves();
+          coordsLine.textContent = 'Taşındı: ' + draggedEntry.label + '. Kaydedildi.';
+          pushHistory('taşıma (' + draggedEntry.label + ')', function() {
+            draggedEntry.hotspot.setPosition(startCoords);
+            moves = moves.filter(function(m) { return m !== moveRecord; });
+            saveMoves();
+          });
         }
-        coordsLine.textContent = 'Taşındı: ' + dragging.entry.label + '. Kaydedildi.';
         suppressNextClick = true;
       }
       dragging = null;
