@@ -26,6 +26,7 @@
   var currentTransitionDuration = (data.settings && data.settings.sceneTransitionDuration != null)
     ? data.settings.sceneTransitionDuration : 1000;
   var currentTransitionKey = (data.settings && data.settings.sceneTransitionKey) || 'classic';
+  var currentPresentationRoute = (data.settings && data.settings.presentationRoute) || null;
 
   // Scenes temporarily hidden ("under maintenance") - excluded from the
   // sidebar list and kiosk rotation, but not deleted; a scene keeps its
@@ -161,7 +162,7 @@
 
     // Create info hotspots.
     data.infoHotspots.forEach(function(hotspot) {
-      var element = createInfoHotspotElement(hotspot, translatedSceneName(data));
+      var element = createInfoHotspotElement(hotspot, translatedSceneName(data), data.infoHotspots);
       var marzipanoHotspot = scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
       editableHotspots.push({
         hotspot: marzipanoHotspot,
@@ -499,7 +500,9 @@
     sendBtn.id = 'favoritesSendButton';
     sendBtn.textContent = uiText('favoritesSendLabel', "Hepsini WhatsApp'tan Gönder");
     sendBtn.addEventListener('click', function() {
-      var lines = getFavorites().map(function(f) { return '- ' + f.title; });
+      var lines = getFavorites().map(function(f) {
+        return '- ' + f.title + (f.sceneName ? (' (' + f.sceneName + ')') : '');
+      });
       var msg = uiText('favoritesMessage', 'Merhaba, aşağıdaki ürünler hakkında bilgi almak istiyorum:') + '\n' + lines.join('\n');
       window.open('https://wa.me/905493320707?text=' + encodeURIComponent(msg), '_blank');
     });
@@ -1541,29 +1544,42 @@
     featuredCheckboxLabel.appendChild(featuredCheckbox);
     featuredCheckboxLabel.appendChild(featuredCheckboxText);
     var featuredSelect = document.createElement('select');
+    var dailyPickCheckboxLabel = document.createElement('label');
+    dailyPickCheckboxLabel.className = 'posFinderCheckboxLabel';
+    var dailyPickCheckbox = document.createElement('input');
+    dailyPickCheckbox.type = 'checkbox';
+    var dailyPickCheckboxText = document.createElement('span');
+    dailyPickCheckboxText.textContent = '"Günün Seçkisi": elle seçmek yerine, her gün otomatik farklı bir ürün öne çıkar.';
+    dailyPickCheckboxLabel.appendChild(dailyPickCheckbox);
+    dailyPickCheckboxLabel.appendChild(dailyPickCheckboxText);
+    dailyPickCheckbox.addEventListener('change', function() {
+      featuredSelect.disabled = dailyPickCheckbox.checked;
+    });
     var featuredButton = document.createElement('button');
     featuredButton.textContent = 'Kaydet';
     featuredSection.appendChild(featuredCheckboxLabel);
+    featuredSection.appendChild(dailyPickCheckboxLabel);
     featuredSection.appendChild(featuredSelect);
     featuredSection.appendChild(featuredButton);
 
     featuredButton.addEventListener('click', function() {
       var enabled = featuredCheckbox.checked;
+      var dailyPick = dailyPickCheckbox.checked;
       var title = featuredSelect.value;
-      if (enabled && !title) { settingsStatus.textContent = 'Lütfen bir ürün seç.'; return; }
+      if (enabled && !dailyPick && !title) { settingsStatus.textContent = 'Lütfen bir ürün seç.'; return; }
       var beforeSnapshot = settingsChanges.slice();
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'featuredProduct'; });
-      settingsChanges.push({ type: 'featuredProduct', enabled: enabled, title: title });
+      settingsChanges.push({ type: 'featuredProduct', enabled: enabled, title: title, dailyPick: dailyPick });
       var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
-      settingsStatus.textContent = enabled ? ('Öne çıkan ürün kaydedildi: "' + title + '"') : 'Öne çıkan ürün kapatıldı.';
+      settingsStatus.textContent = !enabled ? 'Öne çıkan ürün kapatıldı.' : (dailyPick ? 'Günün Seçkisi açıldı.' : ('Öne çıkan ürün kaydedildi: "' + title + '"'));
       pushHistory('öne çıkan ürün ayarı', function() {
         settingsChanges = beforeSnapshot;
         saveSettingsChanges();
       }, function() {
         settingsChanges = afterSnapshot;
         saveSettingsChanges();
-        settingsStatus.textContent = enabled ? ('Öne çıkan ürün kaydedildi: "' + title + '"') : 'Öne çıkan ürün kapatıldı.';
+        settingsStatus.textContent = !enabled ? 'Öne çıkan ürün kapatıldı.' : (dailyPick ? 'Günün Seçkisi açıldı.' : ('Öne çıkan ürün kaydedildi: "' + title + '"'));
       });
     });
 
@@ -1798,6 +1814,64 @@
       });
     });
 
+    // -- Sunum Modu: which scenes take part in the guided/auto-pilot tour,
+    // and in what order (reuses the current scene order; unchecked scenes
+    // are simply skipped rather than reordered separately). --
+    var presentationSection = settingsSection('Sunum Modu rotası', '🎬');
+    var presentationList = document.createElement('div');
+    presentationList.id = 'posFinderPresentationList';
+    var presentationSaveButton = document.createElement('button');
+    presentationSaveButton.type = 'button';
+    presentationSaveButton.textContent = 'Rotayı Kaydet';
+    var presentationHint = document.createElement('div');
+    presentationHint.className = 'posFinderPasswordHint';
+    presentationHint.textContent = 'İşaretli sahneler, sitedeki "▶ Sunumu Başlat" butonuna basıldığında bu sırayla otomatik gezilir. En az 2 sahne işaretli olmalı.';
+    presentationSection.appendChild(presentationList);
+    presentationSection.appendChild(presentationSaveButton);
+    presentationSection.appendChild(presentationHint);
+
+    function populatePresentationList() {
+      if (presentationList.dataset.filled) return;
+      var currentRoute = (data.settings && data.settings.presentationRoute) || null;
+      data.scenes.forEach(function(s, i) {
+        var row = document.createElement('label');
+        row.className = 'posFinderPresentationRow';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = s.id;
+        cb.checked = currentRoute ? currentRoute.indexOf(s.id) !== -1 : true;
+        var span = document.createElement('span');
+        span.textContent = (i + 1) + '. ' + s.name.replace(/^\d+\.\s*/, '');
+        row.appendChild(cb);
+        row.appendChild(span);
+        presentationList.appendChild(row);
+      });
+      presentationList.dataset.filled = '1';
+    }
+
+    presentationSaveButton.addEventListener('click', function() {
+      var checked = Array.prototype.filter.call(presentationList.querySelectorAll('input[type="checkbox"]'), function(cb) { return cb.checked; })
+        .map(function(cb) { return cb.value; });
+      if (checked.length < 2) { settingsStatus.textContent = 'Sunum Modu için en az 2 sahne işaretli olmalı.'; return; }
+      var beforeSnapshot = settingsChanges.slice();
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'presentationRoute'; });
+      settingsChanges.push({ type: 'presentationRoute', route: checked });
+      var afterSnapshot = settingsChanges.slice();
+      currentPresentationRoute = checked;
+      saveSettingsChanges();
+      settingsStatus.textContent = 'Sunum Modu rotası kaydedildi (' + checked.length + ' sahne).';
+      pushHistory('sunum modu rotası kaydetme', function() {
+        settingsChanges = beforeSnapshot;
+        currentPresentationRoute = null;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        currentPresentationRoute = checked;
+        saveSettingsChanges();
+        settingsStatus.textContent = 'Sunum Modu rotası kaydedildi (' + checked.length + ' sahne).';
+      });
+    });
+
     // -- Opening view angle for the currently viewed scene --
     var openingViewSection = settingsSection('Sahnenin açılış açısı', '👁️');
     var openingViewButton = document.createElement('button');
@@ -2014,6 +2088,7 @@
     settingsPanel.appendChild(seasonalSection._accordionWrapper);
     settingsPanel.appendChild(musicSection._accordionWrapper);
     settingsPanel.appendChild(kioskSection._accordionWrapper);
+    settingsPanel.appendChild(presentationSection._accordionWrapper);
     settingsPanel.appendChild(hotspotScaleSection._accordionWrapper);
 
     settingsPanel.appendChild(settingsGroupHeader('İletişim & Pazarlama'));
@@ -2172,6 +2247,9 @@
     listSearchInput.id = 'posFinderListSearch';
     listSearchInput.placeholder = 'Ürün veya sahne adına göre ara...';
 
+    var listCategoryRow = document.createElement('div');
+    listCategoryRow.id = 'posFinderListCategoryRow';
+
     var listStatus = document.createElement('div');
     listStatus.id = 'posFinderListStatus';
 
@@ -2200,6 +2278,7 @@
     listResults.id = 'posFinderListResults';
 
     listPanel.appendChild(listSearchInput);
+    listPanel.appendChild(listCategoryRow);
     listPanel.appendChild(listMoveFlyout);
     listPanel.appendChild(listStatus);
     listPanel.appendChild(listResults);
@@ -2345,8 +2424,37 @@
       return items;
     }
 
+    var activeCategoryFilter = null;
+    function populateListCategoryRow() {
+      if (listCategoryRow.dataset.filled) return;
+      var seen = {};
+      var categories = [];
+      buildProductIndex().forEach(function(item) {
+        var roomType = item.sceneName.replace(/^\d+\.\s*/, '');
+        if (!seen[roomType]) { seen[roomType] = true; categories.push(roomType); }
+      });
+      categories.forEach(function(cat) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'posFinderCategoryChip';
+        chip.textContent = cat;
+        chip.addEventListener('click', function() {
+          activeCategoryFilter = (activeCategoryFilter === cat) ? null : cat;
+          Array.prototype.forEach.call(listCategoryRow.querySelectorAll('.posFinderCategoryChip'), function(c) {
+            c.classList.toggle('active', c.textContent === activeCategoryFilter);
+          });
+          renderListResults(listSearchInput.value);
+        });
+        listCategoryRow.appendChild(chip);
+      });
+      listCategoryRow.dataset.filled = '1';
+    }
+
     function renderListResults(filterText) {
       var items = buildProductIndex();
+      if (activeCategoryFilter) {
+        items = items.filter(function(item) { return item.sceneName.replace(/^\d+\.\s*/, '') === activeCategoryFilter; });
+      }
       var q = (filterText || '').trim().toLocaleLowerCase('tr');
       if (q) {
         items = items.filter(function(item) {
@@ -2862,7 +2970,7 @@
       if (mode === 'photo') populatePhotoSceneSelect();
       if (mode === 'settings') populateSettingsPanel();
       if (mode === 'newScene' && !newSceneConnList.children.length) addNewSceneConnRow();
-      if (mode === 'list') renderListResults(listSearchInput.value);
+      if (mode === 'list') { populateListCategoryRow(); renderListResults(listSearchInput.value); }
       if (mode === 'map') renderMap();
       if (mode === 'order') renderOrderList();
       if (mode !== 'settings') {
@@ -2903,6 +3011,7 @@
     }
 
     function populateSettingsPanel() {
+      populatePresentationList();
       if (!renameSceneSelect.options.length) {
         data.scenes.forEach(function(s, i) {
           var opt1 = document.createElement('option');
@@ -2968,6 +3077,8 @@
           featuredSelect.appendChild(opt);
         });
         featuredCheckbox.checked = !!(data.settings && data.settings.featuredProductEnabled);
+        dailyPickCheckbox.checked = !!(data.settings && data.settings.featuredDailyPick);
+        featuredSelect.disabled = dailyPickCheckbox.checked;
         if (data.settings && data.settings.featuredProductTitle) featuredSelect.value = data.settings.featuredProductTitle;
         featuredSelect.dataset.filled = '1';
       }
@@ -3566,7 +3677,9 @@
           } else if (c.type === 'sceneTransition') {
             lines.push('Sahne geçiş efekti: ' + c.label + ' (' + c.duration + 'ms)');
           } else if (c.type === 'featuredProduct') {
-            lines.push(c.enabled ? ('Öne çıkan ürün: "' + c.title + '"') : 'Öne çıkan ürün kapalı');
+            if (!c.enabled) lines.push('Öne çıkan ürün kapalı');
+            else if (c.dailyPick) lines.push('Öne çıkan ürün: Günün Seçkisi açık (featuredDailyPick: true, her gün otomatik değişir)');
+            else lines.push('Öne çıkan ürün: "' + c.title + '"');
           } else if (c.type === 'backgroundMusic') {
             lines.push('Fon müziği düğmesi: ' + (c.enabled ? 'açık' : 'kapalı'));
           } else if (c.type === 'seasonalEffect') {
@@ -3577,6 +3690,11 @@
             lines.push(c.hidden
               ? ('SAHNE GİZLENDİ (bakımda): "' + c.sceneName + '" (' + c.sceneId + ') — site canlıya alınırken sidebar/vitrin modundan çıkarılmalı, sahne silinmemeli')
               : ('Sahne tekrar görünür yapıldı: "' + c.sceneName + '" (' + c.sceneId + ')'));
+          } else if (c.type === 'presentationRoute') {
+            lines.push('Sunum Modu rotası: ' + c.route.map(function(id) {
+              var s = findSceneDataById(id);
+              return s ? s.name.replace(/^\d+\.\s*/, '') : id;
+            }).join(' -> '));
           } else if (c.type === 'moveProduct') {
             lines.push('ÜRÜN TAŞINDI: "' + c.title + '"  ' + c.sourceSceneName + ' (' + c.sourceSceneId + ') -> ' +
               c.targetSceneName + ' (' + c.targetSceneId + ')  yeni konum yaw:' + c.newYaw.toFixed(4) + ' pitch:' + c.newPitch.toFixed(4));
@@ -3888,12 +4006,28 @@
     });
   }
 
+  // "Günün Seçkisi": picks a different product each calendar day, the same
+  // pick for everyone that day, with no server involved - just today's
+  // date used to index into every product title, in scene order.
+  function pickDailyFeaturedTitle() {
+    var titles = [];
+    data.scenes.forEach(function(s) {
+      (s.infoHotspots || []).forEach(function(h) { titles.push(h.title); });
+    });
+    if (!titles.length) return null;
+    var now = new Date();
+    var dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+    return titles[dayOfYear % titles.length];
+  }
+
   // If a featured product is set and enabled, and it lives in this scene,
   // auto-open its info bubble shortly after arriving.
   function maybeOpenFeaturedProduct(scene) {
-    if (!data.settings || !data.settings.featuredProductEnabled || !data.settings.featuredProductTitle) return;
+    if (!data.settings || !data.settings.featuredProductEnabled) return;
+    var title = data.settings.featuredDailyPick ? pickDailyFeaturedTitle() : data.settings.featuredProductTitle;
+    if (!title) return;
     var match = (scene.editableHotspots || []).filter(function(e) {
-      return e.kind === 'info' && e.rawData && e.rawData.title === data.settings.featuredProductTitle;
+      return e.kind === 'info' && e.rawData && e.rawData.title === title;
     })[0];
     if (!match) return;
     var header = match.hotspot.domElement().querySelector('.info-hotspot-header');
@@ -3993,7 +4127,8 @@
     return wrapper;
   }
 
-  function createInfoHotspotElement(hotspot, sceneName) {
+  function createInfoHotspotElement(hotspot, sceneName, siblingHotspots) {
+    siblingHotspots = siblingHotspots || [];
 
     // Create wrapper element to hold icon and tooltip.
     var wrapper = document.createElement('div');
@@ -4121,6 +4256,39 @@
       actionsRow.appendChild(listenMoreBtn);
     }
     text.appendChild(actionsRow);
+
+    // Quick links to the other products in this same room, so a visitor
+    // doesn't have to close the card and go hunting for the next one.
+    var otherProducts = siblingHotspots.filter(function(h) { return h.title !== hotspot.title; });
+    if (otherProducts.length) {
+      var otherWrap = document.createElement('div');
+      otherWrap.className = 'info-hotspot-others';
+      var otherLabel = document.createElement('div');
+      otherLabel.className = 'info-hotspot-others-label';
+      otherLabel.textContent = uiText('otherProductsLabel', 'Bu odadaki diğer ürünler');
+      otherWrap.appendChild(otherLabel);
+      otherProducts.forEach(function(other) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'info-hotspot-other-chip';
+        chip.textContent = stripHtmlForSpeech(other.title);
+        chip.addEventListener('click', function(event) {
+          event.stopPropagation();
+          wrapper.classList.remove('visible');
+          modal.classList.remove('visible');
+          var titleEls = document.querySelectorAll('.hotspot.info-hotspot .info-hotspot-title');
+          for (var i = 0; i < titleEls.length; i++) {
+            if (titleEls[i].textContent === other.title) {
+              var otherHeader = titleEls[i].closest('.info-hotspot').querySelector('.info-hotspot-header');
+              if (otherHeader) otherHeader.click();
+              break;
+            }
+          }
+        });
+        otherWrap.appendChild(chip);
+      });
+      text.appendChild(otherWrap);
+    }
 
     // Create a WhatsApp "ask about this product" link, if requested. If the
     // product is badged "Tükendi" AND the admin has explicitly turned on
@@ -4294,6 +4462,138 @@
   if (/[?&]kiosk=1/.test(window.location.search)) {
     setupKioskMode();
   }
+
+  // "Sunum Modu": an on-demand scripted walkthrough any visitor (or a
+  // presenter running a live demo) can start with one tap - switches
+  // through the admin-picked route on a timer, shows progress, and pauses
+  // the moment someone actually drags the view (a small "devam et" button
+  // lets them pick the script back up instead of losing their place).
+  (function setupPresentationMode() {
+    var STEP_SECONDS = 9;
+    var active = false;
+    var timer = null;
+    var route = [];
+    var stepIndex = 0;
+
+    var startBtn = document.createElement('button');
+    startBtn.type = 'button';
+    startBtn.id = 'presentationStartButton';
+    startBtn.className = 'visible';
+    startBtn.textContent = '▶ ' + uiText('presentationStartLabel', 'Sunumu Başlat');
+    document.body.appendChild(startBtn);
+
+    var progressBar = document.createElement('div');
+    progressBar.id = 'presentationProgress';
+    document.body.appendChild(progressBar);
+
+    var resumeBtn = document.createElement('button');
+    resumeBtn.type = 'button';
+    resumeBtn.id = 'presentationResumeButton';
+    resumeBtn.textContent = '▶ ' + uiText('presentationResumeLabel', 'Sunuma Devam Et');
+    document.body.appendChild(resumeBtn);
+
+    var closingCard = document.createElement('div');
+    closingCard.id = 'presentationClosing';
+    var closingTitle = document.createElement('div');
+    closingTitle.id = 'presentationClosingTitle';
+    closingTitle.textContent = uiText('presentationClosingTitle', 'Turu gezdiğiniz için teşekkürler!');
+    var closingButtons = document.createElement('div');
+    closingButtons.id = 'presentationClosingButtons';
+    var restartBtn = document.createElement('button');
+    restartBtn.type = 'button';
+    restartBtn.textContent = uiText('presentationRestartLabel', '↻ Baştan Başlat');
+    var waBtn = document.createElement('button');
+    waBtn.type = 'button';
+    waBtn.textContent = uiText('presentationWhatsappLabel', "💬 WhatsApp'tan Konuşalım");
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = uiText('closeLabel', 'Kapat');
+    closingButtons.appendChild(restartBtn);
+    closingButtons.appendChild(waBtn);
+    closingButtons.appendChild(closeBtn);
+    closingCard.appendChild(closingTitle);
+    closingCard.appendChild(closingButtons);
+    document.body.appendChild(closingCard);
+
+    function buildRoute() {
+      var ids = (currentPresentationRoute && currentPresentationRoute.length >= 2)
+        ? currentPresentationRoute
+        : data.scenes.filter(function(s) { return !hiddenSceneIds[s.id]; }).map(function(s) { return s.id; });
+      var wrappers = [];
+      ids.forEach(function(id) {
+        var w = findSceneById(id);
+        if (w) wrappers.push(w);
+      });
+      return wrappers;
+    }
+
+    function updateProgress() {
+      var s = route[stepIndex];
+      progressBar.textContent = (stepIndex + 1) + ' / ' + route.length + (s ? (' · ' + s.data.name.replace(/^\d+\.\s*/, '')) : '');
+    }
+
+    function scheduleAdvance() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(advance, STEP_SECONDS * 1000);
+    }
+
+    function advance() {
+      stepIndex++;
+      if (stepIndex >= route.length) { endPresentation(); return; }
+      switchScene(route[stepIndex]);
+      updateProgress();
+      scheduleAdvance();
+    }
+
+    function startPresentation() {
+      route = buildRoute();
+      if (route.length < 2) return;
+      active = true;
+      stepIndex = 0;
+      startBtn.classList.remove('visible');
+      closingCard.classList.remove('visible');
+      resumeBtn.classList.remove('visible');
+      progressBar.classList.add('visible');
+      switchScene(route[0]);
+      updateProgress();
+      scheduleAdvance();
+    }
+
+    function pausePresentation() {
+      if (!active) return;
+      if (timer) clearTimeout(timer);
+      resumeBtn.classList.add('visible');
+    }
+
+    function endPresentation() {
+      active = false;
+      if (timer) clearTimeout(timer);
+      progressBar.classList.remove('visible');
+      resumeBtn.classList.remove('visible');
+      closingCard.classList.add('visible');
+    }
+
+    startBtn.addEventListener('click', startPresentation);
+    resumeBtn.addEventListener('click', function() {
+      resumeBtn.classList.remove('visible');
+      scheduleAdvance();
+    });
+    restartBtn.addEventListener('click', function() {
+      closingCard.classList.remove('visible');
+      startPresentation();
+    });
+    closeBtn.addEventListener('click', function() {
+      closingCard.classList.remove('visible');
+      startBtn.classList.add('visible');
+    });
+    waBtn.addEventListener('click', function() {
+      var msg = uiText('whatsappGeneralMessage', 'Merhaba, sanal turu gezdim, bilgi almak istiyorum.');
+      window.open('https://wa.me/905493320707?text=' + encodeURIComponent(msg), '_blank');
+    });
+    panoElement.addEventListener('pointerdown', function() {
+      if (active) pausePresentation();
+    });
+  })();
 
   function setupKioskMode() {
     var intervalSeconds = (data.settings && data.settings.kioskIntervalSeconds) || 8;
