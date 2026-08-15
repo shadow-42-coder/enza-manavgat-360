@@ -4250,25 +4250,40 @@
   // Guided 360 photo capture: walks an admin through a fixed shot list
   // (equator ring + upper ring + zenith) using the phone's own orientation
   // sensors, auto-firing the shutter once the phone is pointed at each
-  // target and briefly held still, then warps every shot onto a shared
-  // equirectangular canvas (reprojected by its own capture-time yaw/pitch)
-  // and hands the result straight to the same tile pipeline the manual
-  // "Yeni Sahne" upload uses. Camera/orientation quality (especially the
-  // phone's compass, which drifts badly near metal shelving/lighting) sets
-  // a real ceiling on how clean the seams come out - this is a budget
-  // stand-in for a dedicated 360 camera, not a replacement for one.
-  var CAPTURE_FOV_H = 60 * Math.PI / 180;
+  // target and briefly held still. Orientation sensors alone are not
+  // accurate enough to stitch cleanly (real apps - Google's Street View
+  // capture mode, Cardboard Camera - all use visual feature matching
+  // between overlapping frames, not just raw sensor angles; a phone
+  // compass drifts, and handheld shots always have a little parallax that
+  // no sensor reading can correct for). So after capture this pipeline:
+  //  1. measures the camera's *real* field of view from the first two
+  //     shots via OpenCV.js feature matching, instead of assuming one
+  //     (assumed FOV was the single biggest source of bad overlap/seams
+  //     in the first version of this tool);
+  //  2. re-measures each ring's actual yaw spacing the same way and
+  //     nudges each shot's angle to match what the pixels show rather
+  //     than what the compass reported;
+  //  3. blends overlapping shots with a feathered (distance-weighted)
+  //     alpha instead of a hard cut, so small remaining misalignment is
+  //     far less visible.
+  // This is still a handheld-phone budget tool, not a dedicated 360
+  // camera - real per-pixel parallax can't be fully removed without a
+  // no-parallax-point mount - but it now follows the same "sensor picks
+  // roughly where, pixels confirm exactly where" pattern every real
+  // panorama app uses, instead of trusting the compass alone.
+  var CAPTURE_FOV_H_DEFAULT = 60 * Math.PI / 180;
+  var CAPTURE_RING_COUNT = 12;
 
   function buildCaptureTargets() {
     var targets = [];
-    var n = 8;
+    var n = CAPTURE_RING_COUNT;
     for (var i = 0; i < n; i++) {
-      targets.push({ yaw: (i / n) * 2 * Math.PI - Math.PI, pitch: 0, done: false });
+      targets.push({ yaw: (i / n) * 2 * Math.PI - Math.PI, pitch: 0, done: false, ring: 'eq', ringIndex: i });
     }
     for (var j = 0; j < n; j++) {
-      targets.push({ yaw: (j / n) * 2 * Math.PI - Math.PI + Math.PI / n, pitch: Math.PI / 4, done: false });
+      targets.push({ yaw: (j / n) * 2 * Math.PI - Math.PI + Math.PI / n, pitch: Math.PI / 4, done: false, ring: 'up', ringIndex: j });
     }
-    targets.push({ yaw: 0, pitch: Math.PI / 2 - 0.15, done: false });
+    targets.push({ yaw: 0, pitch: Math.PI / 2 - 0.15, done: false, ring: 'zenith', ringIndex: 0 });
     return targets;
   }
 
@@ -4278,21 +4293,159 @@
     return a;
   }
 
+  // -- OpenCV.js: lazy-loaded only when the capture tool actually opens
+  // (it's a ~10MB WASM bundle - visitors browsing the tour never load it). --
+  var openCvLoadPromise = null;
+  function ensureOpenCvLoaded() {
+    if (window.cv && window.cv.Mat) return Promise.resolve();
+    if (openCvLoadPromise) return openCvLoadPromise;
+    openCvLoadPromise = new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+      script.src = 'vendor/opencv.js';
+      script.onerror = function() { reject(new Error('OpenCV yüklenemedi')); };
+      document.body.appendChild(script);
+      var check = setInterval(function() {
+        if (window.cv && window.cv.Mat) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 150);
+      setTimeout(function() { clearInterval(check); reject(new Error('OpenCV zaman aşımı')); }, 25000);
+    });
+    return openCvLoadPromise;
+  }
+
+  // ORB-detect + match two canvases, returning normalized-coordinate point
+  // pairs ({uA, uB, vA, vB} each in [-1,1]) for matches whose vertical
+  // position roughly agrees (rejects most mismatches without a costly
+  // RANSAC homography fit - all we need is a horizontal angle estimate).
+  function matchCanvasesOpenCv(canvasA, canvasB) {
+    if (!window.cv || !window.cv.Mat) return [];
+    var mats = [];
+    function track(m) { mats.push(m); return m; }
+    try {
+      var matA = track(cv.imread(canvasA));
+      var matB = track(cv.imread(canvasB));
+      var grayA = track(new cv.Mat()), grayB = track(new cv.Mat());
+      cv.cvtColor(matA, grayA, cv.COLOR_RGBA2GRAY);
+      cv.cvtColor(matB, grayB, cv.COLOR_RGBA2GRAY);
+      var orb = new cv.ORB(700);
+      var kpA = track(new cv.KeyPointVector()), kpB = track(new cv.KeyPointVector());
+      var descA = track(new cv.Mat()), descB = track(new cv.Mat());
+      var mask = track(new cv.Mat());
+      orb.detectAndCompute(grayA, mask, kpA, descA);
+      orb.detectAndCompute(grayB, mask, kpB, descB);
+      if (descA.rows === 0 || descB.rows === 0) { orb.delete(); mats.forEach(function(m) { m.delete(); }); return []; }
+      var bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
+      var matches = track(new cv.DMatchVector());
+      bf.match(descA, descB, matches);
+      var w = canvasA.width, h = canvasA.height;
+      var pairs = [];
+      for (var i = 0; i < matches.size(); i++) {
+        var m = matches.get(i);
+        var ptA = kpA.get(m.queryIdx).pt;
+        var ptB = kpB.get(m.trainIdx).pt;
+        if (Math.abs(ptA.y - ptB.y) < h * 0.1) {
+          pairs.push({
+            uA: (ptA.x - w / 2) / (w / 2), vA: (ptA.y - h / 2) / (h / 2),
+            uB: (ptB.x - w / 2) / (w / 2), vB: (ptB.y - h / 2) / (h / 2)
+          });
+        }
+      }
+      orb.delete(); bf.delete();
+      mats.forEach(function(m) { m.delete(); });
+      return pairs;
+    } catch (e) {
+      mats.forEach(function(m) { try { m.delete(); } catch (e2) {} });
+      return [];
+    }
+  }
+
+  // Given matched points between two shots taken `deltaYaw` apart (a known
+  // value - the nominal ring spacing), solves for the horizontal half-FOV
+  // (as tan(halfFov)) that makes the rectilinear projection consistent
+  // with what the matched pixels actually show. Simple bisection since the
+  // angle-vs-T relationship is monotonic over the plausible camera range.
+  function solveHalfFovTan(pairs, deltaYaw) {
+    if (pairs.length < 8) return null;
+    function medianAngleError(T) {
+      var errs = pairs.map(function(p) {
+        return (Math.atan(p.uA * T) - Math.atan(p.uB * T)) - deltaYaw;
+      });
+      errs.sort(function(a, b) { return a - b; });
+      return errs[Math.floor(errs.length / 2)];
+    }
+    var lo = Math.tan(12 * Math.PI / 180), hi = Math.tan(70 * Math.PI / 180);
+    if (medianAngleError(lo) > 0 || medianAngleError(hi) < 0) return null;
+    for (var iter = 0; iter < 40; iter++) {
+      var mid = (lo + hi) / 2;
+      if (medianAngleError(mid) > 0) hi = mid; else lo = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  // First-two-shots calibration: measures the camera's real horizontal FOV
+  // instead of assuming one. Falls back to the assumed default if matching
+  // fails (too few features, e.g. a blank wall) or gives an implausible
+  // result.
+  function calibrateFov(shotA, shotB) {
+    var deltaYaw = Math.abs(wrapAngle(shotB.yaw - shotA.yaw));
+    var pairs = matchCanvasesOpenCv(shotA.canvas, shotB.canvas);
+    var T = solveHalfFovTan(pairs, deltaYaw);
+    if (T === null) return null;
+    var fov = 2 * Math.atan(T);
+    if (fov < 25 * Math.PI / 180 || fov > 140 * Math.PI / 180) return null;
+    return fov;
+  }
+
+  // Walks one ring in angular order, using feature matches between each
+  // consecutive pair to nudge capturedYaw toward what the images actually
+  // show, chaining the correction forward (the first shot in the ring is
+  // left as the anchor). Small-angle approximation is fine here since
+  // corrections are refinements of an already-close sensor reading, not a
+  // full angle solve.
+  function refineRingYaw(ringShots, halfFovRad) {
+    if (!ringShots.length) return;
+    ringShots.sort(function(a, b) { return a.ringIndex - b.ringIndex; });
+    for (var i = 1; i < ringShots.length; i++) {
+      var prev = ringShots[i - 1], cur = ringShots[i];
+      if (!prev.canvas || !cur.canvas) continue;
+      var nominalStep = wrapAngle(cur.yaw - prev.yaw);
+      var pairs = matchCanvasesOpenCv(prev.canvas, cur.canvas);
+      if (pairs.length < 8) continue;
+      var shifts = pairs.map(function(p) { return p.uB - p.uA; });
+      shifts.sort(function(a, b) { return a - b; });
+      var medianShift = shifts[Math.floor(shifts.length / 2)];
+      // A feature that shifts to a smaller u in the second shot (uB < uA)
+      // means that shot is really rotated further in the direction of
+      // travel than the sensor reported, and vice versa.
+      var angleCorrection = -medianShift * halfFovRad;
+      // Safety clamp: never trust a correction larger than a third of the
+      // nominal step - if the sign/scale reasoning above is ever wrong for
+      // some device, this keeps the result close to the sensor-only
+      // baseline instead of making it worse.
+      var maxCorrection = Math.abs(nominalStep) / 3;
+      angleCorrection = Math.max(-maxCorrection, Math.min(maxCorrection, angleCorrection));
+      cur.capturedYaw = prev.capturedYaw + nominalStep + angleCorrection;
+    }
+  }
+
   // Draws only the (sx,sy,sw,sh) region of srcCanvas, warped so that its
   // corners land on p0 (top-left), p1 (top-right), p2 (bottom-left) of the
   // destination - a locally-affine approximation of the true nonlinear
   // gnomonic-to-equirectangular mapping, applied over a fine enough grid
   // (see warpShotOntoEquirect) that the approximation error is negligible.
-  function drawWarpedQuad(ctx, srcCanvas, sx, sy, sw, sh, p0, p1, p2) {
+  function drawWarpedQuad(ctx, srcCanvas, sx, sy, sw, sh, p0, p1, p2, alpha) {
     if (sw <= 0 || sh <= 0) return;
     var a = (p1[0] - p0[0]) / sw, b = (p1[1] - p0[1]) / sw;
     var c = (p2[0] - p0[0]) / sh, d = (p2[1] - p0[1]) / sh;
+    ctx.globalAlpha = alpha;
     ctx.setTransform(a, b, c, d, p0[0], p0[1]);
     ctx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
   }
 
   function warpShotOntoEquirect(t, octx, outW, outH, halfFovH, halfFovV) {
-    var GRID = 16;
+    var GRID = 20;
     var srcW = t.canvas.width, srcH = t.canvas.height;
     var yawC = t.capturedYaw, pitchC = t.capturedPitch;
     for (var gy = 0; gy < GRID; gy++) {
@@ -4309,14 +4462,20 @@
         });
         var xs = [corners[0][0], corners[1][0], corners[2][0]];
         if (Math.max.apply(null, xs) - Math.min.apply(null, xs) > outW / 2) continue;
+        var uMid = (u0 + u1) / 2, vMid = (v0 + v1) / 2;
+        // Feathered blend: cells near a shot's own edge fade out, so an
+        // overlapping neighbor shows through instead of a hard seam line.
+        var edgeDist = 1 - Math.max(Math.abs(uMid), Math.abs(vMid));
+        var alpha = Math.max(0.15, Math.min(1, edgeDist / 0.25));
         var sx0 = ((u0 + 1) / 2) * srcW, sx1 = ((u1 + 1) / 2) * srcW;
         var sy0 = ((v0 + 1) / 2) * srcH, sy1 = ((v1 + 1) / 2) * srcH;
-        drawWarpedQuad(octx, t.canvas, sx0, sy0, sx1 - sx0, sy1 - sy0, corners[0], corners[1], corners[2]);
+        drawWarpedQuad(octx, t.canvas, sx0, sy0, sx1 - sx0, sy1 - sy0, corners[0], corners[1], corners[2], alpha);
       }
     }
+    octx.globalAlpha = 1;
   }
 
-  function stitchCaptureTargets(targets, videoAspect) {
+  function stitchCaptureTargets(targets, videoAspect, fovH) {
     var outW = 2048, outH = 1024;
     var out = document.createElement('canvas');
     out.width = outW;
@@ -4324,13 +4483,20 @@
     var octx = out.getContext('2d');
     octx.fillStyle = '#000';
     octx.fillRect(0, 0, outW, outH);
-    var halfFovH = CAPTURE_FOV_H / 2;
+    var halfFovH = fovH / 2;
     var halfFovV = halfFovH / videoAspect;
-    targets.forEach(function(t) {
+    // Draw the equator ring last so it sits "on top" of the upper ring's
+    // overlap band - eye-level content matters most in a store tour.
+    var order = targets.slice().sort(function(a, b) {
+      var rank = { zenith: 0, up: 1, eq: 2 };
+      return (rank[a.ring] || 0) - (rank[b.ring] || 0);
+    });
+    order.forEach(function(t) {
       if (!t.done || !t.canvas) return;
       warpShotOntoEquirect(t, octx, outW, outH, halfFovH, halfFovV);
     });
     octx.setTransform(1, 0, 0, 1, 0, 0);
+    octx.globalAlpha = 1;
     return out;
   }
 
@@ -4415,8 +4581,12 @@
     var baseAlpha = null;
     var alignedSince = null;
     var lastAlpha = null, lastBeta = null;
-    var ALIGN_TOL = 9 * Math.PI / 180;
+    var ALIGN_TOL = 6 * Math.PI / 180;
     var DWELL_MS = 450;
+    // Kick this heavy (~10MB) load off in the background the moment capture
+    // starts, so it's likely already warm by the time the last shot is
+    // taken a minute or two later instead of stalling the finish step.
+    var openCvReadyPromise = ensureOpenCvLoaded().catch(function() { return null; });
 
     function cleanup() {
       window.removeEventListener('deviceorientation', onOrientation);
@@ -4477,20 +4647,43 @@
 
     function finish() {
       window.removeEventListener('deviceorientation', onOrientation);
-      statusText.textContent = 'Birleştiriliyor, lütfen bekleyin...';
+      statusText.textContent = 'Fotoğraflar karşılaştırılıyor (görüş açısı ölçülüyor)...';
       progressText.textContent = '';
       var aspect = video.videoWidth / video.videoHeight;
-      setTimeout(function() {
-        var outCanvas = stitchCaptureTargets(targets, aspect);
-        showCapturePreview(outCanvas, function accept() {
-          outCanvas.toBlob(function(blob) {
-            cleanup();
-            if (onComplete) onComplete(blob);
-          }, 'image/jpeg', 0.9);
-        }, function retake() {
-          resetTargets();
-        });
-      }, 30);
+      var fovH = CAPTURE_FOV_H_DEFAULT;
+
+      openCvReadyPromise.then(function() {
+        if (!window.cv || !window.cv.Mat) return; // OpenCV unavailable - fall back silently
+        var eqShots = targets.filter(function(t) { return t.ring === 'eq' && t.done; })
+          .sort(function(a, b) { return a.ringIndex - b.ringIndex; });
+        var upShots = targets.filter(function(t) { return t.ring === 'up' && t.done; })
+          .sort(function(a, b) { return a.ringIndex - b.ringIndex; });
+
+        if (eqShots.length >= 2) {
+          var measuredFov = calibrateFov(eqShots[0], eqShots[1]);
+          if (measuredFov) fovH = measuredFov;
+        }
+        statusText.textContent = 'Sahne hizalanıyor, birkaç saniye sürebilir...';
+        var halfFov = fovH / 2;
+        refineRingYaw(eqShots, halfFov);
+        refineRingYaw(upShots, halfFov);
+      }).catch(function() {
+        // Calibration/refinement is a best-effort quality improvement -
+        // any failure here just falls back to the raw sensor angles.
+      }).then(function() {
+        statusText.textContent = 'Birleştiriliyor, lütfen bekleyin...';
+        setTimeout(function() {
+          var outCanvas = stitchCaptureTargets(targets, aspect, fovH);
+          showCapturePreview(outCanvas, function accept() {
+            outCanvas.toBlob(function(blob) {
+              cleanup();
+              if (onComplete) onComplete(blob);
+            }, 'image/jpeg', 0.9);
+          }, function retake() {
+            resetTargets();
+          });
+        }, 30);
+      });
     }
 
     function checkAutoCapture(moving, now) {
@@ -4521,7 +4714,7 @@
       ctx.moveTo(w / 2, h / 2 - 14); ctx.lineTo(w / 2, h / 2 + 14);
       ctx.stroke();
 
-      var halfFovH = CAPTURE_FOV_H / 2;
+      var halfFovH = CAPTURE_FOV_H_DEFAULT / 2;
       var halfFovV = halfFovH * (h / w);
 
       targets.forEach(function(t) {
