@@ -4361,6 +4361,33 @@
     }
   }
 
+  // Laplacian-variance sharpness score (a standard, cheap blur metric: a
+  // sharp image has strong edges everywhere, so the variance of its
+  // second-derivative response is high; a blurred one is low). Used to
+  // reject a motion-blurred capture and retry instead of silently keeping
+  // it - a blurry frame is exactly what makes feature matching (and so
+  // stitching) fail.
+  function computeSharpness(canvas) {
+    if (!window.cv || !window.cv.Mat) return null;
+    var mats = [];
+    function track(m) { mats.push(m); return m; }
+    try {
+      var mat = track(cv.imread(canvas));
+      var gray = track(new cv.Mat());
+      cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY);
+      var lap = track(new cv.Mat());
+      cv.Laplacian(gray, lap, cv.CV_64F);
+      var mean = track(new cv.Mat()), stddev = track(new cv.Mat());
+      cv.meanStdDev(lap, mean, stddev);
+      var variance = stddev.data64F[0] * stddev.data64F[0];
+      mats.forEach(function(m) { m.delete(); });
+      return variance;
+    } catch (e) {
+      mats.forEach(function(m) { try { m.delete(); } catch (e2) {} });
+      return null;
+    }
+  }
+
   // Given matched points between two shots taken `deltaYaw` apart (a known
   // value - the nominal ring spacing), solves for the horizontal half-FOV
   // (as tan(halfFov)) that makes the rectilinear projection consistent
@@ -4581,6 +4608,8 @@
     var baseAlpha = null;
     var alignedSince = null;
     var lastAlpha = null, lastBeta = null;
+    var smoothAlpha = null, smoothBeta = null;
+    var capturing = false;
     // How close the phone has to point to a target before it auto-fires is
     // *not* what determines final stitch accuracy - the actually-measured
     // angle at the moment of capture is what gets used (and OpenCV
@@ -4588,7 +4617,12 @@
     // finish()). So this can be generous without hurting quality; it only
     // affects how fiddly the capture feels to use.
     var ALIGN_TOL = 12 * Math.PI / 180;
-    var DWELL_MS = 400;
+    // Held-still requirement before the shutter fires - deliberately long
+    // enough that a real hand can settle, with a visible fill-ring so it
+    // reads as "hold on, capturing..." instead of firing the instant the
+    // target is touched (which was producing motion-blurred, hard-to-stitch
+    // frames).
+    var DWELL_MS = 900;
     // Kick this heavy (~10MB) load off in the background the moment capture
     // starts, so it's likely already warm by the time the last shot is
     // taken a minute or two later instead of stalling the finish step.
@@ -4621,22 +4655,62 @@
       return best;
     }
 
-    function captureShot(target) {
+    // Blur is the single biggest cause of bad stitches on a handheld phone,
+    // so the shutter doesn't just fire once and hope: it grabs a short
+    // burst while the phone is confirmed still and keeps the sharpest of
+    // them (scored via computeSharpness) - this alone catches most
+    // motion-blur without ever needing to reject anything: even a small
+    // tremor rarely blurs all 3 frames equally. There's deliberately no
+    // "reject the whole attempt and re-dwell" path anymore - an earlier
+    // version tried that, but Laplacian-variance blur scoring can't tell a
+    // blurry photo from a sharp photo of a low-detail surface (a plain
+    // wall or ceiling scores "blurry" either way), so it kept rejecting
+    // perfectly good shots of flat surfaces and repeatedly re-running the
+    // full dwell, which made the tool feel stuck.
+    function grabFrame() {
       var canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       canvas.getContext('2d').drawImage(video, 0, 0);
-      target.done = true;
-      target.canvas = canvas;
-      target.capturedYaw = currentYaw;
-      target.capturedPitch = currentPitch;
-      var doneCount = targets.filter(function(t) { return t.done; }).length;
-      progressText.textContent = doneCount + ' / ' + targets.length;
-      if (doneCount === targets.length) {
-        finish();
-      } else {
-        statusText.textContent = 'Çekildi! Bir sonraki beyaz noktaya bakın.';
+      return canvas;
+    }
+
+    function captureShot(target) {
+      capturing = true;
+      statusText.textContent = 'Sabit tutun, çekiliyor...';
+      var burst = [];
+      var BURST_COUNT = 3, BURST_GAP_MS = 90;
+
+      function grabNext(i) {
+        burst.push({ canvas: grabFrame(), yaw: currentYaw, pitch: currentPitch });
+        if (i + 1 < BURST_COUNT) {
+          setTimeout(function() { grabNext(i + 1); }, BURST_GAP_MS);
+        } else {
+          finishBurst();
+        }
       }
+
+      function finishBurst() {
+        var best = burst[0], bestScore = -1;
+        burst.forEach(function(shot) {
+          var score = computeSharpness(shot.canvas);
+          if (score !== null && score > bestScore) { bestScore = score; best = shot; }
+        });
+        target.done = true;
+        target.canvas = best.canvas;
+        target.capturedYaw = best.yaw;
+        target.capturedPitch = best.pitch;
+        var doneCount = targets.filter(function(t) { return t.done; }).length;
+        progressText.textContent = doneCount + ' / ' + targets.length;
+        capturing = false;
+        if (doneCount === targets.length) {
+          finish();
+        } else {
+          statusText.textContent = 'Çekildi! Oku takip edip bir sonraki hedefe gidin.';
+        }
+      }
+
+      grabNext(0);
     }
 
     function resetTargets() {
@@ -4693,6 +4767,7 @@
     }
 
     function checkAutoCapture(moving, now) {
+      if (capturing) return;
       var target = nearestIncompleteTarget();
       if (!target) return;
       var dYaw = Math.abs(wrapAngle(target.yaw - currentYaw));
@@ -4754,7 +4829,7 @@
 
       if (Math.abs(dYaw) < halfFovH * 1.15 && Math.abs(dPitch) < halfFovV * 1.15) {
         // Target is on screen - show a single clear ring to move the
-        // center reticle into, filling in as you get closer.
+        // center reticle into.
         var sx = w / 2 + (dYaw / halfFovH) * (w / 2);
         var sy = h / 2 - (dPitch / halfFovV) * (h / 2);
         ctx.strokeStyle = color;
@@ -4763,30 +4838,70 @@
         ctx.arc(sx, sy, 34, 0, Math.PI * 2);
         ctx.stroke();
         ctx.fillStyle = color;
-        ctx.globalAlpha = 0.25 + 0.55 * closeness;
+        ctx.globalAlpha = 0.2 + 0.35 * closeness;
         ctx.beginPath();
-        ctx.arc(sx, sy, 34, 0, Math.PI * 2 * closeness);
-        ctx.lineTo(sx, sy);
+        ctx.arc(sx, sy, 34, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
+
+        // Once actually holding still on target, a second ring fills in
+        // over DWELL_MS - separate from "how close" (color) so "hold on,
+        // capturing..." reads as its own clear state instead of being
+        // folded into the aim feedback.
+        if (alignedSince !== null) {
+          var dwellFrac = Math.min(1, (window.performance.now() - alignedSince) / DWELL_MS);
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 44, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * dwellFrac);
+          ctx.stroke();
+        }
       } else {
         // Off-screen - point a big arrow the way to turn.
         var angle = Math.atan2(-dPitch, dYaw);
         drawDirectionArrow(ctx, w, h, angle, color);
       }
+
+      if (capturing) {
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(0, 0, w, h);
+      }
     }
 
+    // Phone orientation sensors are noisy frame-to-frame (compass jitter is
+    // often several degrees even sitting still), but smoothing that away
+    // with a fixed-rate filter trades jitter for *lag* - the guide visibly
+    // trailing behind the phone's real movement, which reads as "hard to
+    // hit" just as much as jitter does. Adaptive rate instead: a small
+    // frame-to-frame change is almost certainly sensor noise (smooth it
+    // hard), a large one is the admin actually turning (barely smooth it,
+    // so the guide keeps up in real time).
+    var SMOOTH_JITTER = 0.15, SMOOTH_MOVE = 0.85, SMOOTH_MOVE_THRESHOLD_DEG = 6;
+
     function onOrientation(event) {
-      if (event.alpha === null || event.beta === null) return;
-      if (baseAlpha === null) baseAlpha = event.alpha;
-      currentYaw = -(event.alpha - baseAlpha) * Math.PI / 180;
-      currentPitch = -(event.beta - 90) * Math.PI / 180;
+      if (event.alpha === null || event.beta === null || capturing) return;
+      if (smoothAlpha === null) {
+        smoothAlpha = event.alpha;
+        smoothBeta = event.beta;
+      } else {
+        var da = event.alpha - smoothAlpha;
+        while (da > 180) da -= 360;
+        while (da < -180) da += 360;
+        var db = event.beta - smoothBeta;
+        var alphaRate = Math.abs(da) > SMOOTH_MOVE_THRESHOLD_DEG ? SMOOTH_MOVE : SMOOTH_JITTER;
+        var betaRate = Math.abs(db) > SMOOTH_MOVE_THRESHOLD_DEG ? SMOOTH_MOVE : SMOOTH_JITTER;
+        smoothAlpha += da * alphaRate;
+        smoothBeta += db * betaRate;
+      }
+      if (baseAlpha === null) baseAlpha = smoothAlpha;
+      currentYaw = -(smoothAlpha - baseAlpha) * Math.PI / 180;
+      currentPitch = -(smoothBeta - 90) * Math.PI / 180;
       currentPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, currentPitch));
 
       var now = window.performance.now();
-      var moving = lastAlpha !== null && (Math.abs(event.alpha - lastAlpha) > 2 || Math.abs(event.beta - lastBeta) > 2);
-      lastAlpha = event.alpha;
-      lastBeta = event.beta;
+      var moving = lastAlpha !== null && (Math.abs(smoothAlpha - lastAlpha) > 1.5 || Math.abs(smoothBeta - lastBeta) > 1.5);
+      lastAlpha = smoothAlpha;
+      lastBeta = smoothBeta;
 
       drawGuide();
       checkAutoCapture(moving, now);

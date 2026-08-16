@@ -969,7 +969,12 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   inset: 0;
   z-index: 5;
   pointer-events: none;
-  mix-blend-mode: overlay;
+  /* Plain alpha tint, not mix-blend-mode: blend modes force the browser to
+     recomposite this layer against everything under it (the WebGL pano
+     canvas included) on every single frame, which is expensive enough to
+     visibly stutter the tour - especially combined with autorotate/idle-pan
+     and the hotspot pulse animations already redrawing constantly. At the
+     low opacities this runs at, a plain tint looks close enough. */
 }
 
 .doorPanel {
