@@ -2223,6 +2223,68 @@
     contactSection.appendChild(mapsInput);
     contactSection.appendChild(contactButton);
 
+    // -- Instant publish (GitHub) --
+    var publishSection = settingsSection('Canlıya Yayınla', '🚀');
+    var publishInfo = document.createElement('div');
+    publishInfo.className = 'posFinderPublishInfo';
+    publishInfo.textContent = 'Taşıma, ekleme/silme, ürün düzenleme ve çoğu ayar değişikliğini doğrudan siteye yayınlar. ' +
+      'Sahne sırası, sahne silme, iletişim bilgileri, yeni ürün ve yeni sahne değişiklikleri hâlâ Kopyala ile gönderilmeli.';
+    var publishTokenInput = document.createElement('input');
+    publishTokenInput.type = 'password';
+    publishTokenInput.placeholder = 'GitHub erişim anahtarı (bir kere girilir, cihazda saklanır)';
+    publishTokenInput.value = window.EnzaPublish ? window.EnzaPublish.getToken() : '';
+    var publishTokenSaveButton = document.createElement('button');
+    publishTokenSaveButton.textContent = 'Anahtarı Kaydet';
+    var publishButton = document.createElement('button');
+    publishButton.id = 'posFinderPublishButton';
+    publishButton.textContent = 'Şimdi Yayınla';
+    var publishStatus = document.createElement('div');
+    publishStatus.className = 'posFinderPublishStatus';
+    publishSection.appendChild(publishInfo);
+    publishSection.appendChild(publishTokenInput);
+    publishSection.appendChild(publishTokenSaveButton);
+    publishSection.appendChild(publishButton);
+    publishSection.appendChild(publishStatus);
+
+    publishTokenSaveButton.addEventListener('click', function() {
+      if (!window.EnzaPublish) return;
+      window.EnzaPublish.setToken(publishTokenInput.value.trim());
+      publishStatus.textContent = 'Anahtar kaydedildi.';
+    });
+
+    publishButton.addEventListener('click', function() {
+      if (!window.EnzaPublish) { publishStatus.textContent = 'Yayınlama modülü yüklenemedi.'; return; }
+      var pendingSets = { arrows: arrows, moves: moves, removals: removals, edits: edits, settingsChanges: settingsChanges };
+      var totalPending = arrows.length + moves.length + removals.length + edits.length + settingsChanges.length;
+      if (!totalPending) { publishStatus.textContent = 'Yayınlanacak bir değişiklik yok.'; return; }
+      if (!window.confirm('Bekleyen değişiklikler doğrudan canlı siteye yayınlansın mı? Bu işlem geri alınamaz (ama site geçmişi GitHub üzerinde kalır).')) return;
+      publishButton.disabled = true;
+      publishButton.textContent = 'Yayınlanıyor...';
+      publishStatus.textContent = '';
+      window.EnzaPublish.publish(pendingSets).then(function(result) {
+        publishButton.disabled = false;
+        publishButton.textContent = 'Şimdi Yayınla';
+        if (!result.committed) {
+          publishStatus.textContent = 'Yayınlanacak fark bulunamadı.' +
+            (result.warnings.length ? (' Uygulanamayanlar: ' + result.warnings.join(' | ')) : '');
+          return;
+        }
+        arrows = []; moves = []; removals = []; edits = [];
+        settingsChanges = settingsChanges.filter(function(c) { return window.EnzaPublish.SKIPPED_SETTINGS_TYPES[c.type]; });
+        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges();
+        updateCount();
+        var summary = 'Yayınlandı! (' + result.appliedCounts.arrows + ' ok, ' + result.appliedCounts.moves + ' taşıma, ' +
+          result.appliedCounts.removals + ' silme, ' + result.appliedCounts.edits + ' düzenleme, ' +
+          result.appliedCounts.settingsChanges + ' ayar). Site birkaç dakika içinde güncellenir.';
+        if (result.warnings.length) summary += ' Elle uygulanması gerekenler: ' + result.warnings.join(' | ');
+        publishStatus.textContent = summary;
+      }).catch(function(err) {
+        publishButton.disabled = false;
+        publishButton.textContent = 'Şimdi Yayınla';
+        publishStatus.textContent = 'Yayınlama başarısız: ' + err.message;
+      });
+    });
+
     // -- Backup --
     var backupSection = settingsSection('Yedekleme', '💾');
     var backupButton = document.createElement('button');
@@ -2325,6 +2387,7 @@
     settingsPanel.appendChild(qrSection._accordionWrapper);
 
     settingsPanel.appendChild(settingsGroupHeader('Hesap & Yedekleme'));
+    settingsPanel.appendChild(publishSection._accordionWrapper);
     settingsPanel.appendChild(backupSection._accordionWrapper);
     settingsPanel.appendChild(passwordSection._accordionWrapper);
     settingsPanel.appendChild(logoutSection._accordionWrapper);

@@ -2191,6 +2191,31 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   margin-top: 4px;
 }
 
+.posFinderPublishInfo {
+  font-size: 11px;
+  color: #ccc;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+#posFinderPublishButton {
+  background-color: #2ecc71 !important;
+  font-weight: 700;
+}
+
+#posFinderPublishButton:disabled {
+  background-color: #555 !important;
+  cursor: default;
+}
+
+.posFinderPublishStatus {
+  font-size: 11px;
+  color: #ccc;
+  line-height: 1.4;
+  margin-top: 6px;
+  white-space: pre-wrap;
+}
+
 #posFinderLogout {
   background-color: #e0432c !important;
 }
