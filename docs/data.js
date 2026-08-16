@@ -1,6 +1,46 @@
 var APP_DATA = {
   "scenes": [
     {
+      "id": "19-28",
+      "name": "20. Dış Cephe & Otopark",
+      "levels": [
+        {
+          "tileSize": 256,
+          "size": 256,
+          "fallbackOnly": true
+        },
+        {
+          "tileSize": 512,
+          "size": 512
+        },
+        {
+          "tileSize": 512,
+          "size": 1024
+        }
+      ],
+      "faceSize": 1024,
+      "initialViewParameters": {
+        "pitch": 0,
+        "yaw": 0,
+        "fov": 1.5707963267948966
+      },
+      "linkHotspots": [
+        {
+          "yaw": 0.013872503681840342,
+          "pitch": 0.1565366157155541,
+          "rotation": 0,
+          "target": "0-2"
+        },
+        {
+          "yaw": 0.9137,
+          "pitch": 0.1394,
+          "rotation": 0,
+          "target": "1-3"
+        }
+      ],
+      "infoHotspots": []
+    },
+    {
       "id": "0-2",
       "name": "1. Ana Giriş & Salon",
       "levels": [
@@ -26,8 +66,8 @@ var APP_DATA = {
       },
       "linkHotspots": [
         {
-          "yaw": -1.7638466087998363,
-          "pitch": 0.2867697050731639,
+          "yaw": -1.7723945605698397,
+          "pitch": 0.3240969179633737,
           "rotation": 0,
           "target": "1-3"
         },
@@ -52,8 +92,8 @@ var APP_DATA = {
       ],
       "infoHotspots": [
         {
-          "yaw": 2.146,
-          "pitch": 0.1035,
+          "yaw": 2.1303125397938683,
+          "pitch": 0.024498104114540453,
           "title": "Bold Köşe Koltuk Takımı – Sonil 50201 Gri",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2025/03/03/49768/e8e2dd4d-ec33-4238-b4b5-b85e4a29145b_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Modüler tasarım, 13 farklı modülle özelleştirilebilir. Kumaş: Şönil (%84 Polyester + %16 Pamuk), dokuma ve silinebilir. Ölçüler: 381x344 cm, yükseklik 85 cm. Metal ayaklar (siyah), 34 DNS + 24 DNS sünger dolgu. Kablosuz şarj tablalı modül dahil. Renk: 50201 Gri.</p>",
           "whatsapp": true
@@ -66,15 +106,15 @@ var APP_DATA = {
           "whatsapp": true
         },
         {
-          "yaw": -2.4163,
-          "pitch": 0.2229,
+          "yaw": -2.462010566858652,
+          "pitch": 0.13865317761545803,
           "title": "Block Visions 3'lü Mekanizmalı Koltuk – Sonil 57001 Krem",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2026/07/29/53643/74165ec6-2bbe-419c-b36c-f4ca97463010_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Arkalık mekanizması ile yatağa dönüşebilen 3'lü koltuk. Kumaş: Şönil (%46 Polyester + %34 Pamuk + %20 Polipropilen), krem renk. Ölçüler: 234x107 cm, yükseklik 74 cm. Ahşap iskelet, 5 cm siyah polimer ayaklar. 4 dekoratif yastık dahil. 2 yıl garanti.</p>",
           "whatsapp": true
         },
         {
-          "yaw": 0.0410,
-          "pitch": 0.3097,
+          "yaw": 0.038334230521485324,
+          "pitch": 0.25328422121757477,
           "title": "Viera Koltuk Takımı – Keten Dokulu 17502 Gri",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2024/06/03/40507/1c7fb8bd-b41c-4496-bfe5-4a489b2bac95_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Modern tasarım, ergonomik sırt destek profilleri. 3'lü ve 2.5'lu koltuklarda kaz tüyü dolgulu sırt yastıkları. Kumaş: %100 Polyester, keten dokulu, 17502 Gri. Kolay silinebilir, robot süpürge uyumlu yükseltilmiş ayaklar (siyah metal).</p>",
           "whatsapp": true
@@ -193,29 +233,29 @@ var APP_DATA = {
       ],
       "infoHotspots": [
         {
-          "yaw": -1.0493,
-          "pitch": 0.053,
+          "yaw": -1.3486957771994632,
+          "pitch": -0.07971590706632448,
           "title": "Berta Dolap – 272x221 cm",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/11/28/40796/e0564e5f-82db-4527-a28b-d3b50d76cef4_size1684x950.jpg\" class=\"info-hotspot-image\"><p>6 kapılı gardırop, metal efektli dokulu yüzey. 3 çekmece, LED iç aydınlatma, doğal renk ayna ve cam kapı uygulamaları, antik bronz metal kulplar. Ölçüler: 272x221x61 cm. Frenli menteşe mekanizması, metal ayaklar. Ücretsiz montaj, 2 yıl garanti.</p>",
           "whatsapp": true
         },
         {
-          "yaw": 0.0393,
-          "pitch": 0.1175,
+          "yaw": -0.024876382927352836,
+          "pitch": 0.048918979648288285,
           "title": "Berta Başlıklı Baza – 140x200 cm, 71001 Bej",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/11/28/41488/2efe5247-1502-4555-b833-86fd5bf93f20_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Dikiş uygulamalı başlık tasarımı, kumaş kaplı gövde, altında saklama alanı. Kumaş: Şönil (%50 Polyester + %40 Akrilik + %10 Pamuk), 71001 Bej. Ahşap iskelet, siyah metal ayaklar. Ölçüler: 140x200 cm (140x190, 150x200, 160x200, 180x200, 200x200 seçenekleri de mevcut). Ücretsiz montaj, 2 yıl garanti.</p>",
           "whatsapp": true
         },
         {
-          "yaw": 1.0046,
-          "pitch": 0.2446,
+          "yaw": 0.8852516672607251,
+          "pitch": 0.039005743080441135,
           "title": "Berta Şifonyer – 111x88 cm",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/07/21/40792/3165320a-b8b2-4540-9253-1e0a6f1748a1_size1684x950.jpg\" class=\"info-hotspot-image\"><p>4 çekmeceli şifonyer, üst çekmecede bölmeli düzenleme. Metal efektli dokulu yüzey (endüstriyel ahşap). Antik bronz metal kulplar, antrasit renk metal ayaklar. Ölçüler: 111x88x46 cm. Silinebilir yüzey, robot süpürge uyumlu. Ücretsiz montaj, 2 yıl garanti.</p>",
           "whatsapp": true
         },
         {
-          "yaw": 1.3474,
-          "pitch": 0.3878,
+          "yaw": 1.3240377467493367,
+          "pitch": 0.14538432691159997,
           "title": "Dante Berjer – Keten Dokulu, 12701 Açık Gri",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2021/11/25/22582/116bc44e-e4c2-4543-b352-ffe0122701e8_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Yalın ve şık tasarım, sırtı tam destekleyen ergonomik form. Kumaş: %100 Polyester, keten dokulu, 12701 Açık Gri. Ahşap iskelet, siyah metal ayaklar (kolay temizlik için yüksek). Ölçüler: Y90xG68xD86 cm. 2 yıl garanti.</p>",
           "whatsapp": true
@@ -274,8 +314,8 @@ var APP_DATA = {
       ],
       "infoHotspots": [
         {
-          "yaw": 0.3556,
-          "pitch": -0.3161,
+          "yaw": 0.21804159237434462,
+          "pitch": 0.0508544666868751,
           "title": "Berta Masa, 160-200x90 cm",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2023/12/06/40825/b4a82647-ac8e-49b0-af1b-25310b35d600_size1684x950.jpg\" class=\"info-hotspot-image\"><p>Uzatılabilir yemek masası, 6-8 kişilik. Gövde: Endüstriyel ahşap, tekstil dokulu yüzey (metal efektli). Ayaklar: Masif ahşap, antrasit renk. Ölçüler: 160-200x90 cm (uzatılabilir), yükseklik 77 cm. Silinebilir yüzey. Ücretsiz montaj, 2 yıl garanti.</p>",
           "whatsapp": true
@@ -308,16 +348,16 @@ var APP_DATA = {
       },
       "linkHotspots": [
         {
-          "yaw": 2.4080087,
-          "pitch": 0.4177806858365454,
+          "yaw": 3.045140336023999,
+          "pitch": 0.27789123191540455,
           "rotation": 0,
           "target": "3-5"
         }
       ],
       "infoHotspots": [
         {
-          "yaw": -2.2,
-          "pitch": -0.34,
+          "yaw": -2.3359096679330413,
+          "pitch": 0.19314137065811465,
           "title": "Berta 3'lü Yataklı Koltuk + Berjer – Sonil Dokulu 17601 Bej",
           "text": "<img src=\"https://akn-enza.a-cdn.akinoncloud.com/products/2024/01/22/46499/6411e362-1282-46a3-9c46-6acff86372af_size1684x950.jpg\" class=\"info-hotspot-image\"><p>3'lü yataklı koltuk + berjer takımı. Kumaş: Şönil dokulu (%50 PES + %40 ACR), 17601 Bej. Sırt atlatma mekanizmasıyla 184x90 cm yatağa dönüşür. Berjerde kaz tüyü dolgulu sırt yastığı. Kahverengi metal ayaklar, robot süpürge uyumlu. 2 yıl garanti.</p>",
           "whatsapp": true
@@ -356,8 +396,8 @@ var APP_DATA = {
           "target": "6-10"
         },
         {
-          "yaw": -1.6456,
-          "pitch": 0.3771,
+          "yaw": -2.355433179454156,
+          "pitch": 0.2567464735313827,
           "rotation": 0,
           "target": "3-5"
         }
@@ -966,46 +1006,6 @@ var APP_DATA = {
         }
       ],
       "infoHotspots": []
-    },
-    {
-      "id": "19-28",
-      "name": "20. Dış Cephe & Otopark",
-      "levels": [
-        {
-          "tileSize": 256,
-          "size": 256,
-          "fallbackOnly": true
-        },
-        {
-          "tileSize": 512,
-          "size": 512
-        },
-        {
-          "tileSize": 512,
-          "size": 1024
-        }
-      ],
-      "faceSize": 1024,
-      "initialViewParameters": {
-        "pitch": 0,
-        "yaw": 0,
-        "fov": 1.5707963267948966
-      },
-      "linkHotspots": [
-        {
-          "yaw": -0.041216041119170654,
-          "pitch": 0.27263800511377667,
-          "rotation": 0,
-          "target": "0-2"
-        },
-        {
-          "yaw": 0.9137,
-          "pitch": 0.1394,
-          "rotation": 0,
-          "target": "1-3"
-        }
-      ],
-      "infoHotspots": []
     }
   ],
   "name": "enza HOME Manavgat",
@@ -1013,7 +1013,10 @@ var APP_DATA = {
     "mouseViewMode": "drag",
     "autorotateEnabled": false,
     "fullscreenButton": true,
-    "viewControlButtons": true
+    "viewControlButtons": true,
+    "featuredProductEnabled": false,
+    "featuredProductTitle": "Bold Köşe Koltuk Takımı – Sonil 50201 Gri",
+    "seasonalEffect": "snow"
   },
   "i18n": {
     "en": {
