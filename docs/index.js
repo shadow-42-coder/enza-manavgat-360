@@ -3266,8 +3266,27 @@
       descTextarea.value = '';
     }
 
+    // Modes that don't need precise clicking on the pano (placing/selecting a
+    // hotspot) get a big dashboard-style panel with the pano shrunk to a
+    // small floating preview, instead of competing for space with a
+    // full-size photo they don't actually need to click on.
+    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true };
     function setMode(newMode) {
       mode = newMode;
+      var wasWide = document.body.classList.contains('posFinderWide');
+      var isWide = !!WIDE_MODES[mode];
+      if (wasWide !== isWide) {
+        document.body.classList.toggle('posFinderWide', isWide);
+        // Marzipano's canvas needs a fresh render after its container's size
+        // changes (see the WebGL preserveDrawingBuffer note elsewhere in this
+        // file) - dispatch resize once the CSS size transition has settled.
+        setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 260);
+      }
+      // Separate class (rather than reusing posFinderWide) so the settings
+      // grid CSS - which has to use !important to beat this panel's own
+      // inline display:none/block toggle below - only ever forces it visible
+      // while settings is actually the active mode.
+      document.body.classList.toggle('posFinderModeSettings', mode === 'settings');
       productModeButton.classList.toggle('active', mode === 'product');
       linkModeButton.classList.toggle('active', mode === 'link');
       deleteModeButton.classList.toggle('active', mode === 'delete');
