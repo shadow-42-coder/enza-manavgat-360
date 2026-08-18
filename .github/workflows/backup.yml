@@ -1,0 +1,32 @@
+name: Daily data.js backup
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Snapshot docs/data.js
+        run: |
+          mkdir -p backups
+          cp docs/data.js "backups/data-$(date -u +%Y-%m-%d).js"
+
+      - name: Commit if the site actually changed since the last backup
+        run: |
+          git config user.name "enza-backup-bot"
+          git config user.email "actions@github.com"
+          git add backups/
+          if git diff --cached --quiet; then
+            echo "No changes since last backup, nothing to commit."
+          else
+            git commit -m "Otomatik yedek: $(date -u +%Y-%m-%d)"
+            git push
+          fi

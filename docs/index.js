@@ -2275,6 +2275,112 @@
       });
     });
 
+    // -- Health checks: broken images, dead product links, missing/orphaned
+    // translations. All three are read-only reports, nothing is changed
+    // automatically - the admin decides what to fix.
+    function collectAllInfoHotspots() {
+      var out = [];
+      data.scenes.forEach(function(s) {
+        s.infoHotspots.forEach(function(h) { out.push({ scene: s, hotspot: h }); });
+      });
+      return out;
+    }
+
+    var imageCheckSection = settingsSection('Bozuk görsel kontrolü', '🖼️');
+    var imageCheckButton = document.createElement('button');
+    imageCheckButton.textContent = 'Tüm Ürün Görsellerini Kontrol Et';
+    var imageCheckResult = document.createElement('div');
+    imageCheckResult.className = 'posFinderPasswordHint';
+    imageCheckSection.appendChild(imageCheckButton);
+    imageCheckSection.appendChild(imageCheckResult);
+    imageCheckButton.addEventListener('click', function() {
+      var all = collectAllInfoHotspots();
+      var withImages = all.filter(function(x) { return /<img[^>]+src="([^"]+)"/.exec(x.hotspot.text || ''); });
+      if (!withImages.length) { imageCheckResult.textContent = 'Görselli ürün bulunamadı.'; return; }
+      imageCheckButton.disabled = true;
+      imageCheckResult.textContent = 'Kontrol ediliyor... (0/' + withImages.length + ')';
+      var done = 0, broken = [];
+      withImages.forEach(function(x) {
+        var m = /<img[^>]+src="([^"]+)"/.exec(x.hotspot.text);
+        var src = m[1];
+        var img = new Image();
+        var settled = false;
+        function finish(ok) {
+          if (settled) return;
+          settled = true;
+          done++;
+          if (!ok) broken.push(x.scene.name.replace(/^\d+\.\s*/, '') + ' — "' + x.hotspot.title + '"');
+          imageCheckResult.textContent = 'Kontrol ediliyor... (' + done + '/' + withImages.length + ')';
+          if (done === withImages.length) {
+            imageCheckButton.disabled = false;
+            imageCheckResult.textContent = broken.length
+              ? ('BOZUK (' + broken.length + '): ' + broken.join(' | '))
+              : ('Hepsi sağlam (' + withImages.length + ' görsel kontrol edildi).');
+          }
+        }
+        img.onload = function() { finish(true); };
+        img.onerror = function() { finish(false); };
+        setTimeout(function() { finish(false); }, 12000);
+        img.src = src;
+      });
+    });
+
+    var linkCheckSection = settingsSection('Ürün linki kontrolü', '🔗');
+    var linkCheckInfo = document.createElement('div');
+    linkCheckInfo.className = 'posFinderPasswordHint';
+    linkCheckInfo.textContent = 'Tarayıcı güvenliği yüzünden bir linkin "404" verdiğini kesin olarak göremiyoruz - sadece linkin tamamen ölü (site kapanmış, adres hatalı) olup olmadığını tespit edebiliyoruz. Yanıt veren ama içeriği doğrulanamayanları elle kontrol et.';
+    var linkCheckButton = document.createElement('button');
+    linkCheckButton.textContent = 'Tüm Ürün Linklerini Kontrol Et';
+    var linkCheckResult = document.createElement('div');
+    linkCheckResult.className = 'posFinderPasswordHint';
+    linkCheckSection.appendChild(linkCheckInfo);
+    linkCheckSection.appendChild(linkCheckButton);
+    linkCheckSection.appendChild(linkCheckResult);
+    linkCheckButton.addEventListener('click', function() {
+      var withLinks = collectAllInfoHotspots().filter(function(x) { return !!x.hotspot.sourceLink; });
+      if (!withLinks.length) { linkCheckResult.textContent = 'Linkli ürün bulunamadı.'; return; }
+      linkCheckButton.disabled = true;
+      linkCheckResult.textContent = 'Kontrol ediliyor... (0/' + withLinks.length + ')';
+      var done = 0, dead = [];
+      withLinks.forEach(function(x) {
+        var controller = new AbortController();
+        var timeout = setTimeout(function() { controller.abort(); }, 8000);
+        fetch(x.hotspot.sourceLink, { mode: 'no-cors', signal: controller.signal })
+          .catch(function() { dead.push(x.scene.name.replace(/^\d+\.\s*/, '') + ' — "' + x.hotspot.title + '"'); })
+          .then(function() {
+            clearTimeout(timeout);
+            done++;
+            linkCheckResult.textContent = 'Kontrol ediliyor... (' + done + '/' + withLinks.length + ')';
+            if (done === withLinks.length) {
+              linkCheckButton.disabled = false;
+              linkCheckResult.textContent = dead.length
+                ? ('TAMAMEN ÖLÜ (' + dead.length + '): ' + dead.join(' | '))
+                : ('Hiçbiri tamamen ölü değil (' + withLinks.length + ' link kontrol edildi). İçerik doğruluğunu yine de arada elle kontrol etmen iyi olur.');
+            }
+          });
+      });
+    });
+
+    var i18nCheckSection = settingsSection('Çeviri (EN/RU) senkron kontrolü', '🌐');
+    var i18nCheckButton = document.createElement('button');
+    i18nCheckButton.textContent = 'Çevirileri Kontrol Et';
+    var i18nCheckResult = document.createElement('div');
+    i18nCheckResult.className = 'posFinderPasswordHint';
+    i18nCheckSection.appendChild(i18nCheckButton);
+    i18nCheckSection.appendChild(i18nCheckResult);
+    i18nCheckButton.addEventListener('click', function() {
+      var sceneIds = data.scenes.map(function(s) { return s.id; });
+      var lines = [];
+      ['en', 'ru'].forEach(function(lang) {
+        var names = (data.i18n && data.i18n[lang] && data.i18n[lang].sceneNames) || {};
+        var missing = sceneIds.filter(function(id) { return !names[id]; });
+        var orphaned = Object.keys(names).filter(function(id) { return sceneIds.indexOf(id) === -1; });
+        if (missing.length) lines.push(lang.toUpperCase() + ' çevirisi eksik: ' + missing.join(', '));
+        if (orphaned.length) lines.push(lang.toUpperCase() + ' — silinmiş sahnelere ait kalıntı çeviri: ' + orphaned.join(', '));
+      });
+      i18nCheckResult.textContent = lines.length ? lines.join(' | ') : 'Her şey senkron, eksik veya kalıntı çeviri yok.';
+    });
+
     // -- Backup --
     var backupSection = settingsSection('Yedekleme', '💾');
     var backupButton = document.createElement('button');
@@ -2375,6 +2481,11 @@
     settingsPanel.appendChild(tukendiSection._accordionWrapper);
     settingsPanel.appendChild(contactSection._accordionWrapper);
     settingsPanel.appendChild(qrSection._accordionWrapper);
+
+    settingsPanel.appendChild(settingsGroupHeader('Bakım & Kontrol'));
+    settingsPanel.appendChild(imageCheckSection._accordionWrapper);
+    settingsPanel.appendChild(linkCheckSection._accordionWrapper);
+    settingsPanel.appendChild(i18nCheckSection._accordionWrapper);
 
     settingsPanel.appendChild(settingsGroupHeader('Hesap & Yedekleme'));
     settingsPanel.appendChild(publishSection._accordionWrapper);
