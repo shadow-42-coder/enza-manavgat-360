@@ -1427,6 +1427,20 @@ body.posFinderWide #posFinderBox {
   max-height: 92vh;
 }
 
+/* On wide-enough screens, give the panel a dedicated left-hand lane and the
+   preview a dedicated top-right corner so they never physically overlap -
+   this is the real fix. On narrower screens where there isn't room for both
+   side by side, the z-index rule further below (preview sits behind the
+   panel) is the fallback: it keeps the panel fully clickable even if the
+   preview ends up covered and invisible in a corner. */
+@media (min-width: 900px) {
+  body.posFinderWide #posFinderBox {
+    left: 16px;
+    transform: none;
+    width: calc(100vw - 420px);
+  }
+}
+
 body.posFinderWide #posFinderSettingsPanel,
 body.posFinderWide #posFinderListPanel,
 body.posFinderWide #posFinderMapPanel,
@@ -1445,17 +1459,20 @@ body.posFinderWide #sceneListToggle {
 
 body.posFinderWide #pano {
   position: fixed !important;
-  top: auto !important;
+  top: 16px !important;
   right: 16px !important;
-  bottom: 16px !important;
+  bottom: auto !important;
   left: auto !important;
-  width: min(360px, 40vw) !important;
-  height: min(230px, 32vh) !important;
+  width: min(360px, 34vw) !important;
+  height: min(220px, 26vh) !important;
   border-radius: 10px;
+  /* Below the panel's z-index (30000), not above it: on a screen too
+     narrow for the side-by-side layout above, the two can still overlap,
+     and when they do the panel must win so it's never unclickable. */
+  z-index: 25000;
   overflow: hidden;
   border: 2px solid rgba(255,255,255,0.3);
   box-shadow: 0 6px 24px rgba(0,0,0,0.6);
-  z-index: 40000;
   transition: width 0.2s ease, height 0.2s ease;
 }
 
