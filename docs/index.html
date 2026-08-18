@@ -15,6 +15,26 @@
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="shortcut icon" href="favicon.ico">
 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17202a">
+<link rel="apple-touch-icon" href="img/favicon-256.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="enza HOME Manavgat">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FurnitureStore",
+  "name": "enza HOME Manavgat",
+  "image": "https://shadow-42-coder.github.io/enza-manavgat-360/img/og-image.jpg",
+  "url": "https://shadow-42-coder.github.io/enza-manavgat-360/",
+  "telephone": "+905493320707",
+  "hasMap": "https://maps.google.com/?cid=5104403785270368674",
+  "sameAs": ["https://www.instagram.com/yatasenzahomemanavgat/"]
+}
+</script>
+
 <style> @-ms-viewport { width: device-width; } </style>
 <link rel="stylesheet" href="vendor/reset.min.css">
 <link rel="stylesheet" href="style.css?v=20">
@@ -159,6 +179,14 @@
 <script src="data.js?v=18"></script>
 <script src="publish.js?v=18"></script>
 <script src="index.js?v=20"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function() {});
+  });
+}
+</script>
 
 </body>
 </html>

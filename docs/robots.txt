@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /?pos=1
+Disallow: /*?pos=1
+Disallow: /*&pos=1
+
+Sitemap: https://shadow-42-coder.github.io/enza-manavgat-360/sitemap.xml
