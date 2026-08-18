@@ -190,16 +190,6 @@
     autorotateToggleElement.classList.add('enabled');
   }
 
-  // Very gentle ambient drift, active whenever the full autorotate toggle is
-  // off - makes an untouched scene feel alive during a demo without being as
-  // assertive as a full 360 spin.
-  var idlePan = Marzipano.autorotate({
-    yawSpeed: 0.008,
-    targetPitch: 0,
-    targetFov: Math.PI/2
-  });
-  viewer.setIdleMovement(6000, idlePan);
-
   // Set handler for autorotate toggle.
   autorotateToggleElement.addEventListener('click', toggleAutorotate);
 
@@ -5220,7 +5210,6 @@
 
   function stopAutorotate() {
     viewer.stopMovement();
-    viewer.setIdleMovement(6000, idlePan);
   }
 
   function toggleAutorotate() {
