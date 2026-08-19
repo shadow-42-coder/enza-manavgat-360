@@ -2236,8 +2236,8 @@
     var publishSection = settingsSection('Canlıya Yayınla', '🚀');
     var publishInfo = document.createElement('div');
     publishInfo.className = 'posFinderPublishInfo';
-    publishInfo.textContent = 'Taşıma, ekleme/silme, ürün düzenleme ve çoğu ayar değişikliğini doğrudan siteye yayınlar. ' +
-      'Sahne sırası, sahne silme, iletişim bilgileri, yeni ürün ve yeni sahne değişiklikleri hâlâ Kopyala ile gönderilmeli.';
+    publishInfo.textContent = 'Taşıma, ekleme/silme, ürün düzenleme, sahne sırası/silme, iletişim bilgileri ve ayar değişikliklerini ' +
+      'doğrudan siteye yayınlar. Sadece yeni ürün ekleme (linkten içerik yazılması gerekiyor) ve yeni sahne (fotoğraf dosyaları) hâlâ Kopyala ile gönderilmeli.';
     var publishTokenInput = document.createElement('input');
     publishTokenInput.type = 'password';
     publishTokenInput.placeholder = 'GitHub erişim anahtarı (bir kere girilir, cihazda saklanır)';

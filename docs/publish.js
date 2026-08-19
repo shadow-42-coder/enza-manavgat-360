@@ -1,21 +1,20 @@
 // Instant-publish: applies the admin panel's pending change records directly
-// to docs/data.js on GitHub via the Contents API, so "Kaydet" actions can go
-// live without routing through a manual copy/paste + Claude-edit + push cycle.
+// to docs/data.js (and, for a few settings types, docs/index.html) on GitHub
+// via the Contents API, so "Kaydet" actions can go live without routing
+// through a manual copy/paste + Claude-edit + push cycle.
 //
-// Scope: only mutates docs/data.js (scenes, hotspots, settings). Four change
-// types are intentionally left out and still require the old Kopyala flow:
-//   - entries      (new products: only a raw link is captured, the title/
-//                    description/image still need to be authored from it)
-//   - newScenes    (bulk binary tile images, not a JSON edit)
-//   - sceneOrder / deleteScene (would also need edits to index.html's static
-//                    sidebar <a> list, not just data.js)
-//   - contact      (index.html edit, not data.js; kept manual for now)
+// Scope: two change types are still left out and require the old Kopyala
+// flow:
+//   - entries   (new products: only a raw link is captured, the title/
+//                description/image still need to be authored from it)
+//   - newScenes (bulk binary tile images, not a JSON/HTML edit)
 window.EnzaPublish = (function() {
   var OWNER = 'shadow-42-coder';
   var REPO = 'enza-manavgat-360';
   var BRANCH = 'master';
   var TOKEN_KEY = 'enzaGithubToken';
   var DATA_PATH = 'docs/data.js';
+  var HTML_PATH = 'docs/index.html';
 
   function getToken() {
     try { return window.localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
@@ -52,16 +51,21 @@ window.EnzaPublish = (function() {
 
   function linkLabel(target) { return 'Yön oku → ' + target; }
 
-  var SKIPPED_SETTINGS_TYPES = { sceneOrder: true, deleteScene: true, contact: true };
+  var SKIPPED_SETTINGS_TYPES = {};
 
   // Pure transform: deep-clones sourceData, applies every applicable pending
   // change record on top of it, and returns the result. Never mutates its
   // input. Anything it can't confidently apply is left alone and reported in
   // `warnings` so it can still be handled through the manual Kopyala flow.
+  //
+  // A few settings types (contact, sceneOrder, deleteScene) also need an
+  // index.html edit, not just data.js - those are collected into
+  // `htmlOps` for publish() to apply separately, rather than handled here.
   function applyChanges(sourceData, sets) {
     var data = JSON.parse(JSON.stringify(sourceData));
     var warnings = [];
     var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0 };
+    var htmlOps = { contact: null, sceneOrder: null, deletedSceneIds: [] };
 
     (sets.arrows || []).forEach(function(a) {
       var scene = findSceneByIndex(data, a.scene);
@@ -118,12 +122,25 @@ window.EnzaPublish = (function() {
     });
 
     (sets.settingsChanges || []).forEach(function(c) {
-      if (SKIPPED_SETTINGS_TYPES[c.type]) {
-        warnings.push('"' + c.type + '" değişikliği hâlâ elle uygulanmalı (Kopyala metnini kullan).');
-        return;
-      }
       if (!data.settings) data.settings = {};
-      if (c.type === 'rename') {
+      if (c.type === 'contact') {
+        htmlOps.contact = { phone1: c.phone1, phone2: c.phone2, instagram: c.instagram, mapsLink: c.mapsLink };
+        appliedCounts.settingsChanges++;
+      } else if (c.type === 'sceneOrder') {
+        htmlOps.sceneOrder = c.order;
+        appliedCounts.settingsChanges++;
+      } else if (c.type === 'deleteScene') {
+        var idxDel = data.scenes.findIndex(function(s) { return s.id === c.sceneId; });
+        if (idxDel === -1) { warnings.push('Sahne silinemedi: sahne bulunamadı (' + c.sceneId + ')'); return; }
+        data.scenes.splice(idxDel, 1);
+        // Any arrow in ANY remaining scene that pointed at the deleted
+        // scene would now link nowhere, so it has to go too.
+        data.scenes.forEach(function(s) {
+          s.linkHotspots = s.linkHotspots.filter(function(h) { return h.target !== c.sceneId; });
+        });
+        htmlOps.deletedSceneIds.push(c.sceneId);
+        appliedCounts.settingsChanges++;
+      } else if (c.type === 'rename') {
         var sRename = findSceneById(data, c.sceneId);
         if (sRename) { sRename.name = c.newName; appliedCounts.settingsChanges++; }
         else warnings.push('İsim değişikliği uygulanamadı: sahne bulunamadı (' + c.sceneId + ')');
@@ -195,11 +212,108 @@ window.EnzaPublish = (function() {
       }
     });
 
-    return { data: data, warnings: warnings, appliedCounts: appliedCounts };
+    return { data: data, warnings: warnings, appliedCounts: appliedCounts, htmlOps: htmlOps };
   }
 
   function serialize(data) {
     return 'var APP_DATA = ' + JSON.stringify(data, null, 2) + ';\n';
+  }
+
+  function normalizePhoneIntl(raw) {
+    var digits = (raw || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.charAt(0) === '0') digits = digits.slice(1);
+    if (digits.indexOf('90') !== 0) digits = '90' + digits;
+    return '+' + digits;
+  }
+  function formatPhoneDisplay(intlPhone) {
+    var d = intlPhone.replace('+90', '0').replace(/\D/g, '');
+    if (d.length !== 11) return intlPhone;
+    return d.slice(0, 4) + ' ' + d.slice(4, 7) + ' ' + d.slice(7, 9) + ' ' + d.slice(9, 11);
+  }
+
+  // Rewrites hrefs (and, for phone numbers, the visible display text/title
+  // too) inside one HTML fragment - called once for #sceneListFooter and
+  // once for #contactBar, since both contain their own independent copies
+  // of the same contact links.
+  function patchContactBlock(blockHtml, contact) {
+    var tel1 = normalizePhoneIntl(contact.phone1);
+    var tel2 = contact.phone2 ? normalizePhoneIntl(contact.phone2) : null;
+    var tel1Display = tel1 ? formatPhoneDisplay(tel1) : null;
+    var tel2Display = tel2 ? formatPhoneDisplay(tel2) : null;
+    var waNum = tel1.replace('+', '');
+    var igHandle = (contact.instagram || '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/+$/, '');
+    var igUrl = igHandle ? 'https://www.instagram.com/' + igHandle + '/' : null;
+
+    var out = blockHtml;
+    if (contact.mapsLink) {
+      out = out.replace(/href="https:\/\/maps\.google\.com\/[^"]*"/, 'href="' + contact.mapsLink + '"');
+    }
+    if (igUrl) {
+      out = out.replace(/href="https:\/\/(www\.)?instagram\.com\/[^"]*"/, 'href="' + igUrl + '"');
+    }
+    if (waNum) {
+      out = out.replace(/wa\.me\/\d+/, 'wa.me/' + waNum);
+    }
+    var telCount = 0;
+    out = out.replace(/<a\b[^>]*href="tel:[^"]*"[^>]*>([\s\S]*?)<\/a>/g, function(fullTag, innerText) {
+      telCount++;
+      var newTel = telCount === 1 ? tel1 : (telCount === 2 ? tel2 : null);
+      var newDisplay = telCount === 1 ? tel1Display : (telCount === 2 ? tel2Display : null);
+      if (!newTel) return fullTag;
+      var tag = fullTag.replace(/href="tel:[^"]*"/, 'href="tel:' + newTel + '"');
+      tag = tag.replace(/title="[^"]*"/, 'title="' + newDisplay + '"');
+      if (/^[0-9() +-]+$/.test(innerText.trim())) {
+        tag = tag.replace(/>([\s\S]*?)<\/a>$/, '>' + newDisplay + '</a>');
+      }
+      return tag;
+    });
+    return out;
+  }
+
+  function patchIndexHtmlContact(html, contact) {
+    var out = html;
+    out = out.replace(/(<div id="sceneListFooter">)([\s\S]*?)(<\/div>)/, function(m, open, inner, close) {
+      return open + patchContactBlock(inner, contact) + close;
+    });
+    out = out.replace(/(<div id="contactBar">)([\s\S]*?)(<\/div>)/, function(m, open, inner, close) {
+      return open + patchContactBlock(inner, contact) + close;
+    });
+    return out;
+  }
+
+  function extractSceneEntries(ulInnerHtml) {
+    var re = /<a href="javascript:void\(0\)" class="scene" data-id="([^"]+)">[\s\S]*?<\/a>/g;
+    var entries = [];
+    var m;
+    while ((m = re.exec(ulInnerHtml))) entries.push({ id: m[1], html: m[0] });
+    return entries;
+  }
+
+  // Applies a deleteScene and/or sceneOrder edit to the static sidebar
+  // <a class="scene"> list, which - unlike everything else in data.js -
+  // isn't rendered from data at runtime, so removing/reordering a scene
+  // there means literally rewriting these list items.
+  function patchIndexHtmlSceneList(html, deletedSceneIds, order) {
+    return html.replace(/(<ul class="scenes">)([\s\S]*?)(<\/ul>)/, function(m, open, inner, close) {
+      var entries = extractSceneEntries(inner);
+      if (deletedSceneIds && deletedSceneIds.length) {
+        entries = entries.filter(function(e) { return deletedSceneIds.indexOf(e.id) === -1; });
+      }
+      if (order && order.length) {
+        var byId = {};
+        entries.forEach(function(e) { byId[e.id] = e; });
+        var reordered = order.map(function(id) { return byId[id]; }).filter(Boolean);
+        // Anything not mentioned in the order (shouldn't normally happen)
+        // is kept, appended at the end, rather than silently dropped.
+        var mentioned = {};
+        order.forEach(function(id) { mentioned[id] = true; });
+        entries.forEach(function(e) { if (!mentioned[e.id]) reordered.push(e); });
+        entries = reordered;
+      }
+      var rebuilt = entries.map(function(e) { return '      ' + e.html; }).join('\n\n');
+      return open + '\n' + rebuilt + '\n\n  ' + close;
+    });
   }
 
   function b64EncodeUnicode(str) {
@@ -233,9 +347,16 @@ window.EnzaPublish = (function() {
   // Fetches the live docs/data.js from GitHub (not the browser's in-memory
   // copy, which may be stale), applies every applicable pending change on
   // top of it, and commits the result back if anything actually changed.
+  // A few settings types (contact, sceneOrder, deleteScene) also need
+  // docs/index.html edited - that happens as a second, separate commit
+  // right after, only if there's actually an index.html change pending.
   function publish(sets, opts) {
     var token = getToken();
     if (!token) return Promise.reject(new Error('GitHub erişim anahtarı girilmemiş.'));
+    var dataResult;
+    var dataCommitted = false;
+    var dataCommitUrl = null;
+
     return githubRequest('GET', '/contents/' + DATA_PATH + '?ref=' + BRANCH, null, token).then(function(fileInfo) {
       var currentContent = b64DecodeUnicode(fileInfo.content);
       var match = /^var APP_DATA = ([\s\S]*);\s*$/.exec(currentContent);
@@ -244,24 +365,46 @@ window.EnzaPublish = (function() {
       try { currentData = JSON.parse(match[1]); }
       catch (e) { throw new Error('data.js ayrıştırılamadı, yayınlama durduruldu.'); }
 
-      var result = applyChanges(currentData, sets);
-      var newContent = serialize(result.data);
-      if (newContent === currentContent) {
-        return { committed: false, warnings: result.warnings, appliedCounts: result.appliedCounts };
-      }
+      dataResult = applyChanges(currentData, sets);
+      var newContent = serialize(dataResult.data);
+      if (newContent === currentContent) return null;
       return githubRequest('PUT', '/contents/' + DATA_PATH, {
         message: (opts && opts.message) || 'Yönetim panelinden otomatik yayın',
         content: b64EncodeUnicode(newContent),
         sha: fileInfo.sha,
         branch: BRANCH
-      }, token).then(function(putResult) {
-        return {
-          committed: true,
-          warnings: result.warnings,
-          appliedCounts: result.appliedCounts,
-          commitUrl: putResult.commit && putResult.commit.html_url
-        };
+      }, token);
+    }).then(function(putResult) {
+      if (putResult) {
+        dataCommitted = true;
+        dataCommitUrl = putResult.commit && putResult.commit.html_url;
+      }
+      var htmlOps = dataResult.htmlOps;
+      var needsHtml = !!(htmlOps.contact || htmlOps.sceneOrder || htmlOps.deletedSceneIds.length);
+      if (!needsHtml) return null;
+      return githubRequest('GET', '/contents/' + HTML_PATH + '?ref=' + BRANCH, null, token).then(function(htmlFileInfo) {
+        var currentHtml = b64DecodeUnicode(htmlFileInfo.content);
+        var newHtml = currentHtml;
+        if (htmlOps.contact) newHtml = patchIndexHtmlContact(newHtml, htmlOps.contact);
+        if (htmlOps.sceneOrder || htmlOps.deletedSceneIds.length) {
+          newHtml = patchIndexHtmlSceneList(newHtml, htmlOps.deletedSceneIds, htmlOps.sceneOrder);
+        }
+        if (newHtml === currentHtml) return null;
+        return githubRequest('PUT', '/contents/' + HTML_PATH, {
+          message: (opts && opts.message) || 'Yönetim panelinden otomatik yayın (index.html)',
+          content: b64EncodeUnicode(newHtml),
+          sha: htmlFileInfo.sha,
+          branch: BRANCH
+        }, token);
       });
+    }).then(function(htmlPutResult) {
+      return {
+        committed: dataCommitted || !!htmlPutResult,
+        warnings: dataResult.warnings,
+        appliedCounts: dataResult.appliedCounts,
+        commitUrl: dataCommitUrl,
+        htmlCommitUrl: htmlPutResult ? (htmlPutResult.commit && htmlPutResult.commit.html_url) : null
+      };
     });
   }
 
@@ -271,6 +414,8 @@ window.EnzaPublish = (function() {
     applyChanges: applyChanges,
     serialize: serialize,
     publish: publish,
+    patchIndexHtmlContact: patchIndexHtmlContact,
+    patchIndexHtmlSceneList: patchIndexHtmlSceneList,
     SKIPPED_SETTINGS_TYPES: SKIPPED_SETTINGS_TYPES
   };
 })();
