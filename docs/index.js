@@ -2787,8 +2787,52 @@
     var listResults = document.createElement('div');
     listResults.id = 'posFinderListResults';
 
+    // Bulk find/replace across every product's link at once - e.g. moving
+    // the whole catalog from an old domain to a new one without editing
+    // each product individually.
+    var bulkReplaceRow = document.createElement('div');
+    bulkReplaceRow.id = 'posFinderBulkReplaceRow';
+    var bulkOldInput = document.createElement('input');
+    bulkOldInput.type = 'text';
+    bulkOldInput.placeholder = 'Linklerde aranacak eski parça (ör. eski-site.com)';
+    var bulkNewInput = document.createElement('input');
+    bulkNewInput.type = 'text';
+    bulkNewInput.placeholder = 'Yeni parça (ör. yeni-site.com)';
+    var bulkReplaceButton = document.createElement('button');
+    bulkReplaceButton.type = 'button';
+    bulkReplaceButton.textContent = 'Tüm Ürün Linklerinde Değiştir';
+    bulkReplaceRow.appendChild(bulkOldInput);
+    bulkReplaceRow.appendChild(bulkNewInput);
+    bulkReplaceRow.appendChild(bulkReplaceButton);
+
+    bulkReplaceButton.addEventListener('click', function() {
+      var oldPart = bulkOldInput.value.trim();
+      var newPart = bulkNewInput.value.trim();
+      if (!oldPart) { listStatus.textContent = 'Aranacak eski link parçasını gir.'; return; }
+      var matches = [];
+      data.scenes.forEach(function(s, sceneIdx) {
+        s.infoHotspots.forEach(function(h) {
+          if (h.sourceLink && h.sourceLink.indexOf(oldPart) !== -1) matches.push({ scene: sceneIdx + 1, hotspot: h });
+        });
+      });
+      if (!matches.length) { listStatus.textContent = '"' + oldPart + '" içeren hiçbir ürün linki bulunamadı.'; return; }
+      if (!window.confirm(matches.length + ' üründe "' + oldPart + '" -> "' + newPart + '" değişikliği yapılacak. Emin misin?')) return;
+      matches.forEach(function(match) {
+        var h = match.hotspot;
+        var newLink = h.sourceLink.split(oldPart).join(newPart);
+        h.sourceLink = newLink;
+        edits.push({ scene: match.scene, kind: 'info', oldTitle: h.title, newLink: newLink, descChanged: false });
+      });
+      saveEdits();
+      bulkOldInput.value = '';
+      bulkNewInput.value = '';
+      listStatus.textContent = matches.length + ' üründe link güncellendi.';
+      renderListResults(listSearchInput.value);
+    });
+
     listPanel.appendChild(listSearchInput);
     listPanel.appendChild(listCategoryRow);
+    listPanel.appendChild(bulkReplaceRow);
     listPanel.appendChild(listMoveFlyout);
     listPanel.appendChild(listStatus);
     listPanel.appendChild(listResults);

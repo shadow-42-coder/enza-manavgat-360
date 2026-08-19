@@ -1577,6 +1577,33 @@ body.posFinderWide #pano {
   font-size: 14px;
 }
 
+#posFinderBulkReplaceRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+#posFinderBulkReplaceRow input {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px;
+  border-radius: 5px;
+  border: none;
+  font-size: 13px;
+}
+
+#posFinderBulkReplaceRow button {
+  flex: 0 0 100%;
+  padding: 8px;
+  border-radius: 5px;
+  border: none;
+  background-color: var(--brand-accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 #posFinderDraftFetch {
   flex: 0 0 auto;
   padding: 8px 10px;
