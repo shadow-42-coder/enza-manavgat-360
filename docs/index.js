@@ -440,6 +440,16 @@
     return null;
   }
 
+  function findSceneIdForProductTitle(title) {
+    for (var i = 0; i < data.scenes.length; i++) {
+      var hotspots = data.scenes[i].infoHotspots || [];
+      for (var j = 0; j < hotspots.length; j++) {
+        if (hotspots[j].title === title) return data.scenes[i].id;
+      }
+    }
+    return null;
+  }
+
   function showCompareOverlay(titleA, titleB) {
     var overlay = document.createElement('div');
     overlay.id = 'compareOverlay';
@@ -501,6 +511,8 @@
     boxTitle.textContent = uiText('favoritesTitle', 'Favori Ürünlerim');
     var list = document.createElement('div');
     list.id = 'favoritesList';
+    var favoritesHint = document.createElement('div');
+    favoritesHint.id = 'favoritesHint';
     var compareCheckboxes = [];
     favs.forEach(function(f) {
       var row = document.createElement('div');
@@ -510,12 +522,29 @@
       compareCb.className = 'favoritesCompareCheckbox';
       compareCb.addEventListener('change', function() {
         var checked = compareCheckboxes.filter(function(cb) { return cb.checked; });
-        if (checked.length > 2) { compareCb.checked = false; return; }
+        if (checked.length > 2) {
+          compareCb.checked = false;
+          favoritesHint.textContent = uiText('favoritesCompareLimitText', 'En fazla 2 ürün karşılaştırabilirsin, önce birinin seçimini kaldır.');
+          return;
+        }
+        favoritesHint.textContent = '';
         compareBtn.disabled = checked.length !== 2;
       });
       compareCheckboxes.push(compareCb);
       var label = document.createElement('span');
       label.textContent = f.title;
+      label.className = 'favoritesRowLabel';
+      label.title = uiText('favoritesGoToLabel', 'Bu ürünün olduğu odaya git');
+      label.addEventListener('click', function() {
+        var sceneId = findSceneIdForProductTitle(f.title);
+        var wrapper = sceneId ? findSceneById(sceneId) : null;
+        if (wrapper) {
+          overlay.remove();
+          switchScene(wrapper);
+        } else {
+          favoritesHint.textContent = uiText('favoritesNotFoundText', 'Bu ürün artık bulunamadı.');
+        }
+      });
       var removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.textContent = '✕';
@@ -559,6 +588,7 @@
 
     box.appendChild(boxTitle);
     box.appendChild(list);
+    box.appendChild(favoritesHint);
     box.appendChild(sendBtn);
     box.appendChild(compareBtn);
     box.appendChild(closeBtn);

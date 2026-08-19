@@ -2938,8 +2938,23 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
   white-space: nowrap;
 }
 
+.favoritesRowLabel {
+  cursor: pointer;
+}
+
+.favoritesRowLabel:hover {
+  text-decoration: underline;
+}
+
 .favoritesCompareCheckbox {
   flex-shrink: 0;
+}
+
+#favoritesHint {
+  min-height: 16px;
+  font-size: 12px;
+  color: #f0b429;
+  margin-bottom: 8px;
 }
 
 #favoritesCompareButton {
