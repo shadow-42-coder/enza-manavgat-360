@@ -1223,25 +1223,6 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   line-height: 1.4;
 }
 
-#gyroToggleButton {
-  position: absolute;
-  top: 0;
-  right: 80px;
-  width: 40px;
-  height: 40px;
-  z-index: 90;
-  border: none;
-  background-color: rgba(41,56,72,0.92);
-  color: rgba(255,255,255,0.6);
-  font-size: 17px;
-  cursor: pointer;
-}
-
-#gyroToggleButton.active {
-  color: #fff;
-  background-color: var(--brand-accent);
-}
-
 #recentScenesBar.visible {
   display: flex;
 }
@@ -2494,8 +2475,7 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
   margin-top: 4px;
 }
 
-.info-hotspot-favorite,
-.info-hotspot-listen {
+.info-hotspot-favorite {
   width: 34px;
   height: 34px;
   border-radius: 5px;
@@ -2531,10 +2511,6 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
   .heartBurst { animation: none; opacity: 0; }
 }
 
-.info-hotspot-listen.speaking {
-  background-color: var(--brand-accent);
-}
-
 .info-hotspot-others {
   margin-top: 10px;
   padding-top: 10px;
@@ -2564,17 +2540,6 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 .info-hotspot-other-chip:hover {
   background-color: var(--brand-accent);
   color: #fff;
-}
-
-.info-hotspot-listen-more {
-  border: none;
-  border-radius: 5px;
-  background-color: rgba(0,0,0,0.06);
-  color: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 0 10px;
-  cursor: pointer;
 }
 
 #favoritesButton {

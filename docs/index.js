@@ -383,33 +383,6 @@
     return (div.textContent || div.innerText || '').trim();
   }
 
-  // Voices load asynchronously in most browsers - an empty getVoices() on
-  // first call is normal, not an error, and by the time a visitor actually
-  // taps "listen" the list has settled. Without picking a matching voice
-  // explicitly, an utterance can silently fall back to a non-Turkish voice
-  // that mispronounces every Turkish letter/word.
-  function pickVoiceForLang(langTag) {
-    if (!window.speechSynthesis) return null;
-    var voices = window.speechSynthesis.getVoices() || [];
-    if (!voices.length) return null;
-    var exact = voices.filter(function(v) { return v.lang && v.lang.toLowerCase() === langTag.toLowerCase(); });
-    if (exact.length) return exact[0];
-    var prefix = langTag.split('-')[0].toLowerCase();
-    var loose = voices.filter(function(v) { return v.lang && v.lang.toLowerCase().indexOf(prefix) === 0; });
-    return loose.length ? loose[0] : null;
-  }
-
-  // Splits narration text into a short opening line plus the rest, so
-  // listening starts with one sentence instead of a whole paragraph - the
-  // rest is only spoken if the visitor asks for it.
-  function splitNarrationTeaser(fullText) {
-    var m = /^([\s\S]{0,140}?[.!?])\s*([\s\S]*)$/.exec(fullText);
-    if (m && m[2] && m[2].trim().length > 0) {
-      return { teaser: m[1], rest: m[2].trim() };
-    }
-    return { teaser: fullText, rest: '' };
-  }
-
   // Visitor-side favorite products list (their own browser only, nothing
   // sent anywhere until they choose to send it via WhatsApp).
   var FAVORITES_KEY = 'enzaFavoriteProducts';
@@ -613,6 +586,11 @@
   // side day count, purely for urgency, not tied to any real inventory/offer
   // system.
   var campaignEndDate = (data.settings && data.settings.campaignEndDate) || null;
+  // Separate on/off switch from the saved text itself, so turning the banner
+  // off and back on later doesn't lose whatever message was typed in.
+  // Missing (undefined) is treated as "on" for sites saved before this
+  // toggle existed - only an explicit false hides it.
+  var campaignEnabled = !(data.settings && data.settings.campaignEnabled === false);
   function formatCampaignText(text) {
     if (!campaignEndDate) return text;
     var end = new Date(campaignEndDate + 'T23:59:59');
@@ -637,7 +615,7 @@
     try { window.sessionStorage.setItem(CAMPAIGN_DISMISS_KEY, campaignBannerText.textContent); } catch (e) {}
     campaignBanner.classList.remove('visible');
   });
-  showCampaignBanner(data.settings && data.settings.campaignText);
+  showCampaignBanner(campaignEnabled ? (data.settings && data.settings.campaignText) : '');
 
   // Live preview from the admin settings panel - doesn't touch sessionStorage
   // dismissal state, just shows/hides the banner on this screen right now.
@@ -858,18 +836,6 @@
     tipClose.addEventListener('click', dismiss);
     setTimeout(function() { tip.classList.add('visible'); }, visibleDelayMs);
     setTimeout(dismiss, autoDismissMs);
-  }
-
-  // Voice-narration tip: shown once, the first time a visitor opens any
-  // product card, pointing out the 🔊 listen button rather than at page
-  // load (before there's anything on screen to point at).
-  var voiceTipEligible = true;
-  try { voiceTipEligible = !window.localStorage.getItem('enzaVoiceTipShown'); } catch (e) {}
-  function showVoiceTipOnce() {
-    if (!voiceTipEligible) return;
-    voiceTipEligible = false;
-    showOneTimeTip('voiceTip', 'enzaVoiceTipShown',
-      uiText('voiceTipText', '🔊 simgesine dokunarak ürünü sesli dinleyebilirsin.'), 500, 7000);
   }
 
   // Suggest landscape on mobile if the visitor is in portrait - a wider
@@ -1814,6 +1780,15 @@
 
     // -- Campaign/announcement banner --
     var campaignSection = settingsSection('Kampanya/duyuru şeridi', '📢');
+    var campaignEnabledLabel = document.createElement('label');
+    campaignEnabledLabel.className = 'posFinderCheckboxLabel';
+    var campaignEnabledCheckbox = document.createElement('input');
+    campaignEnabledCheckbox.type = 'checkbox';
+    var campaignEnabledText = document.createElement('span');
+    campaignEnabledText.textContent = 'Duyuru şeridi açık (kapatınca yazdığın metin silinmez, istediğin an tekrar açabilirsin).';
+    campaignEnabledLabel.appendChild(campaignEnabledCheckbox);
+    campaignEnabledLabel.appendChild(campaignEnabledText);
+    campaignSection.appendChild(campaignEnabledLabel);
     var campaignInput = document.createElement('input');
     campaignInput.type = 'text';
     campaignInput.placeholder = 'Örn: Bu hafta sonu tüm oturma gruplarında %10 indirim!';
@@ -1847,7 +1822,8 @@
     // into data.js, so the banner reflects what's really about to be applied.
     function getEffectiveCampaignText() {
       var pending = settingsChanges.filter(function(c) { return c.type === 'campaignText'; }).pop();
-      if (pending) return pending.text;
+      if (pending) return pending.enabled === false ? '' : pending.text;
+      if (!campaignEnabled) return '';
       return (data.settings && data.settings.campaignText) || '';
     }
     function getEffectiveCampaignEndDate() {
@@ -1855,6 +1831,39 @@
       if (pending) return pending.endDate || null;
       return (data.settings && data.settings.campaignEndDate) || null;
     }
+    function getEffectiveCampaignEnabled() {
+      var pending = settingsChanges.filter(function(c) { return c.type === 'campaignText'; }).pop();
+      if (pending) return pending.enabled !== false;
+      return campaignEnabled;
+    }
+
+    campaignEnabledCheckbox.addEventListener('change', function() {
+      var enabled = campaignEnabledCheckbox.checked;
+      var text = campaignInput.value.trim();
+      var endDate = campaignEndDateInput.value || null;
+      var beforeSnapshot = settingsChanges.slice();
+      var beforeEnabled = campaignEnabled;
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'campaignText'; });
+      settingsChanges.push({ type: 'campaignText', text: text, endDate: endDate, enabled: enabled });
+      var afterSnapshot = settingsChanges.slice();
+      campaignEnabled = enabled;
+      saveSettingsChanges();
+      settingsStatus.textContent = enabled ? 'Duyuru şeridi açıldı.' : 'Duyuru şeridi kapatıldı (metin korunuyor).';
+      showCampaignBanner(getEffectiveCampaignText());
+      pushHistory(enabled ? 'duyuru şeridini açma' : 'duyuru şeridini kapatma', function() {
+        settingsChanges = beforeSnapshot;
+        campaignEnabled = beforeEnabled;
+        campaignEnabledCheckbox.checked = beforeEnabled;
+        saveSettingsChanges();
+        showCampaignBanner(getEffectiveCampaignText());
+      }, function() {
+        settingsChanges = afterSnapshot;
+        campaignEnabled = enabled;
+        campaignEnabledCheckbox.checked = enabled;
+        saveSettingsChanges();
+        showCampaignBanner(getEffectiveCampaignText());
+      });
+    });
 
     campaignInput.addEventListener('input', function() {
       previewCampaignBanner(campaignInput.value.trim());
@@ -1866,21 +1875,28 @@
       var endDate = campaignEndDateInput.value || null;
       var beforeSnapshot = settingsChanges.slice();
       var beforeEndDate = campaignEndDate;
+      var beforeEnabled = campaignEnabled;
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'campaignText'; });
-      settingsChanges.push({ type: 'campaignText', text: text, endDate: endDate });
+      settingsChanges.push({ type: 'campaignText', text: text, endDate: endDate, enabled: true });
       var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
       campaignEndDate = endDate;
+      campaignEnabled = true;
+      campaignEnabledCheckbox.checked = true;
       settingsStatus.textContent = 'Duyuru kaydedildi.';
       showCampaignBanner(text);
       pushHistory('kampanya duyurusu yayınlama', function() {
         settingsChanges = beforeSnapshot;
         campaignEndDate = beforeEndDate;
+        campaignEnabled = beforeEnabled;
+        campaignEnabledCheckbox.checked = beforeEnabled;
         saveSettingsChanges();
         showCampaignBanner(getEffectiveCampaignText());
       }, function() {
         settingsChanges = afterSnapshot;
         campaignEndDate = endDate;
+        campaignEnabled = true;
+        campaignEnabledCheckbox.checked = true;
         saveSettingsChanges();
         settingsStatus.textContent = 'Duyuru kaydedildi.';
         showCampaignBanner(text);
@@ -1890,8 +1906,9 @@
     campaignClearButton.addEventListener('click', function() {
       var beforeSnapshot = settingsChanges.slice();
       var beforeEndDate = campaignEndDate;
+      var beforeEnabled = campaignEnabled;
       settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'campaignText'; });
-      settingsChanges.push({ type: 'campaignText', text: '', endDate: null });
+      settingsChanges.push({ type: 'campaignText', text: '', endDate: null, enabled: true });
       var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();
       campaignEndDate = null;
@@ -1902,6 +1919,8 @@
       pushHistory('kampanya duyurusu kaldırma', function() {
         settingsChanges = beforeSnapshot;
         campaignEndDate = beforeEndDate;
+        campaignEnabled = beforeEnabled;
+        campaignEnabledCheckbox.checked = beforeEnabled;
         saveSettingsChanges();
         showCampaignBanner(getEffectiveCampaignText());
       }, function() {
@@ -3500,6 +3519,7 @@
       if (!campaignInput.dataset.filled) {
         campaignInput.value = (data.settings && data.settings.campaignText) || '';
         campaignEndDateInput.value = (data.settings && data.settings.campaignEndDate) || '';
+        campaignEnabledCheckbox.checked = getEffectiveCampaignEnabled();
         campaignInput.dataset.filled = '1';
       }
       if (!seasonalSelect.dataset.filled) {
@@ -5112,57 +5132,6 @@
     });
   }
 
-  // Mobile-only gyroscope look-around: tilting/turning the phone moves the
-  // camera instead of (or alongside) dragging. iOS 13+ requires an explicit
-  // permission prompt, triggered by the tap on this button itself since it
-  // must come from a real user gesture.
-  (function setupGyroscopeControl() {
-    if (!document.body.classList.contains('mobile') || !window.DeviceOrientationEvent) return;
-    var gyroButton = document.createElement('button');
-    gyroButton.type = 'button';
-    gyroButton.id = 'gyroToggleButton';
-    gyroButton.textContent = '🧭';
-    gyroButton.title = uiText('gyroLabel', 'Telefonu çevirerek bak');
-    document.body.appendChild(gyroButton);
-
-    var active = false;
-    var baseYaw = 0;
-    var baseAlpha = null;
-
-    function handleOrientation(event) {
-      if (!currentView || event.alpha === null || event.beta === null) return;
-      if (baseAlpha === null) baseAlpha = event.alpha;
-      var yaw = baseYaw - (event.alpha - baseAlpha) * Math.PI / 180;
-      var pitch = -(event.beta - 90) * Math.PI / 180;
-      pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
-      currentView.setParameters({ yaw: yaw, pitch: pitch });
-    }
-
-    function start() {
-      baseAlpha = null;
-      if (currentView) baseYaw = currentView.parameters().yaw;
-      window.addEventListener('deviceorientation', handleOrientation);
-      gyroButton.classList.add('active');
-      active = true;
-    }
-    function stop() {
-      window.removeEventListener('deviceorientation', handleOrientation);
-      gyroButton.classList.remove('active');
-      active = false;
-    }
-
-    gyroButton.addEventListener('click', function() {
-      if (active) { stop(); return; }
-      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission().then(function(state) {
-          if (state === 'granted') start();
-        }).catch(function() {});
-      } else {
-        start();
-      }
-    });
-  })();
-
   // "Az önce buradaydın" breadcrumb: small thumbnails of the last few scenes
   // visited this session (not persisted), for quickly hopping back.
   var recentSceneIds = [];
@@ -5452,55 +5421,6 @@
     refreshFavButton();
     actionsRow.appendChild(favBtn);
 
-    if (window.speechSynthesis) {
-      var listenBtn = document.createElement('button');
-      listenBtn.type = 'button';
-      listenBtn.classList.add('info-hotspot-listen');
-      listenBtn.textContent = '🔊';
-      listenBtn.title = uiText('listenLabel', 'Sesli dinle');
-
-      var listenMoreBtn = document.createElement('button');
-      listenMoreBtn.type = 'button';
-      listenMoreBtn.classList.add('info-hotspot-listen-more');
-      listenMoreBtn.textContent = uiText('listenMoreLabel', '▶ Devamını dinle');
-      listenMoreBtn.style.display = 'none';
-
-      var plainTitleForSpeech = stripHtmlForSpeech(hotspot.title);
-      var narrationTeaser = splitNarrationTeaser(stripHtmlForSpeech(hotspot.text));
-
-      function speakText(text, onEnd) {
-        var utter = new SpeechSynthesisUtterance(text);
-        utter.lang = currentLang === 'en' ? 'en-US' : (currentLang === 'ru' ? 'ru-RU' : 'tr-TR');
-        var matchedVoice = pickVoiceForLang(utter.lang);
-        if (matchedVoice) utter.voice = matchedVoice;
-        utter.onend = function() { listenBtn.classList.remove('speaking'); if (onEnd) onEnd(); };
-        utter.onerror = function() { listenBtn.classList.remove('speaking'); };
-        listenBtn.classList.add('speaking');
-        window.speechSynthesis.speak(utter);
-      }
-
-      listenBtn.addEventListener('click', function(event) {
-        event.stopPropagation();
-        if (window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel();
-          listenBtn.classList.remove('speaking');
-          return;
-        }
-        listenMoreBtn.style.display = 'none';
-        speakText(plainTitleForSpeech + '. ' + narrationTeaser.teaser, function() {
-          if (narrationTeaser.rest) listenMoreBtn.style.display = 'inline-block';
-        });
-      });
-      actionsRow.appendChild(listenBtn);
-
-      listenMoreBtn.addEventListener('click', function(event) {
-        event.stopPropagation();
-        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-        listenMoreBtn.style.display = 'none';
-        speakText(narrationTeaser.rest, null);
-      });
-      actionsRow.appendChild(listenMoreBtn);
-    }
     text.appendChild(actionsRow);
 
     // Quick links to the other products in this same room, so a visitor
@@ -5571,9 +5491,8 @@
     document.body.appendChild(modal);
 
     var toggle = function() {
-      var opening = wrapper.classList.toggle('visible');
+      wrapper.classList.toggle('visible');
       modal.classList.toggle('visible');
-      if (opening && window.speechSynthesis) showVoiceTipOnce();
     };
 
     // Show content when hotspot is clicked.
