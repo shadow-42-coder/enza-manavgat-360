@@ -1220,9 +1220,72 @@
     var addButton = document.createElement('button');
     addButton.textContent = 'Ekle';
     addButton.id = 'posFinderAdd';
+    var draftFetchButton = document.createElement('button');
+    draftFetchButton.type = 'button';
+    draftFetchButton.id = 'posFinderDraftFetch';
+    draftFetchButton.textContent = '🔍 Taslak Getir';
+    draftFetchButton.title = 'Linkten ürün başlığı/görselini otomatik çekmeyi dene (microlink.io üzerinden, harici bir servis)';
     inputRow.appendChild(linkInput);
+    inputRow.appendChild(draftFetchButton);
     inputRow.appendChild(sceneSelect);
     inputRow.appendChild(addButton);
+
+    var draftPreview = document.createElement('div');
+    draftPreview.id = 'posFinderDraftPreview';
+    draftPreview.style.display = 'none';
+    var currentDraft = null;
+
+    function clearDraft() {
+      currentDraft = null;
+      draftPreview.style.display = 'none';
+      draftPreview.innerHTML = '';
+    }
+
+    function fetchProductDraft() {
+      var link = linkInput.value.trim();
+      if (!link) return;
+      draftFetchButton.disabled = true;
+      draftFetchButton.textContent = 'Getiriliyor...';
+      clearDraft();
+      fetch('https://api.microlink.io/?url=' + encodeURIComponent(link) + '&meta=false')
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+          draftFetchButton.disabled = false;
+          draftFetchButton.textContent = '🔍 Taslak Getir';
+          if (!json || json.status !== 'success' || !json.data) {
+            draftPreview.textContent = 'Otomatik bilgi bulunamadı, başlık/açıklamayı elle yazman gerekecek.';
+            draftPreview.style.display = 'block';
+            return;
+          }
+          var d = json.data;
+          currentDraft = {
+            title: (d.title || '').trim(),
+            description: (d.description || '').trim(),
+            image: (d.image && d.image.url) || ''
+          };
+          draftPreview.innerHTML = '';
+          if (currentDraft.image) {
+            var img = document.createElement('img');
+            img.src = currentDraft.image;
+            img.className = 'posFinderDraftImg';
+            draftPreview.appendChild(img);
+          }
+          var txt = document.createElement('div');
+          txt.className = 'posFinderDraftText';
+          txt.textContent = (currentDraft.title || '(başlık bulunamadı)') +
+            (currentDraft.description ? ' — ' + currentDraft.description.slice(0, 140) : '');
+          draftPreview.appendChild(txt);
+          draftPreview.style.display = 'flex';
+        })
+        .catch(function() {
+          draftFetchButton.disabled = false;
+          draftFetchButton.textContent = '🔍 Taslak Getir';
+          draftPreview.textContent = 'Otomatik bilgi çekilemedi (bağlantı sorunu olabilir), başlık/açıklamayı elle yazman gerekecek.';
+          draftPreview.style.display = 'block';
+        });
+    }
+    draftFetchButton.addEventListener('click', fetchProductDraft);
+    linkInput.addEventListener('input', clearDraft);
 
     // Badge buttons: only shown while editing an existing product (info
     // hotspot) in product mode. Applied live to the hotspot's own DOM.
@@ -3322,6 +3385,7 @@
     content.appendChild(modeRow);
     content.appendChild(coordsLine);
     content.appendChild(inputRow);
+    content.appendChild(draftPreview);
     content.appendChild(badgeRow);
     content.appendChild(descRow);
     content.appendChild(photoPanel);
@@ -3384,6 +3448,8 @@
       badgeRow.style.display = 'none';
       descRow.style.display = 'none';
       descTextarea.value = '';
+      draftFetchButton.style.display = '';
+      clearDraft();
     }
 
     // Modes that don't need precise clicking on the pano (placing/selecting a
@@ -3417,6 +3483,8 @@
       mapModeButton.classList.toggle('active', mode === 'map');
       orderModeButton.classList.toggle('active', mode === 'order');
       linkInput.style.display = mode === 'product' ? '' : 'none';
+      draftFetchButton.style.display = (mode === 'product' && !editingEntry) ? '' : 'none';
+      if (mode !== 'product') clearDraft();
       sceneSelect.style.display = mode === 'link' ? '' : 'none';
       inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order') ? 'none' : 'flex';
       photoPanel.style.display = mode === 'photo' ? 'block' : 'none';
@@ -3776,10 +3844,19 @@
         pitch: pendingCoords.pitch,
         link: link
       };
+      // If a draft was fetched for this exact link, attach it so the
+      // Kopyala export already has a starting title/description/image
+      // instead of needing to be researched from scratch by hand.
+      if (currentDraft && (currentDraft.title || currentDraft.description || currentDraft.image)) {
+        record.draftTitle = currentDraft.title || undefined;
+        record.draftDescription = currentDraft.description || undefined;
+        record.draftImage = currentDraft.image || undefined;
+      }
       entries.push(record);
       saveEntries();
       linkInput.value = '';
       pendingCoords = null;
+      clearDraft();
       coordsLine.textContent = 'Eklendi. Bir sonraki ürüne tıklayın...';
       coordsLine.classList.remove('ready');
       pushHistory('ürün ekleme', function() {
@@ -3961,6 +4038,8 @@
             editingEntry = editMatch;
             pendingCoords = null;
             addButton.textContent = 'Güncelle';
+            draftFetchButton.style.display = 'none';
+            clearDraft();
             if (mode === 'product') {
               linkInput.value = editMatch.rawData.sourceLink || '';
               coordsLine.textContent = editMatch.rawData.sourceLink
@@ -4097,6 +4176,9 @@
         lines.push('--- YENİ EKLENEN ÜRÜNLER ---');
         entries.forEach(function(e) {
           lines.push(e.scene + ' ' + e.yaw.toFixed(4) + ' ' + e.pitch.toFixed(4) + ' ' + e.link);
+          if (e.draftTitle) lines.push('   taslak başlık: ' + e.draftTitle);
+          if (e.draftDescription) lines.push('   taslak açıklama: ' + e.draftDescription);
+          if (e.draftImage) lines.push('   taslak görsel: ' + e.draftImage);
         });
       }
       if (removals.length) {
