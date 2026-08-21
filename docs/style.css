@@ -21,6 +21,7 @@
   --brand-panel: rgba(23,32,42,0.88);
   --brand-panel-hover: rgba(41,56,72,0.92);
   --brand-accent: #2f8fd6;
+  --brand-warm: #c9a15a;
   --brand-text-muted: #aab4bd;
   --hotspot-icon-scale: 1;
 }
@@ -136,6 +137,9 @@ body.multiple-scenes.mobile #titleBar {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 
   -moz-user-select: text;
   -webkit-user-select: text;
@@ -376,6 +380,10 @@ body.fullscreen-enabled.mobile #autorotateToggle {
   background-color: rgba(41,56,72,0.92);
 }
 
+.no-touch #sceneList .scene:not(.current):hover {
+  box-shadow: inset 3px 0 0 var(--brand-warm);
+}
+
 #sceneList .scene.current {
   background-color: rgb(41,56,72);
   background-color: rgba(41,56,72,0.92);
@@ -400,6 +408,10 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 
 .no-touch .link-hotspot:hover {
   opacity: 1;
+}
+
+.no-touch .link-hotspot:hover .link-hotspot-icon {
+  filter: drop-shadow(0 0 7px rgba(47,143,214,0.85));
 }
 
 .mobile .link-hotspot {
@@ -567,10 +579,13 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 .desktop.no-touch .info-hotspot .info-hotspot-header:hover {
   width: 260px;
   border-radius: 5px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(47,143,214,0.3);
   -webkit-transition: width 0.3s ease-in-out,
-                      border-radius 0.3s ease-in-out;
+                      border-radius 0.3s ease-in-out,
+                      box-shadow 0.2s ease-in-out;
   transition: width 0.3s ease-in-out,
-              border-radius 0.3s ease-in-out;
+              border-radius 0.3s ease-in-out,
+              box-shadow 0.2s ease-in-out;
 }
 
 .desktop .info-hotspot.visible .info-hotspot-header,
@@ -818,14 +833,16 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   background-color: rgb(41,56,72);
   background-color: rgba(41,56,72,0.92);
   opacity: 0;
-  -webkit-transition: opacity 0.3s ease-in-out 0.2s;
-  transition: opacity 0.3s ease-in-out 0.2s;
+  transform: translateY(10px) scale(0.97);
+  -webkit-transition: opacity 0.3s ease-in-out 0.2s, transform 0.3s ease-in-out 0.2s;
+  transition: opacity 0.3s ease-in-out 0.2s, transform 0.3s ease-in-out 0.2s;
 }
 
 .info-hotspot-modal.visible .info-hotspot-header {
   opacity: 1;
-  -webkit-transition: opacity 0.3s ease-in-out 0.2s;
-  transition: opacity 0.3s ease-in-out 0.2s;
+  transform: translateY(0) scale(1);
+  -webkit-transition: opacity 0.3s ease-in-out 0.2s, transform 0.3s ease-in-out 0.2s;
+  transition: opacity 0.3s ease-in-out 0.2s, transform 0.3s ease-in-out 0.2s;
 }
 
 .info-hotspot-modal .info-hotspot-icon-wrapper {
@@ -928,6 +945,18 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   box-shadow: inset 3px 0 0 var(--brand-accent);
 }
 
+#sceneList .scene.current .text {
+  color: var(--brand-accent);
+  font-weight: 700;
+}
+
+#sceneList .scene.current .text:before {
+  content: '●';
+  font-size: 6px;
+  vertical-align: middle;
+  margin-right: 7px;
+}
+
 /* Splash screen */
 
 #splash {
@@ -954,7 +983,7 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 #splashLogo {
   width: 320px;
   max-width: 70%;
-  margin-bottom: 28px;
+  margin-bottom: 14px;
   transition: transform 0.6s ease-in, filter 0.6s ease-in, opacity 0.6s ease-in;
 }
 
@@ -962,6 +991,41 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   transform: scale(1.15);
   filter: blur(6px);
   opacity: 0;
+}
+
+#splashTagline {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-text-muted);
+  margin-bottom: 26px;
+  transition: opacity 0.4s ease-in;
+}
+
+#splash.hidden #splashTagline {
+  opacity: 0;
+}
+
+#splashProgress {
+  width: 140px;
+  height: 3px;
+  border-radius: 2px;
+  background-color: rgba(255,255,255,0.12);
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+
+#splashProgressBar {
+  width: 0%;
+  height: 100%;
+  background-color: var(--brand-accent);
+  border-radius: 2px;
+  animation: splashProgressFill 0.85s ease-out forwards;
+}
+
+@keyframes splashProgressFill {
+  0% { width: 0%; }
+  100% { width: 100%; }
 }
 
 #timeOfDayOverlay {
@@ -1023,6 +1087,38 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   padding-top: 20px;
 }
 
+#sceneListHeaderMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#sceneCountBadge {
+  font-size: 11px;
+  color: var(--brand-text-muted);
+  letter-spacing: 0.02em;
+}
+
+#googleReviewsBadge {
+  font-size: 11px;
+  color: var(--brand-text-muted);
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.14);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+#googleReviewsBadgeStar {
+  color: #f5b400;
+}
+
+.no-touch #googleReviewsBadge:hover {
+  border-color: var(--brand-warm);
+  color: #fff;
+}
+
 /* Scene list footer / contact links (visible in the expanded sidebar) */
 
 #sceneListFooter {
@@ -1039,13 +1135,21 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 }
 
 .contactLink {
+  display: block;
   font-size: 13px;
+  padding: 6px 0;
   color: var(--brand-text-muted);
   opacity: 0.9;
+  transition: color 0.15s ease;
+}
+
+.mobile .contactLink {
+  padding: 11px 0;
+  font-size: 14px;
 }
 
 .no-touch .contactLink:hover {
-  color: #fff;
+  color: var(--brand-warm);
   opacity: 1;
 }
 
@@ -1056,6 +1160,46 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
   bottom: 0;
   right: 0;
   display: flex;
+}
+
+/* Floating WhatsApp bubble: mobile only (desktop already has #contactBar,
+   and the mobile scene list already lists WhatsApp in its footer, but there
+   was previously no persistent contact affordance on mobile once that list
+   is closed). Hidden while the scene list is open via the sibling selector
+   below, so it never overlaps the open menu. */
+#floatingWhatsapp {
+  display: none;
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #25d366;
+  background-image: url('img/icon-whatsapp.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 26px 26px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  z-index: 8000;
+  animation: floatingWhatsappPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes floatingWhatsappPulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+  50% { box-shadow: 0 4px 14px rgba(0,0,0,0.4), 0 0 0 6px rgba(37,211,102,0.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #floatingWhatsapp { animation: none; }
+}
+
+.mobile #floatingWhatsapp {
+  display: block;
+}
+
+#sceneList.enabled ~ #floatingWhatsapp {
+  display: none;
 }
 
 #recentScenesBar {

@@ -232,6 +232,9 @@
     if (hiddenSceneIds[scene.data.id]) applySceneVisibilityToDom(scene.data.id, true);
   });
 
+  var sceneCountBadgeElement = document.querySelector('#sceneCountBadge');
+  if (sceneCountBadgeElement) sceneCountBadgeElement.textContent = scenes.length + ' Sahne';
+
   // Translate contact labels, tooltips and WhatsApp message text for the
   // currently detected/chosen visitor language. Turkish is the site's base
   // language, so at currentLang === 'tr' the static HTML is already correct.
@@ -241,6 +244,7 @@
   var contactBarMapsBtn = document.querySelector('#contactBar .contactButton-maps');
   var contactBarIgBtn = document.querySelector('#contactBar .contactButton-instagram');
   var contactBarWaBtn = document.querySelector('#contactBar .contactButton-whatsapp');
+  var floatingWaBtn = document.querySelector('#floatingWhatsapp');
   var sceneListFooterShareLink = document.querySelector('#sceneListFooter #shareLink');
   var contactBarShareBtn = document.querySelector('#contactBar #shareButton');
 
@@ -269,6 +273,7 @@
     igTitle: contactBarIgBtn ? contactBarIgBtn.title : null,
     waTitle: contactBarWaBtn ? contactBarWaBtn.title : null,
     waBtnHref: contactBarWaBtn ? contactBarWaBtn.href : null,
+    waFloatingHref: floatingWaBtn ? floatingWaBtn.href : null,
     shareText: sceneListFooterShareLink ? sceneListFooterShareLink.textContent : null,
     shareTitle: contactBarShareBtn ? contactBarShareBtn.title : null
   };
@@ -281,6 +286,7 @@
       if (contactBarMapsBtn) contactBarMapsBtn.title = originalTr.mapsTitle;
       if (contactBarIgBtn) contactBarIgBtn.title = originalTr.igTitle;
       if (contactBarWaBtn) { contactBarWaBtn.title = originalTr.waTitle; contactBarWaBtn.href = originalTr.waBtnHref; }
+      if (floatingWaBtn) floatingWaBtn.href = originalTr.waFloatingHref;
       if (sceneListFooterShareLink) sceneListFooterShareLink.textContent = originalTr.shareText;
       if (contactBarShareBtn) contactBarShareBtn.title = originalTr.shareTitle;
       return;
@@ -308,6 +314,7 @@
         contactBarWaBtn.href = waHref;
         if (waLabel) contactBarWaBtn.title = waLabel;
       }
+      if (floatingWaBtn) floatingWaBtn.href = waHref;
     }
     if (shareLabel) {
       if (sceneListFooterShareLink) sceneListFooterShareLink.textContent = shareLabel;
@@ -5435,6 +5442,33 @@
     sceneListElement.classList.toggle('enabled');
     sceneListToggleElement.classList.toggle('enabled');
   }
+
+  // Swipe-left-to-close on the mobile scene list, since it opens full-screen
+  // there and a physical "swipe it away" gesture is what visitors expect.
+  // Guarded so it doesn't fight the list's own vertical scroll: a touch only
+  // counts as a close swipe once its horizontal travel clearly exceeds its
+  // vertical travel.
+  (function setupSceneListSwipeToClose() {
+    var touchStartX = null;
+    var touchStartY = null;
+    sceneListElement.addEventListener('touchstart', function(e) {
+      if (!document.body.classList.contains('mobile')) return;
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    sceneListElement.addEventListener('touchend', function(e) {
+      if (touchStartX === null) return;
+      var touch = e.changedTouches[0];
+      var dx = touch.clientX - touchStartX;
+      var dy = touch.clientY - touchStartY;
+      touchStartX = null;
+      touchStartY = null;
+      if (dx < -60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        hideSceneList();
+      }
+    }, { passive: true });
+  })();
 
   function startAutorotate() {
     if (!autorotateToggleElement.classList.contains('enabled')) {
