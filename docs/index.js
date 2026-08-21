@@ -946,10 +946,11 @@
     }, 75000);
   })();
 
-  // Mobile: pinch with two fingers to zoom; release to snap back to the
-  // scene's normal view instead of staying zoomed in.
+  // Mobile: pinch with two fingers to zoom in or out. The zoom level
+  // persists after release (matching desktop scroll-wheel zoom) instead of
+  // snapping back - the view's own limiter already keeps it within a
+  // sensible range, tied to the source photos' actual resolution.
   var currentView = null;
-  var currentBaseFov = null;
   var currentSceneNumber = null;
   var currentSceneWrapper = null;
   setupPinchZoom(panoElement);
@@ -4478,7 +4479,6 @@
     var pinching = false;
     var startDistance = 0;
     var startFov = 0;
-    var animationFrame = null;
 
     function touchDistance(touches) {
       var dx = touches[0].clientX - touches[1].clientX;
@@ -4486,40 +4486,8 @@
       return Math.sqrt(dx * dx + dy * dy);
     }
 
-    function cancelSnapAnimation() {
-      if (animationFrame !== null) {
-        window.cancelAnimationFrame(animationFrame);
-        animationFrame = null;
-      }
-    }
-
-    function snapBack() {
-      if (!currentView || currentBaseFov === null) {
-        return;
-      }
-      var fromFov = currentView.parameters().fov;
-      var duration = 250;
-      var startTime = null;
-      cancelSnapAnimation();
-      function step(timestamp) {
-        if (startTime === null) {
-          startTime = timestamp;
-        }
-        var progress = Math.min(1, (timestamp - startTime) / duration);
-        var eased = 1 - Math.pow(1 - progress, 2);
-        currentView.setParameters({ fov: fromFov + (currentBaseFov - fromFov) * eased });
-        if (progress < 1) {
-          animationFrame = window.requestAnimationFrame(step);
-        } else {
-          animationFrame = null;
-        }
-      }
-      animationFrame = window.requestAnimationFrame(step);
-    }
-
     element.addEventListener('touchstart', function(event) {
       if (event.touches.length === 2 && currentView) {
-        cancelSnapAnimation();
         pinching = true;
         startDistance = touchDistance(event.touches);
         startFov = currentView.parameters().fov;
@@ -4539,7 +4507,6 @@
     function endPinch(event) {
       if (pinching && event.touches.length < 2) {
         pinching = false;
-        snapBack();
       }
     }
 
@@ -5342,7 +5309,6 @@
     updateSceneName(scene);
     updateSceneList(scene);
     currentView = scene.view;
-    currentBaseFov = scene.data.initialViewParameters.fov;
     currentSceneNumber = scenes.indexOf(scene) + 1;
     currentSceneWrapper = scene;
     maybeOpenFeaturedProduct(scene);
