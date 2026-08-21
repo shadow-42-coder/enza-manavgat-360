@@ -1379,19 +1379,36 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 /* TEMP: position finder overlay */
 
 #posFinderBox {
+  /* Admin-only palette - deliberately its own thing, isolated to this
+     panel's subtree, so it never bleeds into the visitor-facing site's
+     own brand colors (--brand-*). Warm amber accent instead of the
+     site's blue, partly so it's visually obvious at a glance that
+     you're in the admin tool and not looking at the live tour. */
+  --admin-bg: #14110d;
+  --admin-card: #211b15;
+  --admin-card-hover: #2b241c;
+  --admin-accent: #e0a339;
+  --admin-accent-strong: #f2b955;
+  --admin-text: #f5efe6;
+  --admin-text-muted: #a99c8a;
+  --admin-border: rgba(255,255,255,0.08);
+  --admin-success: #3ecf7e;
+  --admin-danger: #e0583f;
+
   position: fixed;
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 30000;
-  background-color: rgba(0,0,0,0.92);
-  color: #fff;
+  background-color: var(--admin-bg);
+  color: var(--admin-text);
   font-size: 14px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 14px;
   width: 92%;
   max-width: 420px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+  border: 1px solid var(--admin-border);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -1463,9 +1480,10 @@ body.posFinderWide #pano {
   justify-content: space-between;
   gap: 8px;
   margin: -10px -12px 10px -12px;
-  padding: 8px 12px;
-  border-radius: 8px 8px 0 0;
-  background-color: rgba(255,255,255,0.08);
+  padding: 10px 14px;
+  border-radius: 14px 14px 0 0;
+  background-color: var(--admin-card);
+  border-bottom: 1px solid var(--admin-border);
   cursor: move;
   touch-action: none;
   user-select: none;
@@ -1474,19 +1492,19 @@ body.posFinderWide #pano {
 #posFinderHeaderTitle {
   font-weight: 700;
   font-size: 13px;
-  color: var(--brand-text-muted);
+  color: var(--admin-accent-strong);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
 }
 
 #posFinderMinimize,
 #posFinderFontSize {
   width: 26px;
   height: 26px;
-  border-radius: 5px;
+  border-radius: 8px;
   border: none;
-  background-color: rgba(255,255,255,0.15);
-  color: #fff;
+  background-color: rgba(255,255,255,0.08);
+  color: var(--admin-text);
   font-size: 16px;
   font-weight: 700;
   line-height: 1;
@@ -1518,18 +1536,19 @@ body.posFinderWide #pano {
 .posFinderCategoryButton {
   flex: 1;
   padding: 9px 4px;
-  border-radius: 5px;
+  border-radius: 9px;
   border: none;
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
-  background-color: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.7);
+  background-color: var(--admin-card);
+  color: var(--admin-text-muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .posFinderCategoryButton.active {
-  background-color: var(--brand-accent);
-  color: #fff;
+  background-color: var(--admin-accent);
+  color: #1a1206;
 }
 
 #posFinderContent {
@@ -1596,10 +1615,10 @@ body.posFinderWide #pano {
 #posFinderBulkReplaceRow button {
   flex: 0 0 100%;
   padding: 8px;
-  border-radius: 5px;
+  border-radius: 8px;
   border: none;
-  background-color: var(--brand-accent);
-  color: #fff;
+  background-color: var(--admin-accent);
+  color: #1a1206;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1655,22 +1674,24 @@ body.posFinderWide #pano {
 
 .posFinderModeButton {
   flex: 1 1 30%;
-  padding: 8px;
-  border-radius: 5px;
+  padding: 9px;
+  border-radius: 9px;
   border: none;
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
-  background-color: rgba(255,255,255,0.12);
-  color: #fff;
+  background-color: var(--admin-card);
+  color: var(--admin-text);
 }
 
 .posFinderModeButton.active {
-  background-color: var(--brand-accent);
+  background-color: var(--admin-accent);
+  color: #1a1206;
 }
 
 .posFinderModeButtonDanger.active {
-  background-color: #e0432c;
+  background-color: var(--admin-danger);
+  color: #fff;
 }
 
 #posFinderPhotoPanel {
@@ -1706,7 +1727,7 @@ body.posFinderWide #pano {
 #posFinderPhotoProgressInner {
   height: 100%;
   width: 0%;
-  background-color: var(--brand-accent);
+  background-color: var(--admin-accent);
   transition: width 0.15s linear;
 }
 
@@ -1728,12 +1749,12 @@ body.posFinderWide #pano {
 .posFinderGroupHeader {
   font-size: 11px;
   font-weight: 700;
-  color: var(--brand-text-muted);
+  color: var(--admin-accent-strong);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   margin: 14px 0 6px 0;
   padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.15);
+  border-bottom: 1px solid var(--admin-border);
 }
 
 .posFinderGroupHeader:first-child {
@@ -1741,9 +1762,10 @@ body.posFinderWide #pano {
 }
 
 .posFinderAccordionItem {
-  border-radius: 6px;
+  border-radius: 10px;
   margin-bottom: 6px;
-  background-color: rgba(255,255,255,0.04);
+  background-color: var(--admin-card);
+  border: 1px solid var(--admin-border);
   overflow: hidden;
 }
 
@@ -1774,10 +1796,10 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 9px 10px;
+  padding: 10px 12px;
   border: none;
   background: transparent;
-  color: #fff;
+  color: var(--admin-text);
   font-size: 13px;
   font-weight: 700;
   text-align: left;
@@ -1785,7 +1807,7 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 }
 
 .posFinderAccordionHeader:hover {
-  background-color: rgba(255,255,255,0.06);
+  background-color: var(--admin-card-hover);
 }
 
 .posFinderAccordionIcon {
@@ -1802,7 +1824,7 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 
 .posFinderAccordionChevron {
   flex-shrink: 0;
-  color: rgba(255,255,255,0.5);
+  color: var(--admin-accent);
   font-size: 11px;
 }
 
@@ -1824,9 +1846,11 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 .posFinderSettingsSection input,
 .posFinderSettingsSection textarea {
   width: 100%;
-  padding: 8px;
-  border-radius: 5px;
-  border: none;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background-color: rgba(255,255,255,0.04);
+  color: var(--admin-text);
   font-size: 14px;
   margin-bottom: 6px;
   box-sizing: border-box;
@@ -1839,18 +1863,18 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 
 .posFinderSettingsSection button {
   width: 100%;
-  padding: 8px;
-  border-radius: 5px;
+  padding: 9px;
+  border-radius: 8px;
   border: none;
   font-weight: 700;
   cursor: pointer;
-  background-color: var(--brand-accent);
-  color: #fff;
+  background-color: var(--admin-accent);
+  color: #1a1206;
 }
 
 #posFinderSettingsStatus {
   font-size: 13px;
-  color: #7fd88a;
+  color: var(--admin-success);
   min-height: 18px;
 }
 
@@ -1923,7 +1947,7 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 #posFinderNewSceneProgressInner {
   height: 100%;
   width: 0%;
-  background-color: var(--brand-accent);
+  background-color: var(--admin-accent);
   transition: width 0.15s linear;
 }
 
@@ -2004,7 +2028,8 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 }
 
 .posFinderCategoryChip.active {
-  background-color: var(--brand-accent);
+  background-color: var(--admin-accent);
+  color: #1a1206;
   font-weight: 700;
 }
 
@@ -2107,10 +2132,10 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 #posFinderListMoveFlyoutButtons button {
   flex: 1;
   padding: 8px;
-  border-radius: 5px;
+  border-radius: 8px;
   border: none;
-  background-color: var(--brand-accent);
-  color: #fff;
+  background-color: var(--admin-accent);
+  color: #1a1206;
   font-weight: 700;
   cursor: pointer;
 }
@@ -2295,8 +2320,8 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 }
 
 .posFinderTransitionButton.active {
-  border-color: var(--brand-accent);
-  background-color: rgba(47,143,214,0.35);
+  border-color: var(--admin-accent);
+  background-color: rgba(224,163,57,0.28);
 }
 
 .posFinderCheckboxLabel {
@@ -2403,8 +2428,8 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 }
 
 .posFinderBadgeButton.active {
-  border-color: var(--brand-accent);
-  background-color: rgba(47,143,214,0.35);
+  border-color: var(--admin-accent);
+  background-color: rgba(224,163,57,0.28);
 }
 
 .posFinderBadgeClearButton {
@@ -2457,10 +2482,10 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 
 #posFinderAdd {
   padding: 8px 14px;
-  border-radius: 5px;
+  border-radius: 8px;
   border: none;
-  background-color: var(--brand-accent);
-  color: #fff;
+  background-color: var(--admin-accent);
+  color: #1a1206;
   font-weight: 700;
   cursor: pointer;
 }
