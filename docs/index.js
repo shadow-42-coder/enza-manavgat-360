@@ -5613,39 +5613,6 @@
 
     text.appendChild(actionsRow);
 
-    // Quick links to the other products in this same room, so a visitor
-    // doesn't have to close the card and go hunting for the next one.
-    var otherProducts = siblingHotspots.filter(function(h) { return h.title !== hotspot.title; });
-    if (otherProducts.length) {
-      var otherWrap = document.createElement('div');
-      otherWrap.className = 'info-hotspot-others';
-      var otherLabel = document.createElement('div');
-      otherLabel.className = 'info-hotspot-others-label';
-      otherLabel.textContent = uiText('otherProductsLabel', 'Bu odadaki diğer ürünler');
-      otherWrap.appendChild(otherLabel);
-      otherProducts.forEach(function(other) {
-        var chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'info-hotspot-other-chip';
-        chip.textContent = stripHtmlForSpeech(other.title);
-        chip.addEventListener('click', function(event) {
-          event.stopPropagation();
-          wrapper.classList.remove('visible');
-          modal.classList.remove('visible');
-          var titleEls = document.querySelectorAll('.hotspot.info-hotspot .info-hotspot-title');
-          for (var i = 0; i < titleEls.length; i++) {
-            if (titleEls[i].textContent === other.title) {
-              var otherHeader = titleEls[i].closest('.info-hotspot').querySelector('.info-hotspot-header');
-              if (otherHeader) otherHeader.click();
-              break;
-            }
-          }
-        });
-        otherWrap.appendChild(chip);
-      });
-      text.appendChild(otherWrap);
-    }
-
     // Create a WhatsApp "ask about this product" link, if requested. If the
     // product is badged "Tükendi" AND the admin has explicitly turned on
     // restock notifications (off by default - the badge alone doesn't mean

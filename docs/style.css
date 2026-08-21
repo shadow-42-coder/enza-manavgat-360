@@ -2873,37 +2873,6 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
   .heartBurst { animation: none; opacity: 0; }
 }
 
-.info-hotspot-others {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(0,0,0,0.1);
-}
-
-.info-hotspot-others-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.6;
-  margin-bottom: 6px;
-}
-
-.info-hotspot-other-chip {
-  display: inline-block;
-  margin: 0 6px 6px 0;
-  padding: 4px 9px;
-  border-radius: 100px;
-  border: none;
-  background-color: rgba(0,0,0,0.06);
-  color: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.info-hotspot-other-chip:hover {
-  background-color: var(--brand-accent);
-  color: #fff;
-}
-
 #favoritesButton {
   position: absolute;
   left: 0;
