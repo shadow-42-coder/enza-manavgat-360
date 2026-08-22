@@ -1016,7 +1016,7 @@ var APP_DATA = {
     "viewControlButtons": true,
     "featuredProductEnabled": false,
     "featuredProductTitle": "Bold Köşe Koltuk Takımı – Sonil 50201 Gri",
-    "seasonalEffect": "leaves"
+    "seasonalEffect": "none"
   },
   "i18n": {
     "en": {
