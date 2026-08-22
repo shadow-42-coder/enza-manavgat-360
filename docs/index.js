@@ -5714,18 +5714,12 @@
     }
   })();
 
-  // Hide the branded splash screen once the first scene has had a moment to render.
-  var splashElement = document.querySelector('#splash');
-  if (splashElement) {
-    setTimeout(function() {
-      splashElement.classList.add('hidden');
-    }, 700);
-  }
-
   // One-time "door opening" reveal for the very first scene only: two panels
   // covering the pano slide apart right as the splash fades, instead of the
-  // first room just appearing flatly underneath.
-  (function setupDoorReveal() {
+  // first room just appearing flatly underneath. Exposed as a function since
+  // it needs to fire in sync with whenever the splash actually finishes -
+  // at the end of the full intro, or immediately if skipped.
+  function playDoorReveal() {
     var doorLeft = document.createElement('div');
     doorLeft.className = 'doorPanel';
     doorLeft.id = 'doorLeft';
@@ -5741,7 +5735,58 @@
         if (doorLeft.parentNode) doorLeft.parentNode.removeChild(doorLeft);
         if (doorRight.parentNode) doorRight.parentNode.removeChild(doorRight);
       }, 1300);
-    }, 750);
+    }, 50);
+  }
+
+  // Splash screen: an ~11s "architectural portal" opening sequence (floor
+  // plan draws itself, camera flies through it, real photos resolve into
+  // the enza HOME logo). Reduced-motion visitors and anyone who taps "Geç"
+  // get the short version instead - the CSS reduced-motion block already
+  // swaps in a static end-frame, so both paths just need the splash element
+  // hidden and the door reveal fired at the right time.
+  (function setupSplashIntro() {
+    var splashElement = document.querySelector('#splash');
+    if (!splashElement) return;
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var DURATION = reduced ? 700 : 11000;
+    var finished = false;
+    var rafId = null;
+    var hideTimer = null;
+
+    function finishIntro() {
+      if (finished) return;
+      finished = true;
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      if (hideTimer !== null) clearTimeout(hideTimer);
+      splashElement.classList.add('hidden');
+      playDoorReveal();
+    }
+
+    if (!reduced) {
+      var yawEl = document.querySelector('#splashYawVal');
+      var pitchEl = document.querySelector('#splashPitchVal');
+      var sceneEl = document.querySelector('#splashSceneCounter');
+      var totalScenes = scenes.length;
+      var t0 = performance.now();
+      (function tick(now) {
+        var p = Math.min(1, ((now || t0) - t0) / DURATION);
+        if (yawEl) yawEl.textContent = ((p * 312.4) % 360).toFixed(1) + '°';
+        if (pitchEl) {
+          var pitch = -18 + Math.sin(p * 9) * 6;
+          pitchEl.textContent = (pitch >= 0 ? '0' : '-') + Math.abs(pitch).toFixed(1) + '°';
+        }
+        if (sceneEl) {
+          var n = p < 0.40 ? 1 : (p < 0.68 ? 2 : 3);
+          sceneEl.textContent = 'SAHNE ' + (n < 10 ? '0' + n : n) + ' / ' + totalScenes;
+        }
+        if (p < 1) rafId = requestAnimationFrame(tick);
+      })(t0);
+
+      var skipBtn = document.querySelector('#splashSkip');
+      if (skipBtn) skipBtn.addEventListener('click', finishIntro);
+    }
+
+    hideTimer = setTimeout(finishIntro, DURATION);
   })();
 
   // Kiosk/showroom mode: add ?kiosk=1 to the URL on a screen left running in
