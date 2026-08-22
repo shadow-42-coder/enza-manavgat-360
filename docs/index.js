@@ -437,6 +437,29 @@
   }
   updateFavoritesButton();
 
+  // Receiving end of "Favori Listemi Paylaş": a ?favs= link merges the
+  // shared titles into whoever opens it own favorites, rather than
+  // replacing them - two people comparing picks should both keep seeing
+  // their own choices too.
+  (function importSharedFavorites() {
+    var match = /[?&]favs=([^&]+)/.exec(window.location.search);
+    if (!match) return;
+    var titles;
+    try { titles = JSON.parse(decodeURIComponent(match[1])); } catch (e) { return; }
+    if (!Array.isArray(titles) || !titles.length) return;
+    var favs = getFavorites();
+    var added = 0;
+    titles.forEach(function(title) {
+      if (typeof title !== 'string' || favs.some(function(f) { return f.title === title; })) return;
+      favs.push({ title: title, sceneName: null });
+      added++;
+    });
+    if (added) {
+      window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+      updateFavoritesButton();
+    }
+  })();
+
   function findProductDataByTitle(title) {
     for (var i = 0; i < data.scenes.length; i++) {
       var hotspots = data.scenes[i].infoHotspots || [];
@@ -587,6 +610,29 @@
       var titles = checkedRows.map(function(cb) { return cb.parentNode.querySelector('span').textContent; });
       showCompareOverlay(titles[0], titles[1]);
     });
+    var shareBtn = document.createElement('button');
+    shareBtn.type = 'button';
+    shareBtn.id = 'favoritesShareButton';
+    shareBtn.textContent = uiText('favoritesShareLabel', 'Favori Listemi Paylaş');
+    shareBtn.addEventListener('click', function() {
+      var titles = getFavorites().map(function(f) { return f.title; });
+      var url = window.location.href.split('?')[0].split('#')[0] +
+        '?favs=' + encodeURIComponent(JSON.stringify(titles));
+      var shareText = uiText('favoritesShareText', 'Beğendiğim ürünlere bir bak:');
+      if (navigator.share) {
+        navigator.share({ title: document.title, text: shareText, url: url }).catch(function() {});
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function() {
+          var original = shareBtn.textContent;
+          shareBtn.textContent = uiText('shareCopied', 'Link kopyalandı!');
+          setTimeout(function() { shareBtn.textContent = original; }, 1800);
+        });
+      } else {
+        window.prompt('Bağlantıyı kopyalayın:', url);
+      }
+    });
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.id = 'favoritesClose';
@@ -598,6 +644,7 @@
     box.appendChild(favoritesHint);
     box.appendChild(sendBtn);
     box.appendChild(compareBtn);
+    box.appendChild(shareBtn);
     box.appendChild(closeBtn);
     overlay.appendChild(box);
     overlay.addEventListener('click', function(event) { if (event.target === overlay) overlay.remove(); });
@@ -1149,11 +1196,18 @@
       if (!undoButton) return;
       undoButton.disabled = history.length === 0;
       undoButton.title = history.length ? ('Geri al: ' + history[history.length - 1].label) : '';
+      updateHistoryButton();
     }
     function updateRedoButton() {
       if (!redoButton) return;
       redoButton.disabled = redoStack.length === 0;
       redoButton.title = redoStack.length ? ('İleri al: ' + redoStack[redoStack.length - 1].label) : '';
+      updateHistoryButton();
+    }
+    function updateHistoryButton() {
+      if (!historyButton) return;
+      historyButton.disabled = history.length === 0 && redoStack.length === 0;
+      if (historyList && historyList.style.display !== 'none') renderHistoryList();
     }
     function performUndo() {
       var last = history.pop();
@@ -1372,9 +1426,22 @@
     var descHint = document.createElement('div');
     descHint.id = 'posFinderDescHint';
     descHint.textContent = 'Metni seçip Kalın veya Madde İşareti butonuna basın. Kaydetmek için "Güncelle"ye basın.';
+    var descPreviewLabel = document.createElement('div');
+    descPreviewLabel.id = 'posFinderDescPreviewLabel';
+    descPreviewLabel.textContent = 'ZİYARETÇİ NE GÖRECEK';
+    var descPreview = document.createElement('div');
+    descPreview.id = 'posFinderDescPreview';
     descRow.appendChild(descToolbar);
     descRow.appendChild(descTextarea);
     descRow.appendChild(descHint);
+    descRow.appendChild(descPreviewLabel);
+    descRow.appendChild(descPreview);
+
+    function updateDescPreview() {
+      var original = (editingEntry && editingEntry.kind === 'info') ? editingEntry.rawData.text : '';
+      descPreview.innerHTML = sanitize(rebuildDescHtml(original, descTextarea.value));
+    }
+    descTextarea.addEventListener('input', updateDescPreview);
 
     function wrapDescSelection(before, after) {
       var start = descTextarea.selectionStart;
@@ -1385,6 +1452,7 @@
       descTextarea.value = value.slice(0, start) + replacement + value.slice(end);
       descTextarea.focus();
       descTextarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+      updateDescPreview();
     }
     descBoldButton.addEventListener('click', function() {
       wrapDescSelection('<b>', '</b>');
@@ -1400,6 +1468,7 @@
       descTextarea.focus();
       var pos = start + listHtml.length;
       descTextarea.setSelectionRange(pos, pos);
+      updateDescPreview();
     });
 
     function extractDescFromHtml(html) {
@@ -1459,11 +1528,64 @@
     redoButton.textContent = 'İleri Al';
     redoButton.id = 'posFinderRedo';
     redoButton.disabled = true;
+    var historyButton = document.createElement('button');
+    historyButton.type = 'button';
+    historyButton.textContent = 'Geçmiş';
+    historyButton.id = 'posFinderHistoryButton';
+    historyButton.disabled = true;
     actionRow.appendChild(countLabel);
     actionRow.appendChild(undoButton);
     actionRow.appendChild(redoButton);
+    actionRow.appendChild(historyButton);
     actionRow.appendChild(copyButton);
     actionRow.appendChild(clearButton);
+
+    // Full undo/redo history as a clickable list, not just single-step
+    // undo/redo buttons - lets an admin jump straight back to (or forward
+    // to) any point in this session's edits instead of clicking "Geri Al"
+    // repeatedly and losing count.
+    var historyList = document.createElement('div');
+    historyList.id = 'posFinderHistoryList';
+    historyList.style.display = 'none';
+    actionRow.appendChild(historyList);
+
+    function jumpToHistoryIndex(targetIndex) {
+      // targetIndex counts completed steps (0 = nothing done yet). Undo or
+      // redo one step at a time until history.length === targetIndex.
+      while (history.length > targetIndex) performUndo();
+      while (history.length < targetIndex) performRedo();
+    }
+
+    function renderHistoryList() {
+      historyList.innerHTML = '';
+      if (!history.length && !redoStack.length) {
+        historyList.style.display = 'none';
+        return;
+      }
+      var startRow = document.createElement('button');
+      startRow.type = 'button';
+      startRow.className = 'posFinderHistoryRow';
+      startRow.textContent = '(oturum başlangıcı)';
+      if (history.length === 0) startRow.classList.add('posFinderHistoryCurrent');
+      startRow.addEventListener('click', function() { jumpToHistoryIndex(0); });
+      historyList.appendChild(startRow);
+      var all = history.concat(redoStack.slice().reverse());
+      all.forEach(function(step, i) {
+        var row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'posFinderHistoryRow';
+        row.textContent = (i + 1) + '. ' + step.label;
+        if (i + 1 === history.length) row.classList.add('posFinderHistoryCurrent');
+        row.addEventListener('click', function() { jumpToHistoryIndex(i + 1); });
+        historyList.appendChild(row);
+      });
+    }
+
+    historyButton.addEventListener('click', function() {
+      var willShow = historyList.style.display === 'none';
+      historyList.style.display = willShow ? '' : 'none';
+      if (willShow) renderHistoryList();
+    });
 
     undoButton.addEventListener('click', performUndo);
     redoButton.addEventListener('click', performRedo);
@@ -2362,12 +2484,27 @@
       publishStatus.textContent = 'Anahtar kaydedildi.';
     });
 
+    function totalUnpublishedCount() {
+      return arrows.length + moves.length + removals.length + edits.length + settingsChanges.length;
+    }
+
+    // Warn before leaving the tab (close/reload/navigate away) with edits
+    // that have been made and saved locally but not yet published - easy to
+    // forget the last "Şimdi Yayınla" click after a run of quick edits.
+    window.addEventListener('beforeunload', function(event) {
+      if (!totalUnpublishedCount()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    });
+
     publishButton.addEventListener('click', function() {
       if (!window.EnzaPublish) { publishStatus.textContent = 'Yayınlama modülü yüklenemedi.'; return; }
       var pendingSets = { arrows: arrows, moves: moves, removals: removals, edits: edits, settingsChanges: settingsChanges };
-      var totalPending = arrows.length + moves.length + removals.length + edits.length + settingsChanges.length;
+      var totalPending = totalUnpublishedCount();
       if (!totalPending) { publishStatus.textContent = 'Yayınlanacak bir değişiklik yok.'; return; }
-      if (!window.confirm('Bekleyen değişiklikler doğrudan canlı siteye yayınlansın mı? Bu işlem geri alınamaz (ama site geçmişi GitHub üzerinde kalır).')) return;
+      var previewLines = buildChangeSummaryLines({ skipManualSections: true });
+      var preview = previewLines.length ? ('\n\nŞunlar yayınlanacak:\n' + previewLines.join('\n')) : '';
+      if (!window.confirm('Bekleyen değişiklikler doğrudan canlı siteye yayınlansın mı? Bu işlem geri alınamaz (ama site geçmişi GitHub üzerinde kalır).' + preview)) return;
       publishButton.disabled = true;
       publishButton.textContent = 'Yayınlanıyor...';
       publishStatus.textContent = '';
@@ -2451,11 +2588,29 @@
     linkCheckInfo.textContent = 'Tarayıcı güvenliği yüzünden bir linkin "404" verdiğini kesin olarak göremiyoruz - sadece linkin tamamen ölü (site kapanmış, adres hatalı) olup olmadığını tespit edebiliyoruz. Yanıt veren ama içeriği doğrulanamayanları elle kontrol et.';
     var linkCheckButton = document.createElement('button');
     linkCheckButton.textContent = 'Tüm Ürün Linklerini Kontrol Et';
+    var linkCheckLastRun = document.createElement('div');
+    linkCheckLastRun.className = 'posFinderPasswordHint';
     var linkCheckResult = document.createElement('div');
     linkCheckResult.className = 'posFinderPasswordHint';
     linkCheckSection.appendChild(linkCheckInfo);
     linkCheckSection.appendChild(linkCheckButton);
+    linkCheckSection.appendChild(linkCheckLastRun);
     linkCheckSection.appendChild(linkCheckResult);
+
+    var LINK_CHECK_LAST_KEY = 'enzaLinkCheckLastResult';
+    function formatLinkCheckLastRun(saved) {
+      if (!saved) return '';
+      var when = new Date(saved.timestamp).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
+      return 'Son kontrol: ' + when + ' — ' + (saved.deadCount
+        ? (saved.deadCount + ' tamamen ölü link bulundu')
+        : ('hepsi sağlam (' + saved.totalCount + ' link)'));
+    }
+    (function restoreLinkCheckLastRun() {
+      var saved = null;
+      try { saved = JSON.parse(window.localStorage.getItem(LINK_CHECK_LAST_KEY)); } catch (e) {}
+      linkCheckLastRun.textContent = formatLinkCheckLastRun(saved);
+    })();
+
     linkCheckButton.addEventListener('click', function() {
       var withLinks = collectAllInfoHotspots().filter(function(x) { return !!x.hotspot.sourceLink; });
       if (!withLinks.length) { linkCheckResult.textContent = 'Linkli ürün bulunamadı.'; return; }
@@ -2476,6 +2631,9 @@
               linkCheckResult.textContent = dead.length
                 ? ('TAMAMEN ÖLÜ (' + dead.length + '): ' + dead.join(' | '))
                 : ('Hiçbiri tamamen ölü değil (' + withLinks.length + ' link kontrol edildi). İçerik doğruluğunu yine de arada elle kontrol etmen iyi olur.');
+              var saved = { timestamp: Date.now(), deadCount: dead.length, totalCount: withLinks.length };
+              try { window.localStorage.setItem(LINK_CHECK_LAST_KEY, JSON.stringify(saved)); } catch (e) {}
+              linkCheckLastRun.textContent = formatLinkCheckLastRun(saved);
             }
           });
       });
@@ -2499,6 +2657,120 @@
         if (orphaned.length) lines.push(lang.toUpperCase() + ' — silinmiş sahnelere ait kalıntı çeviri: ' + orphaned.join(', '));
       });
       i18nCheckResult.textContent = lines.length ? lines.join(' | ') : 'Her şey senkron, eksik veya kalıntı çeviri yok.';
+    });
+
+    // -- Scene connection map: a circular node graph so orphaned scenes (no
+    // arrow points to them) or dead ends (no arrow leads out) are visible
+    // at a glance instead of having to click through all 20 rooms.
+    var sceneMapSection = settingsSection('Sahne bağlantı haritası', '🗺️');
+    var sceneMapButton = document.createElement('button');
+    sceneMapButton.textContent = 'Haritayı Göster';
+    sceneMapSection.appendChild(sceneMapButton);
+
+    function shortSceneName(s) { return s.name.replace(/^\d+\.\s*/, ''); }
+
+    function buildSceneMapSvg() {
+      var n = data.scenes.length;
+      var size = 560;
+      var cx = size / 2, cy = size / 2, r = size / 2 - 70;
+      var positions = {};
+      data.scenes.forEach(function(s, i) {
+        var angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+        positions[s.id] = { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+      });
+      var incoming = {};
+      data.scenes.forEach(function(s) {
+        (s.linkHotspots || []).forEach(function(h) { incoming[h.target] = (incoming[h.target] || 0) + 1; });
+      });
+      var svgNS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 ' + size + ' ' + size);
+      svg.id = 'posFinderSceneMapSvg';
+
+      var defs = document.createElementNS(svgNS, 'defs');
+      var marker = document.createElementNS(svgNS, 'marker');
+      marker.setAttribute('id', 'sceneMapArrow');
+      marker.setAttribute('viewBox', '0 0 10 10');
+      marker.setAttribute('refX', '9');
+      marker.setAttribute('refY', '5');
+      marker.setAttribute('markerWidth', '6');
+      marker.setAttribute('markerHeight', '6');
+      marker.setAttribute('orient', 'auto-start-reverse');
+      var arrowPath = document.createElementNS(svgNS, 'path');
+      arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+      arrowPath.setAttribute('fill', '#5eb3ff');
+      marker.appendChild(arrowPath);
+      defs.appendChild(marker);
+      svg.appendChild(defs);
+
+      data.scenes.forEach(function(s) {
+        var from = positions[s.id];
+        (s.linkHotspots || []).forEach(function(h) {
+          var to = positions[h.target];
+          if (!to) return;
+          // Pull the line in slightly at both ends so it doesn't disappear
+          // under the node circles, and stop short of the target so the
+          // arrowhead marker is fully visible instead of poking into it.
+          var dx = to.x - from.x, dy = to.y - from.y;
+          var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          var x1 = from.x + (dx / dist) * 14, y1 = from.y + (dy / dist) * 14;
+          var x2 = to.x - (dx / dist) * 16, y2 = to.y - (dy / dist) * 16;
+          var line = document.createElementNS(svgNS, 'line');
+          line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+          line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+          line.setAttribute('stroke', 'rgba(94,179,255,0.4)');
+          line.setAttribute('stroke-width', '1.4');
+          line.setAttribute('marker-end', 'url(#sceneMapArrow)');
+          svg.appendChild(line);
+        });
+      });
+
+      data.scenes.forEach(function(s) {
+        var pos = positions[s.id];
+        var isOrphan = !incoming[s.id];
+        var circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('cx', pos.x);
+        circle.setAttribute('cy', pos.y);
+        circle.setAttribute('r', 9);
+        circle.setAttribute('fill', isOrphan ? '#e0432c' : '#17202a');
+        circle.setAttribute('stroke', '#5eb3ff');
+        circle.setAttribute('stroke-width', '1.5');
+        svg.appendChild(circle);
+        var label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', pos.x + (pos.x > cx ? 13 : -13));
+        label.setAttribute('y', pos.y + 4);
+        label.setAttribute('text-anchor', pos.x > cx ? 'start' : 'end');
+        label.setAttribute('font-size', '10');
+        label.setAttribute('fill', isOrphan ? '#ff8a75' : '#ccc');
+        label.textContent = shortSceneName(s).slice(0, 22);
+        svg.appendChild(label);
+      });
+      return svg;
+    }
+
+    sceneMapButton.addEventListener('click', function() {
+      var overlay = document.createElement('div');
+      overlay.id = 'sceneMapOverlay';
+      var box = document.createElement('div');
+      box.id = 'sceneMapBox';
+      var title = document.createElement('div');
+      title.id = 'sceneMapTitle';
+      title.textContent = 'Sahne Bağlantı Haritası';
+      var legend = document.createElement('div');
+      legend.id = 'sceneMapLegend';
+      legend.textContent = 'Kırmızı nokta = bu sahneye giden hiçbir ok yok (sadece sidebar\'dan ulaşılabiliyor).';
+      var closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.textContent = 'Kapat';
+      closeBtn.id = 'sceneMapClose';
+      closeBtn.addEventListener('click', function() { overlay.remove(); });
+      box.appendChild(title);
+      box.appendChild(buildSceneMapSvg());
+      box.appendChild(legend);
+      box.appendChild(closeBtn);
+      overlay.appendChild(box);
+      overlay.addEventListener('click', function(event) { if (event.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
     });
 
     // -- Backup --
@@ -2606,6 +2878,7 @@
     settingsPanel.appendChild(imageCheckSection._accordionWrapper);
     settingsPanel.appendChild(linkCheckSection._accordionWrapper);
     settingsPanel.appendChild(i18nCheckSection._accordionWrapper);
+    settingsPanel.appendChild(sceneMapSection._accordionWrapper);
 
     settingsPanel.appendChild(settingsGroupHeader('Hesap & Yedekleme'));
     settingsPanel.appendChild(publishSection._accordionWrapper);
@@ -3397,6 +3670,11 @@
     fontSizeButton.id = 'posFinderFontSize';
     fontSizeButton.textContent = 'Aa';
     fontSizeButton.title = 'Yazı boyutu';
+    var opacityButton = document.createElement('button');
+    opacityButton.type = 'button';
+    opacityButton.id = 'posFinderOpacity';
+    opacityButton.textContent = '◐';
+    opacityButton.title = 'Panel saydamlığı (arkadaki 360 görünümü görmek için)';
     var minimizeButton = document.createElement('button');
     minimizeButton.type = 'button';
     minimizeButton.id = 'posFinderMinimize';
@@ -3404,7 +3682,31 @@
     minimizeButton.title = 'Küçült';
     header.appendChild(headerTitle);
     header.appendChild(fontSizeButton);
+    header.appendChild(opacityButton);
     header.appendChild(minimizeButton);
+
+    // Panel transparency (accessibility/workflow: see the pano behind the
+    // panel while editing, without having to minimize it entirely first) -
+    // same local-preference pattern as the font size cycle above.
+    (function setupAdminOpacity() {
+      var OPACITY_KEY = 'enzaAdminOpacity';
+      var LEVELS = ['normal', 'translucent', 'ghost'];
+      var stored = null;
+      try { stored = window.localStorage.getItem(OPACITY_KEY); } catch (e) {}
+      var current = LEVELS.indexOf(stored) !== -1 ? stored : 'normal';
+      function apply(level) {
+        current = level;
+        box.classList.remove('posFinderTranslucent', 'posFinderGhost');
+        if (level === 'translucent') box.classList.add('posFinderTranslucent');
+        if (level === 'ghost') box.classList.add('posFinderGhost');
+        try { window.localStorage.setItem(OPACITY_KEY, level); } catch (e) {}
+      }
+      apply(current);
+      opacityButton.addEventListener('click', function() {
+        var idx = LEVELS.indexOf(current);
+        apply(LEVELS[(idx + 1) % LEVELS.length]);
+      });
+    })();
 
     // Admin panel's own text size (accessibility, e.g. for reading on a
     // phone) - purely a local preference for this browser, cycles through
@@ -4118,6 +4420,7 @@
             event.stopPropagation();
             event.preventDefault();
             editingEntry = editMatch;
+            nudgeEntry = editMatch;
             pendingCoords = null;
             addButton.textContent = 'Güncelle';
             draftFetchButton.style.display = 'none';
@@ -4136,6 +4439,7 @@
               });
               descRow.style.display = 'block';
               descTextarea.value = extractDescFromHtml(editMatch.rawData.text);
+              updateDescPreview();
             } else {
               populateSceneSelect();
               var oldTargetData = findSceneDataById(editMatch.rawData.target);
@@ -4240,7 +4544,12 @@
       if (event.key === 'Enter') { if (editingEntry) saveEdit(); else addEntry(); }
     });
 
-    copyButton.addEventListener('click', function() {
+    // Builds the same human-readable change summary used both by "Kopyala"
+    // (for the still-manual add-product/new-scene flows) and by the publish
+    // confirmation dialog, so an admin sees exactly what's about to go live
+    // before confirming.
+    function buildChangeSummaryLines(opts) {
+      var skipManual = opts && opts.skipManualSections;
       var lines = [];
       if (moves.length) {
         lines.push('--- TAŞINAN İKONLAR ---');
@@ -4254,7 +4563,7 @@
           lines.push(a.scene + ' ' + a.yaw.toFixed(4) + ' ' + a.pitch.toFixed(4) + '  -> ' + a.targetName);
         });
       }
-      if (entries.length) {
+      if (entries.length && !skipManual) {
         lines.push('--- YENİ EKLENEN ÜRÜNLER ---');
         entries.forEach(function(e) {
           lines.push(e.scene + ' ' + e.yaw.toFixed(4) + ' ' + e.pitch.toFixed(4) + ' ' + e.link);
@@ -4337,14 +4646,18 @@
           }
         });
       }
-      if (newScenes.length) {
+      if (newScenes.length && !skipManual) {
         lines.push('--- YENİ SAHNELER ---');
         newScenes.forEach(function(ns) {
           lines.push(ns.tempId + '  "' + ns.name + '"  bağlantılar: ' +
             ns.connections.map(function(c) { return c.sceneName + ' (' + c.sceneId + ')'; }).join(', '));
         });
       }
-      var text = lines.join('\n');
+      return lines;
+    }
+
+    copyButton.addEventListener('click', function() {
+      var text = buildChangeSummaryLines().join('\n');
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function() {
           copyButton.textContent = 'Kopyalandı!';
@@ -4423,56 +4736,108 @@
       coordsLine.classList.add('ready');
     }, true);
 
+    // Shared by mouse/touch drag-end and by the arrow-key nudge session
+    // below - both just move a hotspot from startCoords to endCoords and
+    // need the exact same "log it, make it undoable" bookkeeping.
+    function commitPositionChange(movedEntry, startCoords, endCoords, statusVerb) {
+      if (movedEntry.ownRecord) {
+        // This hotspot was created earlier in this same session (e.g. a new
+        // arrow) - update its own record instead of logging a separate move.
+        movedEntry.ownRecord.yaw = endCoords.yaw;
+        movedEntry.ownRecord.pitch = endCoords.pitch;
+        saveArrows();
+        coordsLine.textContent = statusVerb + ': ' + movedEntry.label + '. Kaydedildi.';
+        pushHistory('taşıma (' + movedEntry.label + ')', function() {
+          movedEntry.hotspot.setPosition(startCoords);
+          movedEntry.ownRecord.yaw = startCoords.yaw;
+          movedEntry.ownRecord.pitch = startCoords.pitch;
+          saveArrows();
+        }, function() {
+          movedEntry.hotspot.setPosition(endCoords);
+          movedEntry.ownRecord.yaw = endCoords.yaw;
+          movedEntry.ownRecord.pitch = endCoords.pitch;
+          saveArrows();
+        });
+      } else {
+        var moveRecord = {
+          scene: currentSceneNumber,
+          kind: movedEntry.kind,
+          label: movedEntry.label,
+          yaw: endCoords.yaw,
+          pitch: endCoords.pitch
+        };
+        moves.push(moveRecord);
+        saveMoves();
+        coordsLine.textContent = statusVerb + ': ' + movedEntry.label + '. Kaydedildi.';
+        pushHistory('taşıma (' + movedEntry.label + ')', function() {
+          movedEntry.hotspot.setPosition(startCoords);
+          moves = moves.filter(function(m) { return m !== moveRecord; });
+          saveMoves();
+        }, function() {
+          movedEntry.hotspot.setPosition(endCoords);
+          moves.push(moveRecord);
+          saveMoves();
+        });
+      }
+    }
+
     element.addEventListener('pointerup', function(event) {
       if (!dragging || event.pointerId !== dragging.pointerId) return;
       event.stopPropagation();
       if (dragging.moved && dragging.lastCoords) {
-        var draggedEntry = dragging.entry;
-        var startCoords = dragging.startCoords;
-        var endCoords = { yaw: dragging.lastCoords.yaw, pitch: dragging.lastCoords.pitch };
-        if (draggedEntry.ownRecord) {
-          // This hotspot was created earlier in this same session (e.g. a new
-          // arrow) - update its own record instead of logging a separate move.
-          draggedEntry.ownRecord.yaw = endCoords.yaw;
-          draggedEntry.ownRecord.pitch = endCoords.pitch;
-          saveArrows();
-          coordsLine.textContent = 'Taşındı: ' + draggedEntry.label + '. Kaydedildi.';
-          pushHistory('taşıma (' + draggedEntry.label + ')', function() {
-            draggedEntry.hotspot.setPosition(startCoords);
-            draggedEntry.ownRecord.yaw = startCoords.yaw;
-            draggedEntry.ownRecord.pitch = startCoords.pitch;
-            saveArrows();
-          }, function() {
-            draggedEntry.hotspot.setPosition(endCoords);
-            draggedEntry.ownRecord.yaw = endCoords.yaw;
-            draggedEntry.ownRecord.pitch = endCoords.pitch;
-            saveArrows();
-          });
-        } else {
-          var moveRecord = {
-            scene: currentSceneNumber,
-            kind: draggedEntry.kind,
-            label: draggedEntry.label,
-            yaw: endCoords.yaw,
-            pitch: endCoords.pitch
-          };
-          moves.push(moveRecord);
-          saveMoves();
-          coordsLine.textContent = 'Taşındı: ' + draggedEntry.label + '. Kaydedildi.';
-          pushHistory('taşıma (' + draggedEntry.label + ')', function() {
-            draggedEntry.hotspot.setPosition(startCoords);
-            moves = moves.filter(function(m) { return m !== moveRecord; });
-            saveMoves();
-          }, function() {
-            draggedEntry.hotspot.setPosition(endCoords);
-            moves.push(moveRecord);
-            saveMoves();
-          });
-        }
+        nudgeEntry = dragging.entry;
+        commitPositionChange(dragging.entry, dragging.startCoords, { yaw: dragging.lastCoords.yaw, pitch: dragging.lastCoords.pitch }, 'Taşındı');
         suppressNextClick = true;
       }
       dragging = null;
     }, true);
+
+    // Arrow-key fine-tuning: once a hotspot has been dragged or is being
+    // edited, the arrow keys nudge it in small steps (bigger with Shift)
+    // instead of needing another imprecise drag. Keystrokes move it live;
+    // the whole nudge session becomes a single undo step once the admin
+    // stops pressing keys, matching how a single drag becomes one step.
+    var nudgeEntry = null;
+    var nudgeStartCoords = null;
+    var nudgeCommitTimer = null;
+    var NUDGE_STEP = 0.0015;
+    var NUDGE_STEP_FAST = 0.006;
+
+    function finalizeNudge() {
+      if (!nudgeEntry || !nudgeStartCoords) return;
+      var pos = nudgeEntry.hotspot.position();
+      var endCoords = { yaw: pos.yaw, pitch: pos.pitch };
+      if (endCoords.yaw !== nudgeStartCoords.yaw || endCoords.pitch !== nudgeStartCoords.pitch) {
+        commitPositionChange(nudgeEntry, nudgeStartCoords, endCoords, 'İnce ayar yapıldı');
+      }
+      nudgeStartCoords = null;
+    }
+
+    document.addEventListener('keydown', function(event) {
+      var arrowDeltas = {
+        ArrowUp: { yaw: 0, pitch: -1 },
+        ArrowDown: { yaw: 0, pitch: 1 },
+        ArrowLeft: { yaw: -1, pitch: 0 },
+        ArrowRight: { yaw: 1, pitch: 0 }
+      };
+      var delta = arrowDeltas[event.key];
+      if (!delta || !nudgeEntry) return;
+      var activeTag = document.activeElement && document.activeElement.tagName;
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+      event.preventDefault();
+      if (!nudgeStartCoords) {
+        var startPos = nudgeEntry.hotspot.position();
+        nudgeStartCoords = { yaw: startPos.yaw, pitch: startPos.pitch };
+      }
+      var step = event.shiftKey ? NUDGE_STEP_FAST : NUDGE_STEP;
+      var current = nudgeEntry.hotspot.position();
+      var next = { yaw: current.yaw + delta.yaw * step, pitch: current.pitch + delta.pitch * step };
+      nudgeEntry.hotspot.setPosition(next);
+      coordsLine.textContent = 'İnce ayar: ' + nudgeEntry.label;
+      coordsLine.classList.add('ready');
+      clearTimeout(nudgeCommitTimer);
+      nudgeCommitTimer = setTimeout(finalizeNudge, 700);
+    });
   }
 
   function setupPinchZoom(element) {
@@ -5296,12 +5661,76 @@
     renderRecentScenesBar();
   }
 
+  // Mobile visitors expect the phone's back button to step back through the
+  // rooms they've walked through, not leave the site entirely. Every normal
+  // scene switch pushes a history entry; auto-advancing modes (kiosk,
+  // presentation) and the popstate handler itself set this flag first so
+  // they don't also add entries - the former would flood history with
+  // dozens of unattended-showroom steps, the latter would turn "back" into
+  // "forward" the moment it fired.
+  var suppressHistoryPush = false;
+  var blurInTimer = null;
+  // "Blur-up" transition: the incoming scene starts slightly soft and
+  // sharpens in, echoing a progressive image load even though the tiles
+  // themselves are already cached. Skipped for the "Anında (efektsiz)"
+  // preset, which exists specifically for admins who want zero transition
+  // flourish.
+  function playBlurUpTransition(duration) {
+    if (!duration) return;
+    clearTimeout(blurInTimer);
+    panoElement.style.transition = 'none';
+    panoElement.classList.add('panoBlurIn');
+    void panoElement.offsetWidth;
+    panoElement.style.transition = 'filter ' + duration + 'ms ease-out';
+    blurInTimer = setTimeout(function() {
+      panoElement.classList.remove('panoBlurIn');
+    }, 20);
+  }
+
+  // Experimental: a short synthetic "whoosh" on scene change, built purely
+  // with the Web Audio API (a filtered noise burst, sweeping high to low) so
+  // there's no audio file to add. Easy to rip back out if it doesn't earn
+  // its place - it's this one function plus its two call sites.
+  var whooshAudioCtx = null;
+  function playWhooshSound() {
+    try {
+      if (!whooshAudioCtx) whooshAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (whooshAudioCtx.state === 'suspended') whooshAudioCtx.resume();
+      var now = whooshAudioCtx.currentTime;
+      var duration = 0.35;
+      var bufferSize = Math.floor(whooshAudioCtx.sampleRate * duration);
+      var buffer = whooshAudioCtx.createBuffer(1, bufferSize, whooshAudioCtx.sampleRate);
+      var data = buffer.getChannelData(0);
+      for (var i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      var noise = whooshAudioCtx.createBufferSource();
+      noise.buffer = buffer;
+      var filter = whooshAudioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.Q.value = 0.8;
+      filter.frequency.setValueAtTime(2200, now);
+      filter.frequency.exponentialRampToValueAtTime(300, now + duration);
+      var gain = whooshAudioCtx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.16, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(whooshAudioCtx.destination);
+      noise.start(now);
+      noise.stop(now + duration);
+    } catch (e) {}
+  }
+
   function switchScene(scene) {
     stopAutorotate();
     var outgoingWrapper = currentSceneWrapper;
     if (outgoingWrapper && outgoingWrapper !== scene) trackRecentScene(scene.data.id);
     scene.view.setParameters(scene.data.initialViewParameters);
     scene.scene.switchTo({ transitionDuration: currentTransitionDuration });
+    if (outgoingWrapper && outgoingWrapper !== scene && currentTransitionKey !== 'instant') {
+      playBlurUpTransition(currentTransitionDuration);
+      playWhooshSound();
+    }
     if (currentTransitionKey === 'zoom' && outgoingWrapper && outgoingWrapper !== scene) {
       animateZoomPush(outgoingWrapper.view, currentTransitionDuration);
     }
@@ -5313,7 +5742,53 @@
     currentSceneWrapper = scene;
     maybeOpenFeaturedProduct(scene);
     setTimeout(function() { prefetchNeighborTiles(scene); }, 800);
+    if (outgoingWrapper && outgoingWrapper !== scene && !suppressHistoryPush) {
+      try { window.history.pushState({ enzaSceneId: scene.data.id }, '', location.href); } catch (e) {}
+    }
+    trackTourCompletion(scene.data.id);
   }
+
+  // "Turu Gezdin!" - a small one-time celebration the first time a visitor
+  // has stepped into every visible room in a single visit. Tracked in
+  // sessionStorage (not localStorage) so a returning visitor another day
+  // gets to experience it again instead of it being a permanent, one-shot
+  // "seen it once, never again" flag.
+  var VISITED_KEY = 'enzaVisitedScenes';
+  var visitedSceneIds = {};
+  (function restoreVisited() {
+    try { visitedSceneIds = JSON.parse(window.sessionStorage.getItem(VISITED_KEY)) || {}; } catch (e) { visitedSceneIds = {}; }
+  })();
+  var tourCompletedBadgeShown = false;
+  function trackTourCompletion(sceneId) {
+    if (tourCompletedBadgeShown || visitedSceneIds[sceneId]) return;
+    visitedSceneIds[sceneId] = true;
+    try { window.sessionStorage.setItem(VISITED_KEY, JSON.stringify(visitedSceneIds)); } catch (e) {}
+    var visitableCount = scenes.filter(function(s) { return !hiddenSceneIds[s.data.id]; }).length;
+    var visitedCount = Object.keys(visitedSceneIds).filter(function(id) { return !hiddenSceneIds[id]; }).length;
+    if (visitedCount < visitableCount) return;
+    tourCompletedBadgeShown = true;
+    showTourCompletedBadge();
+  }
+  function showTourCompletedBadge() {
+    var badge = document.createElement('div');
+    badge.id = 'tourCompletedBadge';
+    badge.innerHTML = '<span id="tourCompletedBadgeIcon">🏆</span>Turu Gezdin!';
+    document.body.appendChild(badge);
+    setTimeout(function() { badge.classList.add('visible'); }, 30);
+    setTimeout(function() {
+      badge.classList.remove('visible');
+      setTimeout(function() { if (badge.parentNode) badge.parentNode.removeChild(badge); }, 500);
+    }, 4200);
+  }
+
+  window.addEventListener('popstate', function(event) {
+    var sceneId = event.state && event.state.enzaSceneId;
+    var target = sceneId ? findSceneById(sceneId) : scenes[0];
+    if (!target) return;
+    suppressHistoryPush = true;
+    switchScene(target);
+    suppressHistoryPush = false;
+  });
 
   // "Yakınlaşarak Geçiş" transition preset: as the outgoing scene crossfades
   // out, push its own view in slightly (narrower fov) so the room feels like
@@ -5380,7 +5855,9 @@
   }
 
   function updateSceneName(scene) {
-    sceneNameElement.innerHTML = sanitize(translatedSceneName(scene.data));
+    var name = translatedSceneName(scene.data);
+    sceneNameElement.innerHTML = sanitize(name);
+    document.title = 'enza HOME - ' + name.replace(/^\d+\.\s*/, '');
   }
 
   function updateSceneList(scene) {
@@ -5702,7 +6179,9 @@
   (function() {
     var sceneMatch = /[?&]scene=([^&]+)/.exec(window.location.search);
     var deepLinkTarget = sceneMatch ? findSceneById(decodeURIComponent(sceneMatch[1])) : null;
-    switchScene(deepLinkTarget || scenes[0]);
+    var initialScene = deepLinkTarget || scenes[0];
+    switchScene(initialScene);
+    try { window.history.replaceState({ enzaSceneId: initialScene.data.id }, '', location.href); } catch (e) {}
     if (deepLinkTarget) {
       var yawMatch = /[?&]yaw=([^&]+)/.exec(window.location.search);
       var pitchMatch = /[?&]pitch=([^&]+)/.exec(window.location.search);
@@ -5895,7 +6374,9 @@
     function advance() {
       stepIndex++;
       if (stepIndex >= route.length) { endPresentation(); return; }
+      suppressHistoryPush = true;
       switchScene(route[stepIndex]);
+      suppressHistoryPush = false;
       updateProgress();
       highlightSuggestedArrow();
       scheduleAdvance();
@@ -5910,7 +6391,9 @@
       closingCard.classList.remove('visible');
       resumeBtn.classList.remove('visible');
       progressBar.classList.add('visible');
+      suppressHistoryPush = true;
       switchScene(route[0]);
+      suppressHistoryPush = false;
       updateProgress();
       highlightSuggestedArrow();
       scheduleAdvance();
@@ -5968,7 +6451,9 @@
         kioskIndex = (kioskIndex + 1) % scenes.length;
         attempts++;
       } while (hiddenSceneIds[scenes[kioskIndex].data.id] && attempts <= scenes.length);
+      suppressHistoryPush = true;
       switchScene(scenes[kioskIndex]);
+      suppressHistoryPush = false;
       scheduleNext();
     }
     scheduleNext();
