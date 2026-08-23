@@ -1247,6 +1247,37 @@
     try { edits = JSON.parse(window.localStorage.getItem(EDIT_KEY) || '[]'); } catch (e) { edits = []; }
     try { settingsChanges = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || '[]'); } catch (e) { settingsChanges = []; }
     try { newScenes = JSON.parse(window.localStorage.getItem(NEW_SCENE_KEY) || '[]'); } catch (e) { newScenes = []; }
+
+    // "Kopyala" reports everything pending to the admin's clipboard so it can
+    // be handed off (new products/scenes still need to be added by hand;
+    // everything else is just informational, since "Şimdi Yayınla" already
+    // sends it live on its own). This marker remembers how many items of
+    // each kind had already been copied, purely so the *next* copy and the
+    // on-screen counters only show what's new since then - it never touches
+    // the real arrays above, so publishing is completely unaffected by
+    // whether something was already copied or not.
+    var COPIED_MARKER_KEY = 'enzaPosCollectorCopiedMarker';
+    var copiedMarker = { entries: 0, moves: 0, arrows: 0, removals: 0, edits: 0, settingsChanges: 0, newScenes: 0 };
+    try {
+      var storedMarker = JSON.parse(window.localStorage.getItem(COPIED_MARKER_KEY));
+      if (storedMarker) for (var markerKey in copiedMarker) if (typeof storedMarker[markerKey] === 'number') copiedMarker[markerKey] = storedMarker[markerKey];
+    } catch (e) {}
+    function saveCopiedMarker() {
+      try { window.localStorage.setItem(COPIED_MARKER_KEY, JSON.stringify(copiedMarker)); } catch (e) {}
+    }
+    // Never let a marker exceed its array's current length (e.g. after a
+    // publish or a manual "Temizle" shrinks the array out from under it) -
+    // otherwise the "new since last copy" slice/count would go negative.
+    function clampCopiedMarker() {
+      copiedMarker.entries = Math.min(copiedMarker.entries, entries.length);
+      copiedMarker.moves = Math.min(copiedMarker.moves, moves.length);
+      copiedMarker.arrows = Math.min(copiedMarker.arrows, arrows.length);
+      copiedMarker.removals = Math.min(copiedMarker.removals, removals.length);
+      copiedMarker.edits = Math.min(copiedMarker.edits, edits.length);
+      copiedMarker.settingsChanges = Math.min(copiedMarker.settingsChanges, settingsChanges.length);
+      copiedMarker.newScenes = Math.min(copiedMarker.newScenes, newScenes.length);
+    }
+
     var pendingCoords = null;
     var editingEntry = null;
     var mode = 'product'; // 'product' | 'link' | 'delete' | 'photo' | 'settings' | 'newScene'
@@ -4286,10 +4317,11 @@
     }
 
     function updateCount() {
-      countLabel.textContent = entries.length + ' ürün, ' + arrows.length + ' yeni ok, ' +
-        moves.length + ' taşındı, ' + removals.length + ' silindi, ' +
-        edits.length + ' düzenlendi, ' + settingsChanges.length + ' ayar, ' +
-        newScenes.length + ' yeni sahne';
+      clampCopiedMarker();
+      countLabel.textContent = (entries.length - copiedMarker.entries) + ' ürün, ' + (arrows.length - copiedMarker.arrows) + ' yeni ok, ' +
+        (moves.length - copiedMarker.moves) + ' taşındı, ' + (removals.length - copiedMarker.removals) + ' silindi, ' +
+        (edits.length - copiedMarker.edits) + ' düzenlendi, ' + (settingsChanges.length - copiedMarker.settingsChanges) + ' ayar, ' +
+        (newScenes.length - copiedMarker.newScenes) + ' yeni sahne';
     }
 
     function saveEntries() { window.localStorage.setItem(ADD_KEY, JSON.stringify(entries)); updateCount(); }
@@ -4628,37 +4660,48 @@
     // before confirming.
     function buildChangeSummaryLines(opts) {
       var skipManual = opts && opts.skipManualSections;
+      var sinceMarker = opts && opts.sinceMarkerOnly;
+      // "Since last copy" mode reads a slice of each array instead of the
+      // whole thing - the arrays themselves are never touched, so this has
+      // no effect at all on what "Şimdi Yayınla" later sends live.
+      var movesList = sinceMarker ? moves.slice(copiedMarker.moves) : moves;
+      var arrowsList = sinceMarker ? arrows.slice(copiedMarker.arrows) : arrows;
+      var entriesList = sinceMarker ? entries.slice(copiedMarker.entries) : entries;
+      var removalsList = sinceMarker ? removals.slice(copiedMarker.removals) : removals;
+      var editsList = sinceMarker ? edits.slice(copiedMarker.edits) : edits;
+      var settingsChangesList = sinceMarker ? settingsChanges.slice(copiedMarker.settingsChanges) : settingsChanges;
+      var newScenesList = sinceMarker ? newScenes.slice(copiedMarker.newScenes) : newScenes;
       var lines = [];
-      if (moves.length) {
+      if (movesList.length) {
         lines.push('--- TAŞINAN İKONLAR ---');
-        moves.forEach(function(m) {
+        movesList.forEach(function(m) {
           lines.push(m.scene + ' ' + m.yaw.toFixed(4) + ' ' + m.pitch.toFixed(4) + '  [' + m.kind + '] ' + m.label);
         });
       }
-      if (arrows.length) {
+      if (arrowsList.length) {
         lines.push('--- YENİ YÖN OKLARI ---');
-        arrows.forEach(function(a) {
+        arrowsList.forEach(function(a) {
           lines.push(a.scene + ' ' + a.yaw.toFixed(4) + ' ' + a.pitch.toFixed(4) + '  -> ' + a.targetName);
         });
       }
-      if (entries.length && !skipManual) {
+      if (entriesList.length && !skipManual) {
         lines.push('--- YENİ EKLENEN ÜRÜNLER ---');
-        entries.forEach(function(e) {
+        entriesList.forEach(function(e) {
           lines.push(e.scene + ' ' + e.yaw.toFixed(4) + ' ' + e.pitch.toFixed(4) + ' ' + e.link);
           if (e.draftTitle) lines.push('   taslak başlık: ' + e.draftTitle);
           if (e.draftDescription) lines.push('   taslak açıklama: ' + e.draftDescription);
           if (e.draftImage) lines.push('   taslak görsel: ' + e.draftImage);
         });
       }
-      if (removals.length) {
+      if (removalsList.length) {
         lines.push('--- SİLİNENLER ---');
-        removals.forEach(function(r) {
+        removalsList.forEach(function(r) {
           lines.push(r.scene + '  [' + r.kind + '] ' + r.label);
         });
       }
-      if (edits.length) {
+      if (editsList.length) {
         lines.push('--- DÜZENLENENLER ---');
-        edits.forEach(function(e) {
+        editsList.forEach(function(e) {
           if (e.kind === 'info') {
             if (e.newLink) lines.push(e.scene + '  "' + e.oldTitle + '"  ->  yeni link: ' + e.newLink);
             if (e.descChanged) {
@@ -4671,9 +4714,9 @@
           }
         });
       }
-      if (settingsChanges.length) {
+      if (settingsChangesList.length) {
         lines.push('--- AYAR DEĞİŞİKLİKLERİ ---');
-        settingsChanges.forEach(function(c) {
+        settingsChangesList.forEach(function(c) {
           if (c.type === 'rename') {
             lines.push('Sahne adı: "' + c.oldName + '" -> "' + c.newName + '" (' + c.sceneId + ')');
           } else if (c.type === 'startScene') {
@@ -4724,9 +4767,9 @@
           }
         });
       }
-      if (newScenes.length && !skipManual) {
+      if (newScenesList.length && !skipManual) {
         lines.push('--- YENİ SAHNELER ---');
-        newScenes.forEach(function(ns) {
+        newScenesList.forEach(function(ns) {
           lines.push(ns.tempId + '  "' + ns.name + '"  bağlantılar: ' +
             ns.connections.map(function(c) { return c.sceneName + ' (' + c.sceneId + ')'; }).join(', '));
         });
@@ -4734,15 +4777,28 @@
       return lines;
     }
 
+    function markEverythingAsCopied() {
+      copiedMarker = {
+        entries: entries.length, moves: moves.length, arrows: arrows.length,
+        removals: removals.length, edits: edits.length,
+        settingsChanges: settingsChanges.length, newScenes: newScenes.length
+      };
+      saveCopiedMarker();
+      updateCount();
+    }
+
     copyButton.addEventListener('click', function() {
-      var text = buildChangeSummaryLines().join('\n');
+      var text = buildChangeSummaryLines({ sinceMarkerOnly: true }).join('\n');
+      if (!text) { coordsLine.textContent = 'Son kopyalamandan beri yeni bir şey yok.'; return; }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function() {
           copyButton.textContent = 'Kopyalandı!';
+          markEverythingAsCopied();
           setTimeout(function() { copyButton.textContent = 'Kopyala'; }, 1500);
         });
       } else {
         window.prompt('Metni kopyalayın:', text);
+        markEverythingAsCopied();
       }
     });
 
@@ -4762,6 +4818,8 @@
       saveEdits();
       saveSettingsChanges();
       saveNewScenes();
+      copiedMarker = { entries: 0, moves: 0, arrows: 0, removals: 0, edits: 0, settingsChanges: 0, newScenes: 0 };
+      saveCopiedMarker();
       history = [];
       redoStack = [];
       updateUndoButton();
