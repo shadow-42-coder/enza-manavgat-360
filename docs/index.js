@@ -1117,18 +1117,9 @@
     overlay.id = 'adminLoginOverlay';
     var box = document.createElement('div');
     box.id = 'adminLoginBox';
-    var spotlight = document.createElement('div');
-    spotlight.id = 'adminLoginSpotlight';
-    var titleWrap = document.createElement('div');
-    titleWrap.id = 'adminLoginTitleWrap';
     var title = document.createElement('div');
     title.id = 'adminLoginTitle';
-    title.textContent = 'Yönetim Paneli';
-    var subtitle = document.createElement('div');
-    subtitle.id = 'adminLoginSubtitle';
-    subtitle.textContent = 'Devam etmek için giriş yap';
-    titleWrap.appendChild(title);
-    titleWrap.appendChild(subtitle);
+    title.textContent = 'Yönetim Paneli Girişi';
     var userInput = document.createElement('input');
     userInput.type = 'text';
     userInput.placeholder = 'Kullanıcı adı';
@@ -1141,8 +1132,7 @@
     var submitButton = document.createElement('button');
     submitButton.textContent = 'Giriş';
 
-    box.appendChild(spotlight);
-    box.appendChild(titleWrap);
+    box.appendChild(title);
     box.appendChild(userInput);
     box.appendChild(passInput);
     box.appendChild(errorLine);
@@ -1150,18 +1140,6 @@
     overlay.appendChild(box);
     document.body.appendChild(overlay);
     userInput.focus();
-
-    // Mouse-follow spotlight glow, same idea as the "Spotlight" effect from
-    // 21st.dev's Spline demo card - a soft radial light that tracks the
-    // cursor, faded in only while hovering the card. No framer-motion/React
-    // needed: it's just a positioned div and two CSS custom properties.
-    box.addEventListener('mousemove', function(event) {
-      var rect = box.getBoundingClientRect();
-      spotlight.style.setProperty('--spotlight-x', (event.clientX - rect.left) + 'px');
-      spotlight.style.setProperty('--spotlight-y', (event.clientY - rect.top) + 'px');
-    });
-    box.addEventListener('mouseenter', function() { spotlight.classList.add('visible'); });
-    box.addEventListener('mouseleave', function() { spotlight.classList.remove('visible'); });
 
     function attempt() {
       var creds = getStoredCredentials();

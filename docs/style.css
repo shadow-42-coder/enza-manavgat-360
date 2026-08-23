@@ -1464,80 +1464,33 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 }
 
 #adminLoginBox {
-  position: relative;
-  overflow: hidden;
   width: 90%;
-  max-width: 340px;
-  background-color: #08090b;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px;
-  padding: 32px 26px 26px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-}
-
-/* Mouse-follow spotlight, same idea as 21st.dev's "Spotlight" card effect -
-   a soft radial light tracking the cursor, only visible while hovering. */
-#adminLoginSpotlight {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  background: radial-gradient(
-    220px circle at var(--spotlight-x, 50%) var(--spotlight-y, 0%),
-    rgba(94,179,255,0.16),
-    transparent 75%
-  );
-}
-#adminLoginSpotlight.visible {
-  opacity: 1;
-}
-
-#adminLoginTitleWrap {
-  margin-bottom: 22px;
-  text-align: center;
-  position: relative;
+  max-width: 320px;
+  background-color: var(--brand-dark);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
 }
 
 #adminLoginTitle {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  background: linear-gradient(180deg, #f2f5f8 0%, #9fb0bd 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: #f2f5f8;
-}
-
-#adminLoginSubtitle {
-  margin-top: 6px;
-  font-size: 12.5px;
-  color: rgba(170,180,189,0.8);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-align: center;
 }
 
 #adminLoginBox input {
-  position: relative;
   width: 100%;
-  padding: 11px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background-color: rgba(255,255,255,0.04);
-  color: #f2f5f8;
+  padding: 10px;
+  border-radius: 5px;
+  border: none;
   font-size: 14px;
   margin-bottom: 10px;
   box-sizing: border-box;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-#adminLoginBox input:focus {
-  outline: none;
-  border-color: #5eb3ff;
-  background-color: rgba(255,255,255,0.06);
 }
 
 #adminLoginError {
-  position: relative;
   color: #ff6b6b;
   font-size: 13px;
   min-height: 18px;
@@ -1546,22 +1499,14 @@ body.single-scene #sceneList, body.single-scene #sceneListToggle {
 }
 
 #adminLoginBox button {
-  position: relative;
   width: 100%;
-  padding: 11px;
-  border-radius: 8px;
+  padding: 10px;
+  border-radius: 5px;
   border: none;
   font-weight: 700;
   cursor: pointer;
   background-color: var(--brand-accent);
   color: #fff;
-  transition: filter 0.15s ease, transform 0.1s ease;
-}
-#adminLoginBox button:hover {
-  filter: brightness(1.1);
-}
-#adminLoginBox button:active {
-  transform: scale(0.98);
 }
 
 /* TEMP: admin drag mode for hotspots (active only with ?pos=1) */
