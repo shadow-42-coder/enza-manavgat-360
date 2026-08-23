@@ -3780,9 +3780,86 @@
     content.appendChild(orderPanel);
     content.appendChild(actionRow);
 
+    // Manual resize handles - only meaningful in "wide" (dashboard) mode,
+    // where the panel already gets a generous preset size; this lets an
+    // admin go bigger still on a large monitor instead of being capped at
+    // that preset. Compact/edit mode ignores these entirely so precise
+    // pano clicking always gets its small, out-of-the-way panel back.
+    var PANEL_SIZE_KEY = 'enzaAdminPanelSize';
+    var customPanelSize = null;
+    try { customPanelSize = JSON.parse(window.localStorage.getItem(PANEL_SIZE_KEY)); } catch (e) { customPanelSize = null; }
+
+    function applyCustomPanelSize() {
+      if (!document.body.classList.contains('posFinderWide') || !customPanelSize) return;
+      if (customPanelSize.width) { box.style.width = customPanelSize.width + 'px'; box.style.maxWidth = 'none'; }
+      if (customPanelSize.height) { box.style.maxHeight = customPanelSize.height + 'px'; }
+    }
+    function clearCustomPanelSize() {
+      box.style.width = '';
+      box.style.maxWidth = '';
+      box.style.maxHeight = '';
+    }
+
+    function setupResizeHandle(el, axis) {
+      var startX, startY, startWidth, startHeight;
+      el.addEventListener('pointerdown', function(event) {
+        if (!document.body.classList.contains('posFinderWide')) return;
+        event.preventDefault();
+        event.stopPropagation();
+        startX = event.clientX;
+        startY = event.clientY;
+        var rect = box.getBoundingClientRect();
+        startWidth = rect.width;
+        startHeight = rect.height;
+        box.classList.add('posFinderResizing');
+        el.setPointerCapture(event.pointerId);
+        function onMove(moveEvent) {
+          var newWidth = startWidth, newHeight = startHeight;
+          if (axis === 'right' || axis === 'corner') {
+            newWidth = Math.max(420, Math.min(window.innerWidth - 24, startWidth + (moveEvent.clientX - startX)));
+            box.style.width = newWidth + 'px';
+            box.style.maxWidth = 'none';
+          }
+          if (axis === 'top' || axis === 'corner') {
+            // Panel is bottom-anchored, so dragging the top edge up (negative
+            // clientY delta) should grow it - hence the subtraction is
+            // reversed relative to the right-edge case above.
+            newHeight = Math.max(240, Math.min(window.innerHeight - 24, startHeight - (moveEvent.clientY - startY)));
+            box.style.maxHeight = newHeight + 'px';
+          }
+          customPanelSize = { width: Math.round(newWidth), height: Math.round(newHeight) };
+        }
+        function onUp(upEvent) {
+          el.releasePointerCapture(upEvent.pointerId);
+          el.removeEventListener('pointermove', onMove);
+          el.removeEventListener('pointerup', onUp);
+          box.classList.remove('posFinderResizing');
+          if (customPanelSize) {
+            try { window.localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(customPanelSize)); } catch (e) {}
+          }
+          window.dispatchEvent(new Event('resize'));
+        }
+        el.addEventListener('pointermove', onMove);
+        el.addEventListener('pointerup', onUp);
+      });
+    }
+
+    var resizeHandleRight = document.createElement('div');
+    resizeHandleRight.className = 'posFinderResizeHandle posFinderResizeRight';
+    var resizeHandleTop = document.createElement('div');
+    resizeHandleTop.className = 'posFinderResizeHandle posFinderResizeTop';
+    var resizeHandleCorner = document.createElement('div');
+    resizeHandleCorner.className = 'posFinderResizeHandle posFinderResizeCorner';
+    setupResizeHandle(resizeHandleRight, 'right');
+    setupResizeHandle(resizeHandleTop, 'top');
+    setupResizeHandle(resizeHandleCorner, 'corner');
+
     box.appendChild(header);
     box.appendChild(categoryRow);
     box.appendChild(content);
+    box.appendChild(resizeHandleRight);
+    box.appendChild(resizeHandleTop);
+    box.appendChild(resizeHandleCorner);
     document.body.appendChild(box);
 
     showCategory('edit');
@@ -3847,6 +3924,7 @@
       var isWide = !!WIDE_MODES[mode];
       if (wasWide !== isWide) {
         document.body.classList.toggle('posFinderWide', isWide);
+        if (isWide) applyCustomPanelSize(); else clearCustomPanelSize();
         // Marzipano's canvas needs a fresh render after its container's size
         // changes (see the WebGL preserveDrawingBuffer note elsewhere in this
         // file) - dispatch resize once the CSS size transition has settled.
