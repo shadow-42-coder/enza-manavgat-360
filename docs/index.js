@@ -1463,6 +1463,17 @@
             (currentDraft.description ? ' — ' + currentDraft.description.slice(0, 140) : '');
           draftPreview.appendChild(txt);
           draftPreview.style.display = 'flex';
+          // Editing an existing draft placeholder: fill the real title/desc
+          // fields directly too, not just the small preview box, so a
+          // re-fetch actually replaces what's shown instead of sitting
+          // unused until Güncelle is pressed with nothing changed.
+          if (editingEntry && editingEntry.ownRecord) {
+            if (currentDraft.title) titleInput.value = currentDraft.title;
+            if (currentDraft.description) {
+              descTextarea.value = currentDraft.description;
+              updateDescPreview();
+            }
+          }
         })
         .catch(function() {
           clearTimeout(draftTimeout);
@@ -1512,6 +1523,20 @@
     clearBadgeButton.textContent = 'Rozet Yok';
     clearBadgeButton.addEventListener('click', function() { setBadge(null); });
     badgeRow.appendChild(clearBadgeButton);
+
+    // Title editor: only shown while editing an existing product. There was
+    // previously no way to change a product's title from this panel at all
+    // (only its link/description/badge) - most needed right after a draft
+    // placeholder comes out with the generic "[Ürün adı - onaylayın]" title
+    // and needs a real one typed in without waiting on a full republish.
+    var titleRow = document.createElement('div');
+    titleRow.id = 'posFinderTitleRow';
+    titleRow.style.display = 'none';
+    var titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.id = 'posFinderTitleInput';
+    titleInput.placeholder = 'Ürün adı';
+    titleRow.appendChild(titleInput);
 
     // Description editor: only shown while editing an existing product (info
     // hotspot) in product mode, alongside the link field. Two simple format
@@ -3884,6 +3909,7 @@
     content.appendChild(inputRow);
     content.appendChild(draftPreview);
     content.appendChild(badgeRow);
+    content.appendChild(titleRow);
     content.appendChild(descRow);
     content.appendChild(photoPanel);
     content.appendChild(settingsPanel);
@@ -4020,6 +4046,8 @@
       addButton.textContent = 'Ekle';
       linkInput.value = '';
       badgeRow.style.display = 'none';
+      titleRow.style.display = 'none';
+      titleInput.value = '';
       descRow.style.display = 'none';
       descTextarea.value = '';
       draftFetchButton.style.display = '';
@@ -4543,7 +4571,53 @@
         var newDescInner = descTextarea.value;
         var oldDescInner = extractDescFromHtml(oldDescHtml);
         var descChanged = newDescInner !== oldDescInner;
-        if (!linkChanged && !descChanged) return;
+        var oldTitle = editingEntry.rawData.title;
+        var newTitleRaw = titleRow.style.display !== 'none' ? titleInput.value.trim() : '';
+        var newTitleSanitized = newTitleRaw ? sanitize(newTitleRaw) : oldTitle;
+        var titleChanged = !!newTitleRaw && newTitleSanitized !== oldTitle;
+        if (editingEntry.ownRecord) {
+          // Still-pending draft placeholder (not published yet) - mutate its
+          // pending record directly instead of creating a separate "edit",
+          // since Kopyala only ever exports the record's current values.
+          if (!linkChanged && !descChanged && !titleChanged) return;
+          var rec = editingEntry.ownRecord;
+          var oldRecState = { link: rec.link, draftTitle: rec.draftTitle, draftDescription: rec.draftDescription };
+          function applyRecState(rec2, entry, state) {
+            rec2.link = state.link;
+            rec2.draftTitle = state.draftTitle;
+            rec2.draftDescription = state.draftDescription;
+            entry.rawData.sourceLink = state.link;
+            entry.rawData.title = state.draftTitle || '[Ürün adı - onaylayın]';
+            entry.label = entry.rawData.title;
+            var newHtml = (rec2.draftImage ? '<img src="' + rec2.draftImage + '">' : '') +
+              '<p>' + sanitize(state.draftDescription || 'Taslak — "Kopyala" ile gönderip onaylat.') + '</p>';
+            entry.rawData.text = newHtml;
+            var el = entry.hotspot.domElement();
+            var titleEl = el.querySelector('.info-hotspot-title');
+            if (titleEl) titleEl.textContent = entry.rawData.title;
+            var descEl = el.querySelector('.info-hotspot-text');
+            if (descEl) descEl.innerHTML = newHtml;
+          }
+          var newRecState = {
+            link: linkChanged ? newLink : rec.link,
+            draftTitle: titleChanged ? newTitleRaw : rec.draftTitle,
+            draftDescription: descChanged ? newDescInner : rec.draftDescription
+          };
+          applyRecState(rec, editingEntry, newRecState);
+          editingEntry.ownSave();
+          coordsLine.textContent = 'Taslak güncellendi: ' + editingEntry.rawData.title;
+          var placeholderEntryRef = editingEntry;
+          pushHistory('taslak düzenleme', function() {
+            applyRecState(rec, placeholderEntryRef, oldRecState);
+            placeholderEntryRef.ownSave();
+          }, function() {
+            applyRecState(rec, placeholderEntryRef, newRecState);
+            placeholderEntryRef.ownSave();
+          });
+          resetInputRowForAdd();
+          return;
+        }
+        if (!linkChanged && !descChanged && !titleChanged) return;
         var newDescHtml = descChanged ? rebuildDescHtml(oldDescHtml, newDescInner) : oldDescHtml;
         var editRecord = {
           scene: currentSceneNumber,
@@ -4551,7 +4625,9 @@
           oldTitle: editingEntry.rawData.title,
           newLink: linkChanged ? newLink : undefined,
           descChanged: descChanged,
-          newDescHtml: descChanged ? newDescHtml : undefined
+          newDescHtml: descChanged ? newDescHtml : undefined,
+          titleChanged: titleChanged,
+          newTitle: titleChanged ? newTitleSanitized : undefined
         };
         edits.push(editRecord);
         saveEdits();
@@ -4563,8 +4639,13 @@
           var descEl = editingEntry.hotspot.domElement().querySelector('.info-hotspot-text');
           if (descEl) descEl.innerHTML = newDescHtml;
         }
-        coordsLine.textContent = 'Düzenleme kaydedildi: ' + editingEntry.rawData.title +
-          (linkChanged && descChanged ? ' -> link ve açıklama güncellendi' : linkChanged ? ' -> yeni link' : ' -> açıklama güncellendi');
+        if (titleChanged) {
+          editingEntry.rawData.title = newTitleSanitized;
+          editingEntry.label = newTitleSanitized;
+          var titleEl = editingEntry.hotspot.domElement().querySelector('.info-hotspot-title');
+          if (titleEl) titleEl.textContent = newTitleSanitized;
+        }
+        coordsLine.textContent = 'Düzenleme kaydedildi: ' + editingEntry.rawData.title;
         var editedInfoEntryRef = editingEntry;
         pushHistory('ürün düzenleme', function() {
           edits = edits.filter(function(e) { return e !== editRecord; });
@@ -4575,6 +4656,12 @@
             var revertEl = editedInfoEntryRef.hotspot.domElement().querySelector('.info-hotspot-text');
             if (revertEl) revertEl.innerHTML = oldDescHtml;
           }
+          if (titleChanged) {
+            editedInfoEntryRef.rawData.title = oldTitle;
+            editedInfoEntryRef.label = oldTitle;
+            var revertTitleEl = editedInfoEntryRef.hotspot.domElement().querySelector('.info-hotspot-title');
+            if (revertTitleEl) revertTitleEl.textContent = oldTitle;
+          }
         }, function() {
           edits.push(editRecord);
           saveEdits();
@@ -4583,6 +4670,12 @@
             editedInfoEntryRef.rawData.text = newDescHtml;
             var redoEl = editedInfoEntryRef.hotspot.domElement().querySelector('.info-hotspot-text');
             if (redoEl) redoEl.innerHTML = newDescHtml;
+          }
+          if (titleChanged) {
+            editedInfoEntryRef.rawData.title = newTitleSanitized;
+            editedInfoEntryRef.label = newTitleSanitized;
+            var redoTitleEl = editedInfoEntryRef.hotspot.domElement().querySelector('.info-hotspot-title');
+            if (redoTitleEl) redoTitleEl.textContent = newTitleSanitized;
           }
         });
       } else if (editingEntry.kind === 'link') {
@@ -4658,7 +4751,11 @@
             nudgeEntry = editMatch;
             pendingCoords = null;
             addButton.textContent = 'Güncelle';
-            draftFetchButton.style.display = 'none';
+            // A still-unprocessed draft placeholder can still use Taslak
+            // Getir (e.g. the first fetch failed, or never happened) - a
+            // real, already-published product can't: re-fetching over good
+            // manually-researched content would just clobber it.
+            draftFetchButton.style.display = (mode === 'product' && editMatch.ownRecord) ? '' : 'none';
             clearDraft();
             if (mode === 'product') {
               linkInput.value = editMatch.rawData.sourceLink || '';
@@ -4672,6 +4769,8 @@
               Array.prototype.forEach.call(badgeRow.querySelectorAll('.posFinderBadgeButton'), function(btn) {
                 btn.classList.toggle('active', btn.getAttribute('data-badge') === (editMatch.rawData.badge || null));
               });
+              titleRow.style.display = 'block';
+              titleInput.value = stripHtmlForSpeech(editMatch.rawData.title);
               descRow.style.display = 'block';
               descTextarea.value = extractDescFromHtml(editMatch.rawData.text);
               updateDescPreview();
@@ -4828,6 +4927,7 @@
         lines.push('--- DÜZENLENENLER ---');
         editsList.forEach(function(e) {
           if (e.kind === 'info') {
+            if (e.titleChanged) lines.push(e.scene + '  "' + e.oldTitle + '"  ->  yeni ürün adı: ' + e.newTitle);
             if (e.newLink) lines.push(e.scene + '  "' + e.oldTitle + '"  ->  yeni link: ' + e.newLink);
             if (e.descChanged) {
               lines.push(e.scene + '  "' + e.oldTitle + '"  YENİ AÇIKLAMA HTML: ' + e.newDescHtml);

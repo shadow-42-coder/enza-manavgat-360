@@ -2007,10 +2007,41 @@ body.posFinderWide #pano {
      narrow for the side-by-side layout above, the two can still overlap,
      and when they do the panel must win so it's never unclickable. */
   z-index: 25000;
-  overflow: hidden;
+  /* visible (not hidden) so a clicked/hovered product card can spill past
+     this tiny preview's own edges instead of being clipped mid-card - it's
+     only ~360x220px, nowhere near big enough to hold a full info card.
+     !important because Marzipano itself sets overflow:hidden as an inline
+     style on this element at Stage-creation time, which would otherwise
+     always win over a plain stylesheet rule regardless of specificity. */
+  overflow: visible !important;
   border: 2px solid rgba(255,255,255,0.3);
   box-shadow: 0 6px 24px rgba(0,0,0,0.6);
   transition: width 0.2s ease, height 0.2s ease;
+}
+
+/* The card itself needs to actually render above everything (including the
+   admin panel, z-index 30000) once it's allowed to spill outside the small
+   preview above - otherwise "not clipped" just means "hidden behind the
+   panel" instead. */
+body.posFinderWide .info-hotspot.visible,
+body.posFinderWide.no-touch .info-hotspot:hover {
+  z-index: 31000;
+  position: relative;
+}
+
+/* The fix above stops the desktop hover-expand card from being cut off at
+   the tiny preview box's edges, but Marzipano scales its entire hotspot
+   layer down to match that box's size, so the card still renders shrunk to
+   near-illegibility - "cramped", exactly as reported, just no longer
+   literally clipped. Real (mobile) visitors never hit this because their
+   hotspot layer is never artificially shrunk like this preview is; they
+   get a plain, non-scaled, full-size centered modal card instead. Reuse
+   that same modal for the admin preview rather than fighting the miniature
+   card's scale - it's already correctly sized and already wired to the
+   same open/close click handlers. */
+body.posFinderWide.desktop .info-hotspot-modal {
+  display: block;
+  z-index: 32000 !important;
 }
 
 #posFinderHeader {
@@ -3113,6 +3144,22 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 
 .posFinderBadgeClearButton {
   background-color: rgba(255,255,255,0.06);
+}
+
+#posFinderTitleRow {
+  display: none;
+  margin-bottom: 8px;
+}
+
+#posFinderTitleInput {
+  width: 100%;
+  padding: 8px;
+  border-radius: 5px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  box-sizing: border-box;
+  font-family: inherit;
 }
 
 #posFinderDescRow {
