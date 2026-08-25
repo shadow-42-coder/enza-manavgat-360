@@ -4331,7 +4331,7 @@
 
     function addEntry() {
       var link = linkInput.value.trim();
-      if (!pendingCoords || !link) return;
+      if (!pendingCoords || !link || !currentSceneWrapper) return;
       var record = {
         scene: pendingCoords.scene,
         yaw: pendingCoords.yaw,
@@ -4348,17 +4348,50 @@
       }
       entries.push(record);
       saveEntries();
+
+      // Instant visual feedback: drop a real "i" hotspot right where they
+      // just clicked, using whatever draft info is on hand (or a plain
+      // placeholder title otherwise) - so the admin sees exactly what got
+      // queued instead of only a status line. This bubble only exists in
+      // this browser tab; the real one goes live once the researched
+      // content is added for real and published.
+      var sceneWrapperForPlaceholder = currentSceneWrapper;
+      var placeholderTitle = record.draftTitle || '[Ürün adı - onaylayın]';
+      var placeholderText = (record.draftImage ? '<img src="' + record.draftImage + '">' : '') +
+        '<p>' + sanitize(record.draftDescription || 'Taslak — "Kopyala" ile gönderip onaylat.') + '</p>';
+      var placeholderData = {
+        yaw: record.yaw, pitch: record.pitch, rotation: 0,
+        title: sanitize(placeholderTitle), text: placeholderText,
+        sourceLink: link, whatsapp: true
+      };
+      function makePlaceholderHotspot() {
+        var el = createInfoHotspotElement(placeholderData, sceneWrapperForPlaceholder.data.name);
+        var hs = sceneWrapperForPlaceholder.scene.hotspotContainer().createHotspot(el, { yaw: record.yaw, pitch: record.pitch });
+        var editable = {
+          hotspot: hs, kind: 'info', label: placeholderTitle,
+          rawData: placeholderData, ownRecord: record, ownSave: saveEntries,
+          ownRemoveFromPending: function() { entries = entries.filter(function(e) { return e !== record; }); saveEntries(); },
+          ownAddBackToPending: function() { entries.push(record); saveEntries(); }
+        };
+        sceneWrapperForPlaceholder.editableHotspots.push(editable);
+        return editable;
+      }
+      var placeholderEditable = makePlaceholderHotspot();
+
       linkInput.value = '';
       pendingCoords = null;
       clearDraft();
-      coordsLine.textContent = 'Eklendi. Bir sonraki ürüne tıklayın...';
+      coordsLine.textContent = 'Eklendi (taslak baloncuk görünür). Bir sonraki ürüne tıklayın...';
       coordsLine.classList.remove('ready');
       pushHistory('ürün ekleme', function() {
         entries = entries.filter(function(e) { return e !== record; });
         saveEntries();
+        sceneWrapperForPlaceholder.scene.hotspotContainer().destroyHotspot(placeholderEditable.hotspot);
+        sceneWrapperForPlaceholder.editableHotspots = sceneWrapperForPlaceholder.editableHotspots.filter(function(e) { return e !== placeholderEditable; });
       }, function() {
         entries.push(record);
         saveEntries();
+        placeholderEditable = makePlaceholderHotspot();
       });
     }
 
@@ -4382,7 +4415,13 @@
         hotspot: marzipanoHotspot,
         kind: 'link',
         label: 'Yön oku → ' + targetId,
-        ownRecord: arrowRecord // if dragged, update this record instead of logging a separate move
+        ownRecord: arrowRecord, // if dragged, update this record instead of logging a separate move
+        ownSave: saveArrows,
+        // Delete-mode needs these too - generic hooks so it doesn't have to
+        // know which pending array (arrows vs entries) this hotspot's
+        // record actually lives in.
+        ownRemoveFromPending: function() { arrows = arrows.filter(function(a) { return a !== arrowRecord; }); saveArrows(); },
+        ownAddBackToPending: function() { arrows.push(arrowRecord); saveArrows(); }
       };
       var sceneWrapperForUndo = currentSceneWrapper;
       sceneWrapperForUndo.editableHotspots.push(newEditable);
@@ -4574,8 +4613,7 @@
             var removalRecord = null;
             if (removedEntry.ownRecord) {
               // Was added earlier in this same session - just undo the add.
-              arrows = arrows.filter(function(a) { return a !== removedEntry.ownRecord; });
-              saveArrows();
+              removedEntry.ownRemoveFromPending();
             } else {
               removalRecord = {
                 scene: currentSceneNumber,
@@ -4600,15 +4638,17 @@
                 kind: removedEntry.kind,
                 label: removedEntry.label,
                 rawData: removedEntry.rawData,
-                ownRecord: removedEntry.ownRecord
+                ownRecord: removedEntry.ownRecord,
+                ownSave: removedEntry.ownSave,
+                ownRemoveFromPending: removedEntry.ownRemoveFromPending,
+                ownAddBackToPending: removedEntry.ownAddBackToPending
               };
               sceneWrapperForUndo.editableHotspots.push(restoredEditable);
               if (removalRecord) {
                 removals = removals.filter(function(r) { return r !== removalRecord; });
                 saveRemovals();
               } else if (removedEntry.ownRecord) {
-                arrows.push(removedEntry.ownRecord);
-                saveArrows();
+                removedEntry.ownAddBackToPending();
               }
             }, function() {
               if (restoredHotspot) sceneWrapperForUndo.scene.hotspotContainer().destroyHotspot(restoredHotspot);
@@ -4617,8 +4657,7 @@
                 removals.push(removalRecord);
                 saveRemovals();
               } else if (removedEntry.ownRecord) {
-                arrows = arrows.filter(function(a) { return a !== removedEntry.ownRecord; });
-                saveArrows();
+                removedEntry.ownRemoveFromPending();
               }
             });
           }
@@ -4878,21 +4917,25 @@
     function commitPositionChange(movedEntry, startCoords, endCoords, statusVerb) {
       if (movedEntry.ownRecord) {
         // This hotspot was created earlier in this same session (e.g. a new
-        // arrow) - update its own record instead of logging a separate move.
+        // arrow, or a just-added product placeholder) - update its own
+        // record instead of logging a separate move. ownSave picks which
+        // pending array it belongs to; defaults to arrows for backward
+        // compatibility with the original (arrows-only) use of this path.
+        var ownSave = movedEntry.ownSave || saveArrows;
         movedEntry.ownRecord.yaw = endCoords.yaw;
         movedEntry.ownRecord.pitch = endCoords.pitch;
-        saveArrows();
+        ownSave();
         coordsLine.textContent = statusVerb + ': ' + movedEntry.label + '. Kaydedildi.';
         pushHistory('taşıma (' + movedEntry.label + ')', function() {
           movedEntry.hotspot.setPosition(startCoords);
           movedEntry.ownRecord.yaw = startCoords.yaw;
           movedEntry.ownRecord.pitch = startCoords.pitch;
-          saveArrows();
+          ownSave();
         }, function() {
           movedEntry.hotspot.setPosition(endCoords);
           movedEntry.ownRecord.yaw = endCoords.yaw;
           movedEntry.ownRecord.pitch = endCoords.pitch;
-          saveArrows();
+          ownSave();
         });
       } else {
         var moveRecord = {
