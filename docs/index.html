@@ -38,17 +38,151 @@
 <style> @-ms-viewport { width: device-width; } </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="vendor/reset.min.css">
-<link rel="stylesheet" href="style.css?v=32">
+<link rel="stylesheet" href="style.css?v=34">
 </head>
 <body class="multiple-scenes">
 
-<div id="splash">
-  <img id="splashLogo" src="img/logo.png" alt="enza HOME">
-  <div id="splashTagline">enza HOME Manavgat — 360° Sanal Mağaza Turu</div>
-  <div id="splashProgress"><div id="splashProgressBar"></div></div>
-  <div id="splashSpinner"></div>
+<div id="splash" class="playing">
+  <div id="splashGrid"></div>
+
+  <div id="splashPlanStage">
+    <div id="splashPlanWrap">
+      <svg id="splashPlanSvg" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="splashRoomGlow" cx="50%" cy="50%" r="65%">
+            <stop offset="0%" stop-color="#5eb3ff" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#5eb3ff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <g class="sp-roomFillGroup">
+          <rect class="sp-roomFillRect" x="60" y="50" width="300" height="140" fill="url(#splashRoomGlow)"/>
+          <rect class="sp-roomFillRect" x="360" y="50" width="200" height="140" fill="url(#splashRoomGlow)"/>
+          <rect class="sp-roomFillRect" x="60" y="230" width="130" height="120" fill="url(#splashRoomGlow)"/>
+          <rect class="sp-roomFillRect" x="190" y="230" width="130" height="120" fill="url(#splashRoomGlow)"/>
+          <rect class="sp-roomFillRect" x="320" y="230" width="90" height="120" fill="url(#splashRoomGlow)"/>
+          <rect class="sp-roomFillRect" x="410" y="230" width="150" height="120" fill="url(#splashRoomGlow)"/>
+        </g>
+
+        <g class="sp-wallsExt">
+          <line class="sp-wallSeg sp-ext" x1="60" y1="50" x2="560" y2="50" style="stroke-dasharray:500;stroke-dashoffset:500"/>
+          <line class="sp-wallSeg sp-ext" x1="560" y1="50" x2="560" y2="350" style="stroke-dasharray:300;stroke-dashoffset:300"/>
+          <line class="sp-wallSeg sp-ext" x1="560" y1="350" x2="60" y2="350" style="stroke-dasharray:500;stroke-dashoffset:500"/>
+          <line class="sp-wallSeg sp-ext" x1="60" y1="350" x2="60" y2="140" style="stroke-dasharray:210;stroke-dashoffset:210"/>
+          <line class="sp-wallSeg sp-ext" x1="60" y1="100" x2="60" y2="50" style="stroke-dasharray:50;stroke-dashoffset:50"/>
+        </g>
+
+        <g class="sp-wallsInt">
+          <line class="sp-wallSeg sp-int" x1="360" y1="50" x2="360" y2="190" style="stroke-dasharray:140;stroke-dashoffset:140"/>
+          <line class="sp-wallSeg sp-int" x1="60" y1="190" x2="140" y2="190" style="stroke-dasharray:80;stroke-dashoffset:80"/>
+          <line class="sp-wallSeg sp-int" x1="200" y1="190" x2="420" y2="190" style="stroke-dasharray:220;stroke-dashoffset:220"/>
+          <line class="sp-wallSeg sp-int" x1="480" y1="190" x2="560" y2="190" style="stroke-dasharray:80;stroke-dashoffset:80"/>
+          <line class="sp-wallSeg sp-int" x1="60" y1="230" x2="100" y2="230" style="stroke-dasharray:40;stroke-dashoffset:40"/>
+          <line class="sp-wallSeg sp-int" x1="160" y1="230" x2="230" y2="230" style="stroke-dasharray:70;stroke-dashoffset:70"/>
+          <line class="sp-wallSeg sp-int" x1="290" y1="230" x2="345" y2="230" style="stroke-dasharray:55;stroke-dashoffset:55"/>
+          <line class="sp-wallSeg sp-int" x1="385" y1="230" x2="460" y2="230" style="stroke-dasharray:75;stroke-dashoffset:75"/>
+          <line class="sp-wallSeg sp-int" x1="520" y1="230" x2="560" y2="230" style="stroke-dasharray:40;stroke-dashoffset:40"/>
+          <line class="sp-wallSeg sp-int" x1="190" y1="230" x2="190" y2="350" style="stroke-dasharray:120;stroke-dashoffset:120"/>
+          <line class="sp-wallSeg sp-int" x1="320" y1="230" x2="320" y2="350" style="stroke-dasharray:120;stroke-dashoffset:120"/>
+          <line class="sp-wallSeg sp-int" x1="410" y1="230" x2="410" y2="350" style="stroke-dasharray:120;stroke-dashoffset:120"/>
+        </g>
+
+        <g class="sp-doorArcsGroup">
+          <path class="sp-doorArc" d="M 60,100 A 40,40 0 0,1 100,140"/>
+          <path class="sp-doorArc" d="M 140,190 A 30,30 0 0,0 170,220"/>
+          <path class="sp-doorArc" d="M 480,190 A 30,30 0 0,1 450,220"/>
+          <path class="sp-doorArc" d="M 100,230 A 25,25 0 0,1 125,255"/>
+          <path class="sp-doorArc" d="M 230,230 A 25,25 0 0,0 205,255"/>
+          <path class="sp-doorArc" d="M 345,230 A 20,20 0 0,1 365,250"/>
+          <path class="sp-doorArc" d="M 460,230 A 25,25 0 0,0 435,255"/>
+        </g>
+
+        <g class="sp-roomLabels">
+          <g class="sp-lblGroup">
+            <text x="150" y="112" class="sp-lbl sp-main">SALON</text>
+            <text x="150" y="129" class="sp-lbl sp-sub">28.4 m²</text>
+          </g>
+          <g class="sp-lblGroup">
+            <text x="410" y="112" class="sp-lbl sp-main">MUTFAK</text>
+            <text x="410" y="129" class="sp-lbl sp-sub">11.6 m²</text>
+          </g>
+          <g class="sp-lblGroup">
+            <text x="76" y="283" class="sp-lbl sp-main sp-small">YATAK 1</text>
+            <text x="76" y="298" class="sp-lbl sp-sub">14.2 m²</text>
+          </g>
+          <g class="sp-lblGroup">
+            <text x="206" y="283" class="sp-lbl sp-main sp-small">YATAK 2</text>
+            <text x="206" y="298" class="sp-lbl sp-sub">13.0 m²</text>
+          </g>
+          <g class="sp-lblGroup">
+            <text x="322" y="286" class="sp-lbl sp-main sp-tiny">BANYO</text>
+            <text x="322" y="300" class="sp-lbl sp-sub">5.1 m²</text>
+          </g>
+          <g class="sp-lblGroup">
+            <text x="435" y="283" class="sp-lbl sp-main sp-small">YATAK 3</text>
+            <text x="435" y="298" class="sp-lbl sp-sub">15.8 m²</text>
+          </g>
+          <g class="sp-lblGroup">
+            <text x="310" y="213" class="sp-lbl sp-corridor">KORİDOR</text>
+          </g>
+        </g>
+
+        <g class="sp-dims">
+          <line class="sp-dimLine" x1="60" y1="30" x2="560" y2="30"/>
+          <line class="sp-dimTick" x1="60" y1="24" x2="60" y2="36"/>
+          <line class="sp-dimTick" x1="560" y1="24" x2="560" y2="36"/>
+          <text x="310" y="22" class="sp-dimText" text-anchor="middle">9.40 m</text>
+
+          <line class="sp-dimLine" x1="40" y1="50" x2="40" y2="350"/>
+          <line class="sp-dimTick" x1="34" y1="50" x2="46" y2="50"/>
+          <line class="sp-dimTick" x1="34" y1="350" x2="46" y2="350"/>
+          <text x="18" y="204" class="sp-dimText" text-anchor="middle" transform="rotate(-90 18 204)">6.00 m</text>
+        </g>
+      </svg>
+      <div id="splashScanSweep"></div>
+    </div>
+  </div>
+
+  <div id="splashPortal">
+    <div id="splashPhoto1" class="splashPhotoLayer"></div>
+    <div id="splashPhoto2" class="splashPhotoLayer"></div>
+    <div id="splashPhoto3" class="splashPhotoLayer"></div>
+  </div>
+
+  <div id="splashCrosshair"></div>
+
+  <div id="splashLogoReveal">
+    <img id="splashLogo" src="img/logo.png" alt="enza HOME">
+    <div id="splashTagline">360° Sanal Mağaza Turu</div>
+    <div id="splashTapCue">DOKUNARAK KEŞFET</div>
+  </div>
+
+  <p id="splashFreeService">Mimari projelendirmelerimiz <b>ücretsizdir</b></p>
+
+  <div id="splashHud">
+    <div class="splashHudCorner tl">
+      <span class="splashHudLabel">YAW</span><span id="splashYawVal">000.0°</span><br>
+      <span class="splashHudLabel">PITCH</span><span id="splashPitchVal">000.0°</span>
+    </div>
+    <div class="splashHudCorner tr">
+      <svg id="splashCompass" viewBox="0 0 46 46">
+        <g class="splashCompassRing">
+          <circle cx="23" cy="23" r="19" fill="none" stroke="#5eb3ff" stroke-width="1" opacity="0.5"/>
+          <line x1="23" y1="2" x2="23" y2="9" stroke="#5eb3ff" stroke-width="1.4"/>
+          <line x1="23" y1="37" x2="23" y2="44" stroke="#5eb3ff" stroke-width="1" opacity="0.5"/>
+          <line x1="2" y1="23" x2="9" y2="23" stroke="#5eb3ff" stroke-width="1" opacity="0.5"/>
+          <line x1="37" y1="23" x2="44" y2="23" stroke="#5eb3ff" stroke-width="1" opacity="0.5"/>
+        </g>
+        <circle cx="23" cy="23" r="2" fill="#5eb3ff"/>
+      </svg>
+    </div>
+    <div class="splashHudCorner bl" id="splashSceneCounter">SAHNE 01 / 20</div>
+    <div class="splashHudCorner br"><span id="splashRecDot"></span>ENZA HOME · 360°</div>
+  </div>
+
+  <button type="button" id="splashSkip">Geç ›</button>
 </div>
 
 <div id="pano"></div>
@@ -188,7 +322,7 @@
 
 <script src="data.js?v=20"></script>
 <script src="publish.js?v=19"></script>
-<script src="index.js?v=34"></script>
+<script src="index.js?v=35"></script>
 
 <script>
 if ('serviceWorker' in navigator) {
