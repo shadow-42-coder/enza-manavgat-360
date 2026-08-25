@@ -1357,6 +1357,7 @@
     draftPreview.id = 'posFinderDraftPreview';
     draftPreview.style.display = 'none';
     var currentDraft = null;
+    var draftFetchInFlight = false;
 
     function clearDraft() {
       currentDraft = null;
@@ -1369,12 +1370,27 @@
       if (!link) return;
       draftFetchButton.disabled = true;
       draftFetchButton.textContent = 'Getiriliyor...';
+      // Also lock "Ekle" (both the button and hitting Enter in the link
+      // field) for the duration of the fetch - clicking/pressing it before
+      // the draft arrives is exactly how an admin ends up with an empty
+      // "[Ürün adı - onaylayın]" placeholder despite having asked for a
+      // draft first: the request just hadn't finished yet.
+      addButton.disabled = true;
+      draftFetchInFlight = true;
       clearDraft();
-      fetch('https://api.microlink.io/?url=' + encodeURIComponent(link) + '&meta=false')
-        .then(function(r) { return r.json(); })
+      // A hard timeout matters here specifically because a hung request
+      // would otherwise leave "Ekle" disabled indefinitely (bad store wifi,
+      // a slow/unreachable microlink.io) - better to fall through to the
+      // manual-entry path than to lock the admin out of adding anything.
+      var draftController = new AbortController();
+      var draftTimeout = setTimeout(function() { draftController.abort(); }, 8000);
+      fetch('https://api.microlink.io/?url=' + encodeURIComponent(link) + '&meta=false', { signal: draftController.signal })
+        .then(function(r) { clearTimeout(draftTimeout); return r.json(); })
         .then(function(json) {
           draftFetchButton.disabled = false;
           draftFetchButton.textContent = '🔍 Taslak Getir';
+          addButton.disabled = false;
+          draftFetchInFlight = false;
           if (!json || json.status !== 'success' || !json.data) {
             draftPreview.textContent = 'Otomatik bilgi bulunamadı, başlık/açıklamayı elle yazman gerekecek.';
             draftPreview.style.display = 'block';
@@ -1401,8 +1417,11 @@
           draftPreview.style.display = 'flex';
         })
         .catch(function() {
+          clearTimeout(draftTimeout);
           draftFetchButton.disabled = false;
           draftFetchButton.textContent = '🔍 Taslak Getir';
+          addButton.disabled = false;
+          draftFetchInFlight = false;
           draftPreview.textContent = 'Otomatik bilgi çekilemedi (bağlantı sorunu olabilir), başlık/açıklamayı elle yazman gerekecek.';
           draftPreview.style.display = 'block';
         });
@@ -4332,6 +4351,10 @@
     function addEntry() {
       var link = linkInput.value.trim();
       if (!pendingCoords || !link || !currentSceneWrapper) return;
+      if (draftFetchInFlight) {
+        coordsLine.textContent = 'Taslak hâlâ getiriliyor, birkaç saniye bekleyip tekrar dene.';
+        return;
+      }
       var record = {
         scene: pendingCoords.scene,
         yaw: pendingCoords.yaw,
