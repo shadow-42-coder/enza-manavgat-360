@@ -390,6 +390,33 @@
     return (div.textContent || div.innerText || '').trim();
   }
 
+  // Voices load asynchronously in most browsers - an empty getVoices() on
+  // first call is normal, not an error, and by the time a visitor actually
+  // taps "listen" the list has settled. Without picking a matching voice
+  // explicitly, an utterance can silently fall back to a non-Turkish voice
+  // that mispronounces every Turkish letter/word.
+  function pickVoiceForLang(langTag) {
+    if (!window.speechSynthesis) return null;
+    var voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+    var exact = voices.filter(function(v) { return v.lang && v.lang.toLowerCase() === langTag.toLowerCase(); });
+    if (exact.length) return exact[0];
+    var prefix = langTag.split('-')[0].toLowerCase();
+    var loose = voices.filter(function(v) { return v.lang && v.lang.toLowerCase().indexOf(prefix) === 0; });
+    return loose.length ? loose[0] : null;
+  }
+
+  // Splits narration text into a short opening line plus the rest, so
+  // listening starts with one sentence instead of a whole paragraph - the
+  // rest is only spoken if the visitor asks for it.
+  function splitNarrationTeaser(fullText) {
+    var m = /^([\s\S]{0,140}?[.!?])\s*([\s\S]*)$/.exec(fullText);
+    if (m && m[2] && m[2].trim().length > 0) {
+      return { teaser: m[1], rest: m[2].trim() };
+    }
+    return { teaser: fullText, rest: '' };
+  }
+
   // Visitor-side favorite products list (their own browser only, nothing
   // sent anywhere until they choose to send it via WhatsApp).
   var FAVORITES_KEY = 'enzaFavoriteProducts';
@@ -922,6 +949,18 @@
     setTimeout(dismiss, autoDismissMs);
   }
 
+  // Voice-narration tip: shown once, the first time a visitor opens any
+  // product card, pointing out the 🔊 listen button rather than at page
+  // load (before there's anything on screen to point at).
+  var voiceTipEligible = true;
+  try { voiceTipEligible = !window.localStorage.getItem('enzaVoiceTipShown'); } catch (e) {}
+  function showVoiceTipOnce() {
+    if (!voiceTipEligible) return;
+    voiceTipEligible = false;
+    showOneTimeTip('voiceTip', 'enzaVoiceTipShown',
+      uiText('voiceTipText', '🔊 simgesine dokunarak ürünü sesli dinleyebilirsin.'), 500, 7000);
+  }
+
   // Suggest landscape on mobile if the visitor is in portrait - a wider
   // view shows more of each room.
   if (document.body.classList.contains('mobile') && window.innerHeight > window.innerWidth) {
@@ -1374,10 +1413,18 @@
       // field) for the duration of the fetch - clicking/pressing it before
       // the draft arrives is exactly how an admin ends up with an empty
       // "[Ürün adı - onaylayın]" placeholder despite having asked for a
-      // draft first: the request just hadn't finished yet.
+      // draft first: the request just hadn't finished yet. The button's own
+      // label makes that state impossible to miss.
       addButton.disabled = true;
+      addButton.textContent = 'Bilgiler getiriliyor...';
       draftFetchInFlight = true;
       clearDraft();
+      draftPreview.innerHTML = '';
+      var loadingRow = document.createElement('div');
+      loadingRow.className = 'posFinderDraftLoading';
+      loadingRow.innerHTML = '<span class="posFinderSpinner"></span> Ürün başlığı, açıklaması ve fotoğrafı getiriliyor...';
+      draftPreview.appendChild(loadingRow);
+      draftPreview.style.display = 'flex';
       // A hard timeout matters here specifically because a hung request
       // would otherwise leave "Ekle" disabled indefinitely (bad store wifi,
       // a slow/unreachable microlink.io) - better to fall through to the
@@ -1390,6 +1437,7 @@
           draftFetchButton.disabled = false;
           draftFetchButton.textContent = '🔍 Taslak Getir';
           addButton.disabled = false;
+          addButton.textContent = editingEntry ? 'Güncelle' : 'Ekle';
           draftFetchInFlight = false;
           if (!json || json.status !== 'success' || !json.data) {
             draftPreview.textContent = 'Otomatik bilgi bulunamadı, başlık/açıklamayı elle yazman gerekecek.';
@@ -1420,6 +1468,7 @@
           clearTimeout(draftTimeout);
           draftFetchButton.disabled = false;
           draftFetchButton.textContent = '🔍 Taslak Getir';
+          addButton.textContent = editingEntry ? 'Güncelle' : 'Ekle';
           addButton.disabled = false;
           draftFetchInFlight = false;
           draftPreview.textContent = 'Otomatik bilgi çekilemedi (bağlantı sorunu olabilir), başlık/açıklamayı elle yazman gerekecek.';
@@ -1427,7 +1476,21 @@
         });
     }
     draftFetchButton.addEventListener('click', fetchProductDraft);
-    linkInput.addEventListener('input', clearDraft);
+
+    // Auto-fetch the draft the moment a real-looking link lands in the
+    // field (paste or typed) - no more separate "now click Taslak Getir"
+    // step to remember. Only for adding a brand new product, matching where
+    // draftFetchButton itself is shown; editing an existing product's link
+    // doesn't touch the draft system.
+    var draftAutoFetchTimer = null;
+    linkInput.addEventListener('input', function() {
+      clearDraft();
+      clearTimeout(draftAutoFetchTimer);
+      if (editingEntry || mode !== 'product') return;
+      var val = linkInput.value.trim();
+      if (!/^https?:\/\//i.test(val)) return;
+      draftAutoFetchTimer = setTimeout(fetchProductDraft, 500);
+    });
 
     // Badge buttons: only shown while editing an existing product (info
     // hotspot) in product mode. Applied live to the hotspot's own DOM.
@@ -6256,6 +6319,56 @@
     refreshFavButton();
     actionsRow.appendChild(favBtn);
 
+    if (window.speechSynthesis) {
+      var listenBtn = document.createElement('button');
+      listenBtn.type = 'button';
+      listenBtn.classList.add('info-hotspot-listen');
+      listenBtn.textContent = '🔊';
+      listenBtn.title = uiText('listenLabel', 'Sesli dinle');
+
+      var listenMoreBtn = document.createElement('button');
+      listenMoreBtn.type = 'button';
+      listenMoreBtn.classList.add('info-hotspot-listen-more');
+      listenMoreBtn.textContent = uiText('listenMoreLabel', '▶ Devamını dinle');
+      listenMoreBtn.style.display = 'none';
+
+      var plainTitleForSpeech = stripHtmlForSpeech(hotspot.title);
+      var narrationTeaser = splitNarrationTeaser(stripHtmlForSpeech(hotspot.text));
+
+      function speakText(text, onEnd) {
+        var utter = new SpeechSynthesisUtterance(text);
+        utter.lang = currentLang === 'en' ? 'en-US' : (currentLang === 'ru' ? 'ru-RU' : 'tr-TR');
+        var matchedVoice = pickVoiceForLang(utter.lang);
+        if (matchedVoice) utter.voice = matchedVoice;
+        utter.onend = function() { listenBtn.classList.remove('speaking'); if (onEnd) onEnd(); };
+        utter.onerror = function() { listenBtn.classList.remove('speaking'); };
+        listenBtn.classList.add('speaking');
+        window.speechSynthesis.speak(utter);
+      }
+
+      listenBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          listenBtn.classList.remove('speaking');
+          return;
+        }
+        listenMoreBtn.style.display = 'none';
+        speakText(plainTitleForSpeech + '. ' + narrationTeaser.teaser, function() {
+          if (narrationTeaser.rest) listenMoreBtn.style.display = 'inline-block';
+        });
+      });
+      actionsRow.appendChild(listenBtn);
+
+      listenMoreBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+        listenMoreBtn.style.display = 'none';
+        speakText(narrationTeaser.rest, null);
+      });
+      actionsRow.appendChild(listenMoreBtn);
+    }
+
     text.appendChild(actionsRow);
 
     // Create a WhatsApp "ask about this product" link, if requested. If the
@@ -6293,8 +6406,9 @@
     document.body.appendChild(modal);
 
     var toggle = function() {
-      wrapper.classList.toggle('visible');
+      var opening = wrapper.classList.toggle('visible');
       modal.classList.toggle('visible');
+      if (opening && window.speechSynthesis) showVoiceTipOnce();
     };
 
     // Show content when hotspot is clicked.

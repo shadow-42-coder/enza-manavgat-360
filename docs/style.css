@@ -2258,6 +2258,33 @@ body.posFinderWide #pano {
   flex-shrink: 0;
 }
 
+.posFinderDraftLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--admin-text-muted, #ccc);
+}
+
+.posFinderSpinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: var(--admin-accent, #2f8fd6);
+  flex-shrink: 0;
+  animation: posFinderSpin 0.7s linear infinite;
+}
+
+@keyframes posFinderSpin {
+  to { transform: rotate(360deg); }
+}
+
+#posFinderAdd:disabled {
+  background-color: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.4) !important;
+  cursor: wait;
+}
+
 .posFinderDraftText {
   flex: 1;
   min-width: 0;
@@ -3326,7 +3353,8 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
   margin-top: 4px;
 }
 
-.info-hotspot-favorite {
+.info-hotspot-favorite,
+.info-hotspot-listen {
   width: 34px;
   height: 34px;
   border-radius: 5px;
@@ -3339,6 +3367,21 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
 
 .info-hotspot-favorite.active {
   color: #e0432c;
+}
+
+.info-hotspot-listen.speaking {
+  background-color: var(--brand-accent);
+}
+
+.info-hotspot-listen-more {
+  border: none;
+  border-radius: 5px;
+  background-color: rgba(0,0,0,0.06);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 10px;
+  cursor: pointer;
 }
 
 .heartBurst {
