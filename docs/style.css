@@ -1942,8 +1942,188 @@ body.posFinderWide #posFinderBox {
 body.posFinderWide #posFinderSettingsPanel,
 body.posFinderWide #posFinderListPanel,
 body.posFinderWide #posFinderMapPanel,
-body.posFinderWide #posFinderOrderPanel {
+body.posFinderWide #posFinderOrderPanel,
+body.posFinderWide #posFinderBlogPanel,
+body.posFinderWide #posFinderPortfolioPanel {
   max-height: 74vh;
+  overflow-y: auto;
+}
+
+/* Blog & Portfolyo admin panels */
+
+.posFinderContentListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.posFinderContentListHeader span {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--admin-text);
+}
+
+.posFinderContentListItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--admin-card-hover);
+  border: 1px solid var(--admin-border);
+  margin-bottom: 8px;
+}
+
+.posFinderContentListItemInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.posFinderContentListItemInfo strong {
+  color: var(--admin-text);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.posFinderContentListItemMeta {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+}
+
+.posFinderBackLink {
+  display: inline-block;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 14px;
+}
+.posFinderBackLink:hover { color: var(--admin-text); }
+
+.posFinderBlogTitleInput {
+  width: 100%;
+  font-size: 22px;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text);
+  padding: 8px 2px 14px;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
+.posFinderBlogTitleInput:focus { outline: none; border-bottom-color: var(--admin-accent); }
+
+#posFinderBlogPanel textarea,
+#posFinderPortfolioPanel textarea,
+#posFinderBlogPanel input[type="text"],
+#posFinderPortfolioPanel input[type="text"] {
+  width: 100%;
+  background: var(--admin-card-hover);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  color: var(--admin-text);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+.posFinderEditorColumns {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.posFinderEditorMain {
+  flex: 2.2;
+  min-width: 0;
+}
+
+.posFinderEditorSidebar {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.posFinderEditorSidebarBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.posFinderFieldLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--admin-text-muted);
+  margin-bottom: 6px;
+}
+
+.posFinderChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.posFinderDropZone {
+  position: relative;
+  border: 1.5px dashed var(--admin-border);
+  border-radius: 10px;
+  padding: 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.posFinderDropZone.dragover {
+  border-color: var(--admin-accent);
+  background: var(--admin-card-hover);
+}
+.posFinderDropZoneLabel {
+  display: block;
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+.posFinderDropPreview {
+  max-width: 100%;
+  max-height: 140px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.posFinderDropZoneStatus {
+  font-size: 11px;
+  color: var(--admin-text-muted);
+  margin-top: 6px;
+}
+
+.posFinderSeoPreview {
+  background: var(--admin-card-hover);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.posFinderSeoPreviewTitle { color: #8ab4f8; font-size: 12.5px; margin-bottom: 2px; }
+.posFinderSeoPreviewUrl { color: #5fd889; font-size: 11px; margin-bottom: 3px; }
+.posFinderSeoPreviewDesc { color: var(--admin-text-muted); font-size: 11px; line-height: 1.4; }
+
+#posFinderBlogSave,
+#posFinderPortfolioPanel .posFinderEditorSidebar > button:last-child {
+  background: var(--admin-accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 20px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 /* Manual resize handles - only usable (and visible) in wide/dashboard mode.
@@ -3983,4 +4163,176 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
   background-color: rgba(255,255,255,0.12);
   color: #fff;
   cursor: pointer;
+}
+
+/* ==========================================================================
+   Public site pages (blog.html, portfolyo.html) - ordinary scrolling
+   documents, unlike the full-screen fixed-viewport tour app above. Reuses
+   the same brand tokens (--brand-dark/--brand-accent/--brand-warm) and
+   fonts (Fraunces/IBM Plex Mono) so they read as siblings of the tour.
+   ========================================================================== */
+
+body.sitePage {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.sitePageHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 56px;
+  background: rgba(23,32,42,0.94);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sitePageLogo img { height: 22px; width: auto; display: block; }
+.sitePageNav { display: flex; align-items: center; gap: 32px; }
+.sitePageNav a {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-text-muted);
+  text-decoration: none;
+}
+.sitePageNav a.active,
+.sitePageNav a:hover { color: #fff; }
+
+.sitePageMain {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 48px 32px 96px;
+}
+
+.sitePageIntro { display: flex; flex-direction: column; gap: 14px; max-width: 720px; margin-bottom: 36px; }
+.sitePageEyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-warm);
+}
+.sitePageIntro h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.siteEmptyState { color: var(--brand-text-muted); font-size: 14px; }
+
+.sitePageBackLink {
+  display: inline-block;
+  color: var(--brand-warm);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 20px;
+}
+
+/* Blog */
+
+.blogGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+.blogCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--brand-panel-hover);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+}
+.blogCardImage { width: 100%; height: 160px; object-fit: cover; display: block; }
+.blogCardImagePlaceholder { background: linear-gradient(135deg,#1c2733,#26374a); }
+.blogCardBody { padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
+.blogCardCategory {
+  display: inline-block;
+  width: fit-content;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-warm);
+}
+.blogCardTitle { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 16px; line-height: 1.4; margin: 0; }
+.blogCardExcerpt { margin: 0; color: var(--brand-text-muted); font-size: 13px; line-height: 1.6; }
+.blogCardDate { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--brand-text-muted); }
+
+.sitePageArticle { max-width: 720px; }
+.blogArticleTitle { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 32px; line-height: 1.2; margin: 10px 0 8px; }
+.blogArticleMeta { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--brand-text-muted); margin-bottom: 24px; }
+.blogArticleImage { width: 100%; border-radius: 14px; margin-bottom: 24px; }
+.blogArticleBody { font-size: 16px; line-height: 1.85; color: #dbe1e6; }
+.blogArticleBody p { margin: 0 0 20px; }
+.blogArticleBody img { max-width: 100%; border-radius: 10px; }
+
+/* Portfolyo */
+
+.portfolioFilterRow { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+.portfolioFilterChip {
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: transparent;
+  color: #c3ccd4;
+  cursor: pointer;
+}
+.portfolioFilterChip.active { background: var(--brand-accent); border-color: var(--brand-accent); color: #fff; }
+
+.portfolioGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+.portfolioCard {
+  background: var(--brand-panel-hover);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.portfolioCardImage { width: 100%; height: 210px; object-fit: cover; display: block; }
+.portfolioCardImagePlaceholder { background: linear-gradient(135deg,#1c2733,#26374a); }
+.portfolioCardBody { padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+.portfolioCardCategory {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-warm);
+}
+.portfolioCardTitle { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 15px; margin: 0; }
+.portfolioCardCaption { margin: 0; color: var(--brand-text-muted); font-size: 13px; line-height: 1.5; }
+
+.sitePageFooter {
+  background: #11181f;
+  padding: 40px 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.sitePageFooterLogo { height: 20px; width: auto; }
+.sitePageFooterContact { display: flex; flex-wrap: wrap; gap: 24px; }
+.sitePageFooterContact a { color: var(--brand-text-muted); font-size: 13px; text-decoration: none; }
+.sitePageFooterContact a:hover { color: #fff; }
+
+@media (max-width: 640px) {
+  .sitePageHeader { padding: 16px 20px; }
+  .sitePageNav { gap: 18px; }
+  .sitePageMain { padding: 32px 20px 64px; }
+  .sitePageIntro h1 { font-size: 26px; }
+  .sitePageFooter { padding: 32px 20px; justify-content: center; text-align: center; }
 }
