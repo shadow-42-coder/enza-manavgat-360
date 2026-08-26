@@ -15,8 +15,6 @@ window.EnzaPublish = (function() {
   var TOKEN_KEY = 'enzaGithubToken';
   var DATA_PATH = 'docs/data.js';
   var HTML_PATH = 'docs/index.html';
-  var IMG_BLOG_DIR = 'docs/img/blog';
-  var IMG_PORTFOLIO_DIR = 'docs/img/portfolio';
 
   function getToken() {
     try { return window.localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
@@ -66,7 +64,7 @@ window.EnzaPublish = (function() {
   function applyChanges(sourceData, sets) {
     var data = JSON.parse(JSON.stringify(sourceData));
     var warnings = [];
-    var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0, blogPosts: 0, portfolioItems: 0 };
+    var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0 };
     var htmlOps = { contact: null, sceneOrder: null, deletedSceneIds: [] };
 
     (sets.arrows || []).forEach(function(a) {
@@ -211,48 +209,6 @@ window.EnzaPublish = (function() {
         appliedCounts.settingsChanges++;
       } else {
         warnings.push('Bilinmeyen ayar türü, elle kontrol gerekli: "' + c.type + '"');
-      }
-    });
-
-    // Blog posts and portfolio items are authored whole (title/description/
-    // image already attached by the admin form itself), unlike `entries`
-    // (a bare product link still needing content written by hand) - so
-    // these go straight through instant-publish instead of the manual
-    // Kopyala flow. Each pending record is a self-describing op, matched
-    // by its own stable `id` (not by index/title, which can change).
-    if (!data.blogPosts) data.blogPosts = [];
-    (sets.blogPosts || []).forEach(function(p) {
-      if (p.op === 'add') {
-        data.blogPosts.push(p.record);
-        appliedCounts.blogPosts++;
-      } else if (p.op === 'edit') {
-        var blogIdx = data.blogPosts.findIndex(function(x) { return x.id === p.id; });
-        if (blogIdx === -1) { warnings.push('Blog yazısı güncellenemedi, bulunamadı: ' + p.id); return; }
-        data.blogPosts[blogIdx] = p.record;
-        appliedCounts.blogPosts++;
-      } else if (p.op === 'remove') {
-        var blogBefore = data.blogPosts.length;
-        data.blogPosts = data.blogPosts.filter(function(x) { return x.id !== p.id; });
-        if (data.blogPosts.length === blogBefore) { warnings.push('Blog yazısı silinemedi, bulunamadı: ' + p.id); return; }
-        appliedCounts.blogPosts++;
-      }
-    });
-
-    if (!data.portfolioItems) data.portfolioItems = [];
-    (sets.portfolioItems || []).forEach(function(p) {
-      if (p.op === 'add') {
-        data.portfolioItems.push(p.record);
-        appliedCounts.portfolioItems++;
-      } else if (p.op === 'edit') {
-        var portIdx = data.portfolioItems.findIndex(function(x) { return x.id === p.id; });
-        if (portIdx === -1) { warnings.push('Portfolyo öğesi güncellenemedi, bulunamadı: ' + p.id); return; }
-        data.portfolioItems[portIdx] = p.record;
-        appliedCounts.portfolioItems++;
-      } else if (p.op === 'remove') {
-        var portBefore = data.portfolioItems.length;
-        data.portfolioItems = data.portfolioItems.filter(function(x) { return x.id !== p.id; });
-        if (data.portfolioItems.length === portBefore) { warnings.push('Portfolyo öğesi silinemedi, bulunamadı: ' + p.id); return; }
-        appliedCounts.portfolioItems++;
       }
     });
 
@@ -452,51 +408,12 @@ window.EnzaPublish = (function() {
     });
   }
 
-  // Reads a File as base64, stripping the "data:...;base64," prefix
-  // FileReader.readAsDataURL adds - githubRequest's JSON body needs the
-  // raw base64 the Contents API expects, not a data: URI.
-  function fileToBase64(file) {
-    return new Promise(function(resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function() { resolve(String(reader.result).split(',')[1] || ''); };
-      reader.onerror = function() { reject(new Error('Dosya okunamadı.')); };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  // Commits one image file straight to the repo as a brand-new path - no
-  // `sha` needed (only required when overwriting an existing file), and
-  // the timestamp-prefixed filename means collisions can't happen. Used
-  // for blog/portfolio "featured image" uploads: the image goes live the
-  // moment it's dropped, well before the surrounding post/item is actually
-  // published - only the short returned path then rides along in that
-  // pending record.
-  function uploadImage(file, folder) {
-    var token = getToken();
-    if (!token) return Promise.reject(new Error('GitHub erişim anahtarı girilmemiş.'));
-    var dir = folder === 'portfolio' ? IMG_PORTFOLIO_DIR : IMG_BLOG_DIR;
-    return fileToBase64(file).then(function(base64) {
-      var safeName = Date.now() + '-' + file.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
-      return githubRequest('PUT', '/contents/' + dir + '/' + safeName, {
-        message: 'Yönetim panelinden görsel yükleme: ' + safeName,
-        content: base64,
-        branch: BRANCH
-      }, token).then(function(result) {
-        return {
-          path: 'img/' + folder + '/' + safeName,
-          commitUrl: result.commit && result.commit.html_url
-        };
-      });
-    });
-  }
-
   return {
     getToken: getToken,
     setToken: setToken,
     applyChanges: applyChanges,
     serialize: serialize,
     publish: publish,
-    uploadImage: uploadImage,
     patchIndexHtmlContact: patchIndexHtmlContact,
     patchIndexHtmlSceneList: patchIndexHtmlSceneList,
     SKIPPED_SETTINGS_TYPES: SKIPPED_SETTINGS_TYPES
