@@ -1,7 +1,8 @@
 // Instant-publish: applies the admin panel's pending change records directly
-// to docs/data.js (and, for a few settings types, docs/index.html) on GitHub
-// via the Contents API, so "Kaydet" actions can go live without routing
-// through a manual copy/paste + Claude-edit + push cycle.
+// to docs/data.js (and, for a few settings types, docs/tur.html - the 360
+// tour's own HTML, not the marketing homepage) on GitHub via the Contents
+// API, so "Kaydet" actions can go live without routing through a manual
+// copy/paste + Claude-edit + push cycle.
 //
 // Scope: two change types are still left out and require the old Kopyala
 // flow:
@@ -14,7 +15,7 @@ window.EnzaPublish = (function() {
   var BRANCH = 'master';
   var TOKEN_KEY = 'enzaGithubToken';
   var DATA_PATH = 'docs/data.js';
-  var HTML_PATH = 'docs/index.html';
+  var HTML_PATH = 'docs/tur.html';
 
   function getToken() {
     try { return window.localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
@@ -58,8 +59,8 @@ window.EnzaPublish = (function() {
   // input. Anything it can't confidently apply is left alone and reported in
   // `warnings` so it can still be handled through the manual Kopyala flow.
   //
-  // A few settings types (contact, sceneOrder, deleteScene) also need an
-  // index.html edit, not just data.js - those are collected into
+  // A few settings types (contact, sceneOrder, deleteScene) also need a
+  // tur.html edit, not just data.js - those are collected into
   // `htmlOps` for publish() to apply separately, rather than handled here.
   function applyChanges(sourceData, sets) {
     var data = JSON.parse(JSON.stringify(sourceData));
@@ -348,8 +349,8 @@ window.EnzaPublish = (function() {
   // copy, which may be stale), applies every applicable pending change on
   // top of it, and commits the result back if anything actually changed.
   // A few settings types (contact, sceneOrder, deleteScene) also need
-  // docs/index.html edited - that happens as a second, separate commit
-  // right after, only if there's actually an index.html change pending.
+  // docs/tur.html edited - that happens as a second, separate commit
+  // right after, only if there's actually a tur.html change pending.
   function publish(sets, opts) {
     var token = getToken();
     if (!token) return Promise.reject(new Error('GitHub erişim anahtarı girilmemiş.'));
@@ -391,7 +392,7 @@ window.EnzaPublish = (function() {
         }
         if (newHtml === currentHtml) return null;
         return githubRequest('PUT', '/contents/' + HTML_PATH, {
-          message: (opts && opts.message) || 'Yönetim panelinden otomatik yayın (index.html)',
+          message: (opts && opts.message) || 'Yönetim panelinden otomatik yayın (tur.html)',
           content: b64EncodeUnicode(newHtml),
           sha: htmlFileInfo.sha,
           branch: BRANCH
