@@ -1205,6 +1205,8 @@ var APP_DATA = {
       }
     ],
     "aboutTitle": "Manavgat'ta Yataş Enza Home Güvencesi",
-    "aboutText": "enza HOME Manavgat olarak bölgemizde oturma grupları, yatak odası takımları ve Yataş Bedding koleksiyonlarını sunuyor; her müşterimize evine özel çözümler için ücretsiz mimari projelendirme desteği veriyoruz."
-  }
+    "aboutText": "enza HOME Manavgat olarak bölgemizde oturma grupları, yatak odası takımları ve Yataş Bedding koleksiyonlarını sunuyor; her müşterimize evine özel çözümler için ücretsiz mimari projelendirme desteği veriyoruz.",
+    "heroImages": []
+  },
+  "testimonials": []
 };

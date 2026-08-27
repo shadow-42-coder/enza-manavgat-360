@@ -19,6 +19,8 @@ window.EnzaPublish = (function() {
   var IMG_BLOG_DIR = 'docs/img/blog';
   var IMG_PORTFOLIO_DIR = 'docs/img/portfolio';
   var IMG_CAMPAIGN_DIR = 'docs/img/campaigns';
+  var IMG_HERO_DIR = 'docs/img/hero';
+  var IMG_TESTIMONIAL_DIR = 'docs/img/testimonials';
 
   function getToken() {
     try { return window.localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
@@ -68,7 +70,7 @@ window.EnzaPublish = (function() {
   function applyChanges(sourceData, sets) {
     var data = JSON.parse(JSON.stringify(sourceData));
     var warnings = [];
-    var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0, blogPosts: 0, portfolioItems: 0, campaigns: 0 };
+    var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0, blogPosts: 0, portfolioItems: 0, campaigns: 0, testimonials: 0 };
     var htmlOps = { contact: null, sceneOrder: null, deletedSceneIds: [] };
 
     (sets.arrows || []).forEach(function(a) {
@@ -295,6 +297,24 @@ window.EnzaPublish = (function() {
       }
     });
 
+    if (!data.testimonials) data.testimonials = [];
+    (sets.testimonials || []).forEach(function(p) {
+      if (p.op === 'add') {
+        data.testimonials.push(p.record);
+        appliedCounts.testimonials++;
+      } else if (p.op === 'edit') {
+        var testIdx = data.testimonials.findIndex(function(x) { return x.id === p.id; });
+        if (testIdx === -1) { warnings.push('Yorum güncellenemedi, bulunamadı: ' + p.id); return; }
+        data.testimonials[testIdx] = p.record;
+        appliedCounts.testimonials++;
+      } else if (p.op === 'remove') {
+        var testBefore = data.testimonials.length;
+        data.testimonials = data.testimonials.filter(function(x) { return x.id !== p.id; });
+        if (data.testimonials.length === testBefore) { warnings.push('Yorum silinemedi, bulunamadı: ' + p.id); return; }
+        appliedCounts.testimonials++;
+      }
+    });
+
     return { data: data, warnings: warnings, appliedCounts: appliedCounts, htmlOps: htmlOps };
   }
 
@@ -510,10 +530,17 @@ window.EnzaPublish = (function() {
   // moment it's dropped, well before the surrounding post/item is actually
   // published - only the short returned path then rides along in that
   // pending record.
+  var UPLOAD_DIRS_BY_FOLDER = {
+    blog: IMG_BLOG_DIR,
+    portfolio: IMG_PORTFOLIO_DIR,
+    campaign: IMG_CAMPAIGN_DIR,
+    hero: IMG_HERO_DIR,
+    testimonial: IMG_TESTIMONIAL_DIR
+  };
   function uploadImage(file, folder) {
     var token = getToken();
     if (!token) return Promise.reject(new Error('GitHub erişim anahtarı girilmemiş.'));
-    var dir = folder === 'portfolio' ? IMG_PORTFOLIO_DIR : (folder === 'campaign' ? IMG_CAMPAIGN_DIR : IMG_BLOG_DIR);
+    var dir = UPLOAD_DIRS_BY_FOLDER[folder] || IMG_BLOG_DIR;
     return fileToBase64(file).then(function(base64) {
       var safeName = Date.now() + '-' + file.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
       return githubRequest('PUT', '/contents/' + dir + '/' + safeName, {
@@ -522,10 +549,31 @@ window.EnzaPublish = (function() {
         branch: BRANCH
       }, token).then(function(result) {
         return {
-          path: 'img/' + folder + '/' + safeName,
+          path: dir.replace(/^docs\//, '') + '/' + safeName,
           commitUrl: result.commit && result.commit.html_url
         };
       });
+    });
+  }
+
+  // Read-only directory listing (GitHub Contents API on a directory path
+  // returns an array, not a single file object) - used by the admin panel's
+  // Medya view so the admin can see what's already been uploaded without
+  // needing to open GitHub itself. Never writes anything.
+  function listImages(folder) {
+    var token = getToken();
+    if (!token) return Promise.reject(new Error('GitHub erişim anahtarı girilmemiş.'));
+    var dir = UPLOAD_DIRS_BY_FOLDER[folder];
+    if (!dir) return Promise.reject(new Error('Bilinmeyen klasör: ' + folder));
+    var relDir = dir.replace(/^docs\//, '');
+    return githubRequest('GET', '/contents/' + dir + '?ref=' + BRANCH, null, token).then(function(list) {
+      if (!Array.isArray(list)) return [];
+      return list.filter(function(f) { return f.type === 'file'; }).map(function(f) {
+        return { name: f.name, path: relDir + '/' + f.name, downloadUrl: f.download_url };
+      }).sort(function(a, b) { return b.name.localeCompare(a.name); });
+    }).catch(function(err) {
+      if (err && err.status === 404) return [];
+      throw err;
     });
   }
 
@@ -536,6 +584,7 @@ window.EnzaPublish = (function() {
     serialize: serialize,
     publish: publish,
     uploadImage: uploadImage,
+    listImages: listImages,
     patchIndexHtmlContact: patchIndexHtmlContact,
     patchIndexHtmlSceneList: patchIndexHtmlSceneList,
     SKIPPED_SETTINGS_TYPES: SKIPPED_SETTINGS_TYPES

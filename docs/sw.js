@@ -4,7 +4,7 @@
 // and only falls back to a cached copy on failure - never cache-first - so
 // it can never serve a visitor a stale tour after data.js/index.js/tiles
 // get updated. Bump CACHE_NAME to force old caches to be dropped.
-var CACHE_NAME = 'enza-shell-v2';
+var CACHE_NAME = 'enza-shell-v3';
 var SHELL_FILES = [
   './',
   'index.html',
@@ -13,6 +13,8 @@ var SHELL_FILES = [
   'portfolyo.html',
   'kampanyalar.html',
   'hakkimizda.html',
+  'sss.html',
+  'gizlilik.html',
   'style.css',
   'index.js',
   'publish.js',

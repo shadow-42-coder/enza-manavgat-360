@@ -1281,6 +1281,7 @@
     var BLOG_KEY = 'enzaPosCollectorBlogPosts';
     var PORTFOLIO_KEY = 'enzaPosCollectorPortfolioItems';
     var CAMPAIGN_KEY = 'enzaPosCollectorCampaigns';
+    var TESTIMONIAL_KEY = 'enzaPosCollectorTestimonials';
     var entries = [];
     var moves = [];
     var arrows = [];
@@ -1291,6 +1292,7 @@
     var blogPosts = [];
     var portfolioItems = [];
     var campaigns = [];
+    var testimonials = [];
     try { entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]'); } catch (e) { entries = []; }
     try { moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]'); } catch (e) { moves = []; }
     try { arrows = JSON.parse(window.localStorage.getItem(ARROW_KEY) || '[]'); } catch (e) { arrows = []; }
@@ -1301,9 +1303,11 @@
     try { blogPosts = JSON.parse(window.localStorage.getItem(BLOG_KEY) || '[]'); } catch (e) { blogPosts = []; }
     try { portfolioItems = JSON.parse(window.localStorage.getItem(PORTFOLIO_KEY) || '[]'); } catch (e) { portfolioItems = []; }
     try { campaigns = JSON.parse(window.localStorage.getItem(CAMPAIGN_KEY) || '[]'); } catch (e) { campaigns = []; }
+    try { testimonials = JSON.parse(window.localStorage.getItem(TESTIMONIAL_KEY) || '[]'); } catch (e) { testimonials = []; }
     function saveBlogPosts() { window.localStorage.setItem(BLOG_KEY, JSON.stringify(blogPosts)); updateCount(); }
     function savePortfolioItems() { window.localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolioItems)); updateCount(); }
     function saveCampaigns() { window.localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(campaigns)); updateCount(); }
+    function saveTestimonials() { window.localStorage.setItem(TESTIMONIAL_KEY, JSON.stringify(testimonials)); updateCount(); }
 
     // "Kopyala" reports everything pending to the admin's clipboard so it can
     // be handed off (new products/scenes still need to be added by hand;
@@ -1383,6 +1387,12 @@
     var campaignModeButton = document.createElement('button');
     campaignModeButton.textContent = 'Kampanyalar';
     campaignModeButton.className = 'posFinderModeButton';
+    var testimonialModeButton = document.createElement('button');
+    testimonialModeButton.textContent = 'Yorumlar';
+    testimonialModeButton.className = 'posFinderModeButton';
+    var mediaModeButton = document.createElement('button');
+    mediaModeButton.textContent = 'Medya';
+    mediaModeButton.className = 'posFinderModeButton';
     modeRow.appendChild(productModeButton);
     modeRow.appendChild(linkModeButton);
     modeRow.appendChild(deleteModeButton);
@@ -1395,6 +1405,8 @@
     modeRow.appendChild(blogModeButton);
     modeRow.appendChild(portfolioModeButton);
     modeRow.appendChild(campaignModeButton);
+    modeRow.appendChild(testimonialModeButton);
+    modeRow.appendChild(mediaModeButton);
 
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
@@ -2655,11 +2667,61 @@
     aboutTitleInput.placeholder = 'Hakkımızda başlığı';
     var aboutTextInput = document.createElement('textarea');
     aboutTextInput.placeholder = 'Hakkımızda metni';
+
+    // Ana Sayfa hero görsel karuseli - birden fazla görsel eklenebilir,
+    // renderHomeContent() bunları döndürerek gösterir; hiç eklenmezse tek
+    // statik görsele düşer (index.html'deki mevcut <img>).
+    var heroImagesLabel = document.createElement('div');
+    heroImagesLabel.style.fontSize = '12px';
+    heroImagesLabel.style.color = 'var(--admin-text-muted)';
+    heroImagesLabel.style.margin = '10px 0 6px';
+    heroImagesLabel.textContent = 'Ana Sayfa Hero Görselleri (birden fazla eklenebilir, kayan gösterilir)';
+    var heroImagesList = document.createElement('div');
+    heroImagesList.className = 'posFinderHeroImageList';
+    var heroImagesDropZone = buildImageDropZone('hero');
+    var heroImages = (data.siteContent && data.siteContent.heroImages) ? data.siteContent.heroImages.slice() : [];
+    function renderHeroImagesList() {
+      heroImagesList.innerHTML = '';
+      heroImages.forEach(function(path, i) {
+        var row = document.createElement('div');
+        row.className = 'posFinderHeroImageRow';
+        var img = document.createElement('img');
+        img.src = path;
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Kaldır';
+        removeBtn.addEventListener('click', function() {
+          heroImages.splice(i, 1);
+          renderHeroImagesList();
+        });
+        row.appendChild(img);
+        row.appendChild(removeBtn);
+        heroImagesList.appendChild(row);
+      });
+    }
+    renderHeroImagesList();
+    var heroImagesAddButton = document.createElement('button');
+    heroImagesAddButton.type = 'button';
+    heroImagesAddButton.textContent = '+ Listeye Ekle';
+    heroImagesAddButton.style.marginTop = '6px';
+    heroImagesAddButton.addEventListener('click', function() {
+      var path = heroImagesDropZone.getPath();
+      if (!path) { window.alert('Önce bir görsel yükleyin.'); return; }
+      heroImages.push(path);
+      heroImagesDropZone.reset('');
+      renderHeroImagesList();
+    });
+
     var siteContentButton = document.createElement('button');
     siteContentButton.textContent = 'Site İçeriğini Güncelle';
     siteContentSection.appendChild(heroEyebrowInput);
     siteContentSection.appendChild(heroTitleInput);
     siteContentSection.appendChild(heroSubtitleInput);
+    siteContentSection.appendChild(heroImagesLabel);
+    siteContentSection.appendChild(heroImagesList);
+    siteContentSection.appendChild(heroImagesDropZone.el);
+    siteContentSection.appendChild(heroImagesAddButton);
     valuePropInputs.forEach(function(vp) {
       siteContentSection.appendChild(vp.titleInput);
       siteContentSection.appendChild(vp.descInput);
@@ -2674,6 +2736,7 @@
         heroEyebrow: heroEyebrowInput.value.trim(),
         heroTitle: heroTitleInput.value.trim(),
         heroSubtitle: heroSubtitleInput.value.trim(),
+        heroImages: heroImages.slice(),
         valueProps: valuePropInputs.map(function(vp) {
           return { title: vp.titleInput.value.trim(), desc: vp.descInput.value.trim() };
         }),
@@ -2725,7 +2788,7 @@
 
     function totalUnpublishedCount() {
       return arrows.length + moves.length + removals.length + edits.length + settingsChanges.length +
-        blogPosts.length + portfolioItems.length + campaigns.length;
+        blogPosts.length + portfolioItems.length + campaigns.length + testimonials.length;
     }
 
     // Warn before leaving the tab (close/reload/navigate away) with edits
@@ -2741,7 +2804,7 @@
       if (!window.EnzaPublish) { publishStatus.textContent = 'Yayınlama modülü yüklenemedi.'; return; }
       var pendingSets = {
         arrows: arrows, moves: moves, removals: removals, edits: edits, settingsChanges: settingsChanges,
-        blogPosts: blogPosts, portfolioItems: portfolioItems, campaigns: campaigns
+        blogPosts: blogPosts, portfolioItems: portfolioItems, campaigns: campaigns, testimonials: testimonials
       };
       var totalPending = totalUnpublishedCount();
       if (!totalPending) { publishStatus.textContent = 'Yayınlanacak bir değişiklik yok.'; return; }
@@ -2759,14 +2822,15 @@
             (result.warnings.length ? (' Uygulanamayanlar: ' + result.warnings.join(' | ')) : '');
           return;
         }
-        arrows = []; moves = []; removals = []; edits = []; blogPosts = []; portfolioItems = []; campaigns = [];
+        arrows = []; moves = []; removals = []; edits = []; blogPosts = []; portfolioItems = []; campaigns = []; testimonials = [];
         settingsChanges = settingsChanges.filter(function(c) { return window.EnzaPublish.SKIPPED_SETTINGS_TYPES[c.type]; });
-        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges(); saveBlogPosts(); savePortfolioItems(); saveCampaigns();
+        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges(); saveBlogPosts(); savePortfolioItems(); saveCampaigns(); saveTestimonials();
         updateCount();
         var summary = 'Yayınlandı! (' + result.appliedCounts.arrows + ' ok, ' + result.appliedCounts.moves + ' taşıma, ' +
           result.appliedCounts.removals + ' silme, ' + result.appliedCounts.edits + ' düzenleme, ' +
           result.appliedCounts.settingsChanges + ' ayar, ' + result.appliedCounts.blogPosts + ' blog yazısı, ' +
-          result.appliedCounts.portfolioItems + ' portfolyo öğesi, ' + result.appliedCounts.campaigns + ' kampanya). Site birkaç dakika içinde güncellenir.';
+          result.appliedCounts.portfolioItems + ' portfolyo öğesi, ' + result.appliedCounts.campaigns + ' kampanya, ' +
+          result.appliedCounts.testimonials + ' yorum). Site birkaç dakika içinde güncellenir.';
         if (result.warnings.length) summary += ' Elle uygulanması gerekenler: ' + result.warnings.join(' | ');
         publishStatus.textContent = summary;
       }).catch(function(err) {
@@ -4442,6 +4506,50 @@
     var portfolioChips = buildManageableCategoryRow('portfolioCategories', PORTFOLIO_CATEGORIES);
     var portfolioStatusToggle = buildStatusToggle();
     var portfolioDropZone = buildImageDropZone('portfolio');
+
+    // Kapak görseli dışında, lightbox'ta gezinilebilecek ek görseller -
+    // Ana Sayfa hero görsel listesiyle (siteContentSection) birebir aynı
+    // ekle/kaldır deseni, kayıtta "images" alanına yazılır.
+    var portfolioExtraImagesLabel = document.createElement('div');
+    portfolioExtraImagesLabel.className = 'posFinderFieldLabel';
+    portfolioExtraImagesLabel.style.marginTop = '10px';
+    portfolioExtraImagesLabel.textContent = 'Ek Görseller (lightbox\'ta kapakla birlikte gezinilir)';
+    var portfolioExtraImagesList = document.createElement('div');
+    portfolioExtraImagesList.className = 'posFinderHeroImageList';
+    var portfolioExtraDropZone = buildImageDropZone('portfolio');
+    var portfolioExtraImages = [];
+    function renderPortfolioExtraImagesList() {
+      portfolioExtraImagesList.innerHTML = '';
+      portfolioExtraImages.forEach(function(path, i) {
+        var row = document.createElement('div');
+        row.className = 'posFinderHeroImageRow';
+        var img = document.createElement('img');
+        img.src = path;
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Kaldır';
+        removeBtn.addEventListener('click', function() {
+          portfolioExtraImages.splice(i, 1);
+          renderPortfolioExtraImagesList();
+        });
+        row.appendChild(img);
+        row.appendChild(removeBtn);
+        portfolioExtraImagesList.appendChild(row);
+      });
+    }
+    var portfolioExtraAddButton = document.createElement('button');
+    portfolioExtraAddButton.type = 'button';
+    portfolioExtraAddButton.textContent = '+ Listeye Ekle';
+    portfolioExtraAddButton.style.marginTop = '6px';
+    portfolioExtraAddButton.addEventListener('click', function() {
+      var path = portfolioExtraDropZone.getPath();
+      if (!path) { window.alert('Önce bir görsel yükleyin.'); return; }
+      portfolioExtraImages.push(path);
+      portfolioExtraDropZone.reset('');
+      renderPortfolioExtraImagesList();
+    });
+
     var portfolioSaveButton = document.createElement('button');
     portfolioSaveButton.type = 'button';
     portfolioSaveButton.textContent = 'Kaydet';
@@ -4451,6 +4559,10 @@
     var portfolioEditorMain = document.createElement('div');
     portfolioEditorMain.className = 'posFinderEditorMain';
     portfolioEditorMain.appendChild(portfolioDropZone.el);
+    portfolioEditorMain.appendChild(portfolioExtraImagesLabel);
+    portfolioEditorMain.appendChild(portfolioExtraImagesList);
+    portfolioEditorMain.appendChild(portfolioExtraDropZone.el);
+    portfolioEditorMain.appendChild(portfolioExtraAddButton);
     var portfolioEditorSidebar = document.createElement('div');
     portfolioEditorSidebar.className = 'posFinderEditorSidebar';
     portfolioEditorSidebar.appendChild(sidebarBlock('Durum', portfolioStatusToggle.el));
@@ -4475,6 +4587,9 @@
       portfolioStatusToggle.set(item ? item.status : 'draft');
       portfolioChips.set(item ? item.category : null);
       portfolioDropZone.reset(item ? item.image : '');
+      portfolioExtraImages = (item && item.images) ? item.images.slice() : [];
+      portfolioExtraDropZone.reset('');
+      renderPortfolioExtraImagesList();
       portfolioListView.style.display = 'none';
       portfolioEditorView.style.display = 'block';
     }
@@ -4495,6 +4610,7 @@
         title: title,
         category: portfolioChips.get(),
         image: portfolioDropZone.getPath(),
+        images: portfolioExtraImages.slice(),
         caption: portfolioCaptionInput.value.trim(),
         status: portfolioStatusToggle.get(),
         date: editingPortfolioItem ? editingPortfolioItem.date : todayIso()
@@ -4726,6 +4842,229 @@
       });
     }
 
+    // Yorumlar (Testimonials) - 4. tekrarı olan aynı içerik türü deseni
+    // (Blog/Portfolyo/Kampanya ile birebir). Sahte yorum ASLA otomatik
+    // eklenmez - data.testimonials boş başlar, sadece admin gerçek bir
+    // yorum girdiğinde dolar. renderHomeContent() (site-pages.js) yayında
+    // en az 1 yorum yoksa Ana Sayfa'daki bölümü tamamen gizler.
+    var testimonialPanel = document.createElement('div');
+    testimonialPanel.id = 'posFinderTestimonialPanel';
+    testimonialPanel.style.display = 'none';
+
+    var testimonialListView = document.createElement('div');
+    var testimonialListHeader = document.createElement('div');
+    testimonialListHeader.className = 'posFinderContentListHeader';
+    var testimonialListTitle = document.createElement('span');
+    testimonialListTitle.textContent = 'Yorumlar';
+    var testimonialNewButton = document.createElement('button');
+    testimonialNewButton.type = 'button';
+    testimonialNewButton.textContent = '+ Yeni Yorum';
+    testimonialListHeader.appendChild(testimonialListTitle);
+    testimonialListHeader.appendChild(testimonialNewButton);
+    var testimonialListItems = document.createElement('div');
+    testimonialListView.appendChild(testimonialListHeader);
+    testimonialListView.appendChild(testimonialListItems);
+
+    var testimonialEditorView = document.createElement('div');
+    testimonialEditorView.style.display = 'none';
+    var testimonialBackLink = document.createElement('a');
+    testimonialBackLink.href = '#';
+    testimonialBackLink.className = 'posFinderBackLink';
+    testimonialBackLink.textContent = '← Yorumlara Dön';
+    var testimonialNameInput = document.createElement('input');
+    testimonialNameInput.type = 'text';
+    testimonialNameInput.className = 'posFinderBlogTitleInput';
+    testimonialNameInput.placeholder = 'Müşteri adı';
+    var testimonialRoleInput = document.createElement('input');
+    testimonialRoleInput.type = 'text';
+    testimonialRoleInput.placeholder = 'Konum/not (ör. Manavgat) - opsiyonel';
+    var testimonialQuoteTextarea = document.createElement('textarea');
+    testimonialQuoteTextarea.placeholder = 'Yorum metni';
+    var testimonialRatingSelect = document.createElement('select');
+    [5, 4, 3, 2, 1].forEach(function(n) {
+      var opt = document.createElement('option');
+      opt.value = String(n);
+      opt.textContent = n + ' yıldız';
+      testimonialRatingSelect.appendChild(opt);
+    });
+    var testimonialStatusToggle = buildStatusToggle();
+    var testimonialSaveButton = document.createElement('button');
+    testimonialSaveButton.type = 'button';
+    testimonialSaveButton.textContent = 'Kaydet';
+
+    var testimonialEditorColumns = document.createElement('div');
+    testimonialEditorColumns.className = 'posFinderEditorColumns';
+    var testimonialEditorMain = document.createElement('div');
+    testimonialEditorMain.className = 'posFinderEditorMain';
+    testimonialEditorMain.appendChild(testimonialQuoteTextarea);
+    var testimonialEditorSidebar = document.createElement('div');
+    testimonialEditorSidebar.className = 'posFinderEditorSidebar';
+    testimonialEditorSidebar.appendChild(sidebarBlock('Durum', testimonialStatusToggle.el));
+    testimonialEditorSidebar.appendChild(sidebarBlock('Puan', testimonialRatingSelect));
+    testimonialEditorSidebar.appendChild(testimonialSaveButton);
+    testimonialEditorColumns.appendChild(testimonialEditorMain);
+    testimonialEditorColumns.appendChild(testimonialEditorSidebar);
+
+    testimonialEditorView.appendChild(testimonialBackLink);
+    testimonialEditorView.appendChild(testimonialNameInput);
+    testimonialEditorView.appendChild(testimonialRoleInput);
+    testimonialEditorView.appendChild(testimonialEditorColumns);
+
+    testimonialPanel.appendChild(testimonialListView);
+    testimonialPanel.appendChild(testimonialEditorView);
+
+    var editingTestimonialItem = null;
+    function openTestimonialEditor(item) {
+      editingTestimonialItem = item || null;
+      testimonialNameInput.value = item ? item.name : '';
+      testimonialRoleInput.value = item ? (item.role || '') : '';
+      testimonialQuoteTextarea.value = item ? item.quote : '';
+      testimonialRatingSelect.value = item ? String(item.rating || 5) : '5';
+      testimonialStatusToggle.set(item ? item.status : 'draft');
+      testimonialListView.style.display = 'none';
+      testimonialEditorView.style.display = 'block';
+    }
+    function closeTestimonialEditor() {
+      editingTestimonialItem = null;
+      testimonialListView.style.display = 'block';
+      testimonialEditorView.style.display = 'none';
+      renderTestimonialAdminList();
+    }
+    testimonialNewButton.addEventListener('click', function() { openTestimonialEditor(null); });
+    testimonialBackLink.addEventListener('click', function(event) { event.preventDefault(); closeTestimonialEditor(); });
+
+    testimonialSaveButton.addEventListener('click', function() {
+      var name = testimonialNameInput.value.trim();
+      var quote = testimonialQuoteTextarea.value.trim();
+      if (!name || !quote) { window.alert('Ad ve yorum metni girin.'); return; }
+      var record = {
+        id: editingTestimonialItem ? editingTestimonialItem.id : ('test-' + Date.now()),
+        name: name,
+        role: testimonialRoleInput.value.trim(),
+        quote: quote,
+        rating: parseInt(testimonialRatingSelect.value, 10),
+        status: testimonialStatusToggle.get(),
+        date: editingTestimonialItem ? editingTestimonialItem.date : todayIso()
+      };
+      testimonials.push({ op: editingTestimonialItem ? 'edit' : 'add', id: record.id, record: record });
+      saveTestimonials();
+      closeTestimonialEditor();
+    });
+
+    function renderTestimonialAdminList() {
+      testimonialListItems.innerHTML = '';
+      var effective = {};
+      var order = [];
+      (data.testimonials || []).forEach(function(item) {
+        order.push(item.id);
+        effective[item.id] = item;
+      });
+      testimonials.forEach(function(p) {
+        if (p.op === 'remove') { delete effective[p.id]; return; }
+        if (!effective[p.id]) order.push(p.id);
+        effective[p.id] = p.record;
+      });
+      order = order.filter(function(id) { return effective[id]; });
+      if (!order.length) {
+        testimonialListItems.textContent = 'Henüz yorum yok.';
+        return;
+      }
+      order.forEach(function(id) {
+        var item = effective[id];
+        if (!item) return;
+        var row = document.createElement('div');
+        row.className = 'posFinderContentListItem';
+        var info = document.createElement('div');
+        info.className = 'posFinderContentListItemInfo';
+        info.innerHTML = '<strong>' + sanitize(item.name) + '</strong><span class="posFinderContentListItemMeta">' +
+          (item.status === 'published' ? 'Yayında' : 'Taslak') + ' · ' + item.rating + ' yıldız</span>';
+        var editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.textContent = 'Düzenle';
+        editButton.addEventListener('click', function() { openTestimonialEditor(item); });
+        var deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Sil';
+        deleteButton.addEventListener('click', function() {
+          if (!window.confirm('"' + item.name + '" yorumu silinsin mi?')) return;
+          testimonials.push({ op: 'remove', id: id });
+          saveTestimonials();
+          renderTestimonialAdminList();
+        });
+        row.appendChild(info);
+        row.appendChild(editButton);
+        row.appendChild(deleteButton);
+        testimonialListItems.appendChild(row);
+      });
+    }
+
+    // Medya Kütüphanesi - salt okunur: GitHub'daki img/blog, img/portfolio,
+    // img/campaigns, img/hero, img/testimonials klasörlerini listeler,
+    // tıklayınca yolu panoya kopyalar. Hiçbir şey yazmaz/silmez.
+    var mediaPanel = document.createElement('div');
+    mediaPanel.id = 'posFinderMediaPanel';
+    mediaPanel.style.display = 'none';
+    var mediaFolderRow = document.createElement('div');
+    mediaFolderRow.className = 'posFinderChipRow';
+    var MEDIA_FOLDERS = [
+      { key: 'blog', label: 'Blog' },
+      { key: 'portfolio', label: 'Portfolyo' },
+      { key: 'campaign', label: 'Kampanyalar' },
+      { key: 'hero', label: 'Ana Sayfa Hero' },
+      { key: 'testimonial', label: 'Yorumlar' }
+    ];
+    var mediaGrid = document.createElement('div');
+    mediaGrid.className = 'posFinderMediaGrid';
+    var mediaStatus = document.createElement('div');
+    mediaStatus.className = 'posFinderPasswordHint';
+    mediaPanel.appendChild(mediaFolderRow);
+    mediaPanel.appendChild(mediaStatus);
+    mediaPanel.appendChild(mediaGrid);
+
+    var activeMediaFolder = 'blog';
+    var mediaFolderButtons = MEDIA_FOLDERS.map(function(f) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'posFinderModeButton' + (f.key === activeMediaFolder ? ' active' : '');
+      btn.textContent = f.label;
+      btn.addEventListener('click', function() {
+        activeMediaFolder = f.key;
+        mediaFolderButtons.forEach(function(b) { b.classList.toggle('active', b === btn); });
+        loadMediaFolder();
+      });
+      mediaFolderRow.appendChild(btn);
+      return btn;
+    });
+
+    function loadMediaFolder() {
+      mediaGrid.innerHTML = '';
+      if (!window.EnzaPublish) { mediaStatus.textContent = 'Yayınlama modülü yüklenemedi.'; return; }
+      mediaStatus.textContent = 'Yükleniyor...';
+      window.EnzaPublish.listImages(activeMediaFolder).then(function(files) {
+        mediaStatus.textContent = files.length ? (files.length + ' görsel') : 'Bu klasörde henüz görsel yok.';
+        files.forEach(function(f) {
+          var cell = document.createElement('div');
+          cell.className = 'posFinderMediaCell';
+          var img = document.createElement('img');
+          img.src = f.downloadUrl || f.path;
+          img.title = 'Kopyalamak için tıklayın: ' + f.path;
+          cell.appendChild(img);
+          cell.addEventListener('click', function() {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(f.path).then(function() {
+                mediaStatus.textContent = 'Kopyalandı: ' + f.path;
+              }).catch(function() { mediaStatus.textContent = f.path; });
+            } else {
+              mediaStatus.textContent = f.path;
+            }
+          });
+          mediaGrid.appendChild(cell);
+        });
+      }).catch(function(err) {
+        mediaStatus.textContent = 'Yüklenemedi: ' + err.message;
+      });
+    }
+
     // Header: drag handle + minimize toggle, so the box can be moved out of
     // the way and collapsed to a small pill instead of always taking up
     // this much space with every tool visible at once.
@@ -4851,6 +5190,8 @@
     content.appendChild(blogPanel);
     content.appendChild(portfolioPanel);
     content.appendChild(campaignPanel);
+    content.appendChild(testimonialPanel);
+    content.appendChild(mediaPanel);
     content.appendChild(actionRow);
 
     // Manual resize handles - only meaningful in "wide" (dashboard) mode,
@@ -4992,7 +5333,7 @@
     // hotspot) get a big dashboard-style panel with the pano shrunk to a
     // small floating preview, instead of competing for space with a
     // full-size photo they don't actually need to click on.
-    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true, blog: true, portfolio: true, campaign: true };
+    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true, blog: true, portfolio: true, campaign: true, testimonial: true, media: true };
     function setMode(newMode) {
       mode = newMode;
       var wasWide = document.body.classList.contains('posFinderWide');
@@ -5022,11 +5363,13 @@
       blogModeButton.classList.toggle('active', mode === 'blog');
       portfolioModeButton.classList.toggle('active', mode === 'portfolio');
       campaignModeButton.classList.toggle('active', mode === 'campaign');
+      testimonialModeButton.classList.toggle('active', mode === 'testimonial');
+      mediaModeButton.classList.toggle('active', mode === 'media');
       linkInput.style.display = mode === 'product' ? '' : 'none';
       draftFetchButton.style.display = (mode === 'product' && !editingEntry) ? '' : 'none';
       if (mode !== 'product') clearDraft();
       sceneSelect.style.display = mode === 'link' ? '' : 'none';
-      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign') ? 'none' : 'flex';
+      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media') ? 'none' : 'flex';
       photoPanel.style.display = mode === 'photo' ? 'block' : 'none';
       settingsPanel.style.display = mode === 'settings' ? 'block' : 'none';
       newScenePanel.style.display = mode === 'newScene' ? 'block' : 'none';
@@ -5036,8 +5379,10 @@
       blogPanel.style.display = mode === 'blog' ? 'block' : 'none';
       portfolioPanel.style.display = mode === 'portfolio' ? 'block' : 'none';
       campaignPanel.style.display = mode === 'campaign' ? 'block' : 'none';
-      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign') ? 'none' : 'flex';
-      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign') ? 'none' : '';
+      testimonialPanel.style.display = mode === 'testimonial' ? 'block' : 'none';
+      mediaPanel.style.display = mode === 'media' ? 'block' : 'none';
+      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media') ? 'none' : 'flex';
+      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media') ? 'none' : '';
       pendingCoords = null;
       resetInputRowForAdd();
       coordsLine.classList.remove('ready');
@@ -5053,6 +5398,8 @@
       if (mode === 'blog') renderBlogAdminList();
       if (mode === 'portfolio') renderPortfolioAdminList();
       if (mode === 'campaign') renderCampaignAdminList();
+      if (mode === 'testimonial') renderTestimonialAdminList();
+      if (mode === 'media') loadMediaFolder();
       if (mode !== 'settings') {
         campaignEndDate = getEffectiveCampaignEndDate();
         showCampaignBanner(getEffectiveCampaignText());
@@ -5071,6 +5418,8 @@
     blogModeButton.addEventListener('click', function() { setMode('blog'); });
     portfolioModeButton.addEventListener('click', function() { setMode('portfolio'); });
     campaignModeButton.addEventListener('click', function() { setMode('campaign'); });
+    testimonialModeButton.addEventListener('click', function() { setMode('testimonial'); });
+    mediaModeButton.addEventListener('click', function() { setMode('media'); });
 
     function populateSceneSelect() {
       sceneSelect.innerHTML = '';
@@ -5396,7 +5745,7 @@
         (moves.length - copiedMarker.moves) + ' taşındı, ' + (removals.length - copiedMarker.removals) + ' silindi, ' +
         (edits.length - copiedMarker.edits) + ' düzenlendi, ' + (settingsChanges.length - copiedMarker.settingsChanges) + ' ayar, ' +
         (newScenes.length - copiedMarker.newScenes) + ' yeni sahne, ' +
-        blogPosts.length + ' blog, ' + portfolioItems.length + ' portfolyo, ' + campaigns.length + ' kampanya';
+        blogPosts.length + ' blog, ' + portfolioItems.length + ' portfolyo, ' + campaigns.length + ' kampanya, ' + testimonials.length + ' yorum';
     }
 
     function saveEntries() { window.localStorage.setItem(ADD_KEY, JSON.stringify(entries)); updateCount(); }

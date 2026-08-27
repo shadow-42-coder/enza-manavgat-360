@@ -10,10 +10,14 @@ olmayan statik bir web sitesidir.
   - `portfolyo.html` — müşteri evlerine hazırlanan render/tasarım galerisi
   - `blog.html` — mobilya/dekorasyon yazıları (liste + `?slug=...` ile tekil yazı)
   - `kampanyalar.html` — güncel kampanya/duyurular
-  - `hakkimizda.html` — hakkımızda + iletişim bilgileri + WhatsApp'a giden iletişim formu
+  - `hakkimizda.html` — hakkımızda + iletişim bilgileri + harita + WhatsApp'a giden iletişim formu
+  - `sss.html` — sıkça sorulan sorular
+  - `gizlilik.html` — gizlilik politikası
+  - `404.html` — bulunamayan sayfalar için
 - **Admin panel:** `tur.html?pos=1` üzerinden giriş yapılır, tur içeriğinin yanı sıra Blog,
-  Portfolyo ve Kampanyalar da buradan yönetilir — "Şimdi Yayınla" ile GitHub'a doğrudan
-  commit edilir (bkz. `docs/publish.js`).
+  Portfolyo, Kampanyalar ve Yorumlar (testimonials) da buradan yönetilir; Ana Sayfa/Hakkımızda
+  metinleri ve iletişim bilgileri "Ayarlar" altındaki Site İçeriği bölümünden düzenlenir —
+  "Şimdi Yayınla" ile GitHub'a doğrudan commit edilir (bkz. `docs/publish.js`).
 
 ## GitHub Pages ile yayınlama (GitHub Desktop)
 

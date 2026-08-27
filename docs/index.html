@@ -46,7 +46,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=38">
+<link rel="stylesheet" href="style.css?v=39">
 </head>
 <body class="sitePage">
 
@@ -60,6 +60,7 @@
     <a href="blog.html">Blog</a>
     <a href="kampanyalar.html">Kampanyalar</a>
     <a href="hakkimizda.html">Hakkımızda &amp; İletişim</a>
+    <a href="sss.html">SSS</a>
   </nav>
 </header>
 
@@ -75,8 +76,8 @@
         <a href="portfolyo.html" class="btnOutline">Portfolyo'ya Göz At</a>
       </div>
     </div>
-    <div class="homeHeroImage">
-      <img src="img/og-image.jpg" alt="enza HOME Manavgat mağaza cephesi">
+    <div class="homeHeroImage" id="homeHeroImage">
+      <img src="img/og-image.jpg" alt="enza HOME Manavgat mağaza cephesi" loading="eager">
     </div>
   </section>
 
@@ -99,6 +100,8 @@
 
   <section class="homeSection" id="homeCampaignTeaser"></section>
 
+  <section class="homeSection" id="homeFeaturedProduct"></section>
+
   <section class="homeSection">
     <div class="homeSectionHeader">
       <div>
@@ -110,21 +113,27 @@
     <div id="homeBlogTeaser" class="blogGrid"></div>
   </section>
 
+  <section class="homeSection" id="homeTestimonials"></section>
+
 </main>
 
 <footer class="sitePageFooter">
   <img src="img/logo.png" alt="enza HOME Manavgat" class="sitePageFooterLogo">
   <div class="sitePageFooterContact" id="sitePageFooterContact"></div>
+  <div class="sitePageFooterLinks"><a href="sss.html">SSS</a><span>·</span><a href="gizlilik.html">Gizlilik Politikası</a></div>
 </footer>
 
-<script src="data.js?v=21"></script>
-<script src="site-pages.js?v=3"></script>
+<script src="data.js?v=22"></script>
+<script src="site-pages.js?v=4"></script>
 <script>
   window.SitePages.initNav();
+  window.SitePages.initSiteWidgets();
   window.SitePages.renderSharedFooterContact();
   window.SitePages.renderHomeContent();
   window.SitePages.renderHomeBlogTeaser();
   window.SitePages.renderHomeCampaignTeaser();
+  window.SitePages.renderHomeFeaturedProduct();
+  window.SitePages.renderTestimonials();
 </script>
 <script>
 if ('serviceWorker' in navigator) {

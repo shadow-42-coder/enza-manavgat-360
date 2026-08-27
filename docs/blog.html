@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=38">
+<link rel="stylesheet" href="style.css?v=39">
 </head>
 <body class="sitePage">
 
@@ -27,6 +27,7 @@
     <a href="blog.html" class="active">Blog</a>
     <a href="kampanyalar.html">Kampanyalar</a>
     <a href="hakkimizda.html">Hakkımızda &amp; İletişim</a>
+    <a href="sss.html">SSS</a>
   </nav>
 </header>
 
@@ -36,6 +37,7 @@
       <span class="sitePageEyebrow">BLOG</span>
       <h1>Mobilya, Dekorasyon ve Ev Fikirleri</h1>
     </div>
+    <div id="blogFilterRow" class="portfolioFilterRow"></div>
     <div id="blogListGrid" class="blogGrid"></div>
   </div>
   <article id="blogArticleView" class="sitePageArticle" style="display:none;">
@@ -46,12 +48,14 @@
 <footer class="sitePageFooter">
   <img src="img/logo.png" alt="enza HOME Manavgat" class="sitePageFooterLogo">
   <div class="sitePageFooterContact" id="sitePageFooterContact"></div>
+  <div class="sitePageFooterLinks"><a href="sss.html">SSS</a><span>·</span><a href="gizlilik.html">Gizlilik Politikası</a></div>
 </footer>
 
-<script src="data.js?v=21"></script>
-<script src="site-pages.js?v=3"></script>
+<script src="data.js?v=22"></script>
+<script src="site-pages.js?v=4"></script>
 <script>
   window.SitePages.initNav();
+  window.SitePages.initSiteWidgets();
   window.SitePages.renderSharedFooterContact();
   var slug = new URLSearchParams(window.location.search).get('slug');
   if (slug) {
