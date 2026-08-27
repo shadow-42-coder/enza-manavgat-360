@@ -1272,6 +1272,14 @@
     var EDIT_KEY = 'enzaPosCollectorEdits';
     var SETTINGS_KEY = 'enzaPosCollectorSettings';
     var NEW_SCENE_KEY = 'enzaPosCollectorNewScenes';
+    // Blog/portfolio pending changes follow this same family, but - unlike
+    // everything above - they go straight through instant-publish (see the
+    // "Şimdi Yayınla" handler) instead of the manual Kopyala hand-off, since
+    // the admin form already captures full title/description/image content
+    // itself. So they deliberately don't participate in copiedMarker or the
+    // Kopyala clipboard export below - there's nothing manual left to hand off.
+    var BLOG_KEY = 'enzaPosCollectorBlogPosts';
+    var PORTFOLIO_KEY = 'enzaPosCollectorPortfolioItems';
     var entries = [];
     var moves = [];
     var arrows = [];
@@ -1279,6 +1287,8 @@
     var edits = [];
     var settingsChanges = [];
     var newScenes = [];
+    var blogPosts = [];
+    var portfolioItems = [];
     try { entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]'); } catch (e) { entries = []; }
     try { moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]'); } catch (e) { moves = []; }
     try { arrows = JSON.parse(window.localStorage.getItem(ARROW_KEY) || '[]'); } catch (e) { arrows = []; }
@@ -1286,6 +1296,10 @@
     try { edits = JSON.parse(window.localStorage.getItem(EDIT_KEY) || '[]'); } catch (e) { edits = []; }
     try { settingsChanges = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || '[]'); } catch (e) { settingsChanges = []; }
     try { newScenes = JSON.parse(window.localStorage.getItem(NEW_SCENE_KEY) || '[]'); } catch (e) { newScenes = []; }
+    try { blogPosts = JSON.parse(window.localStorage.getItem(BLOG_KEY) || '[]'); } catch (e) { blogPosts = []; }
+    try { portfolioItems = JSON.parse(window.localStorage.getItem(PORTFOLIO_KEY) || '[]'); } catch (e) { portfolioItems = []; }
+    function saveBlogPosts() { window.localStorage.setItem(BLOG_KEY, JSON.stringify(blogPosts)); updateCount(); }
+    function savePortfolioItems() { window.localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolioItems)); updateCount(); }
 
     // "Kopyala" reports everything pending to the admin's clipboard so it can
     // be handed off (new products/scenes still need to be added by hand;
@@ -1356,6 +1370,12 @@
     var orderModeButton = document.createElement('button');
     orderModeButton.textContent = 'Sahne Sırası';
     orderModeButton.className = 'posFinderModeButton';
+    var blogModeButton = document.createElement('button');
+    blogModeButton.textContent = 'Blog';
+    blogModeButton.className = 'posFinderModeButton';
+    var portfolioModeButton = document.createElement('button');
+    portfolioModeButton.textContent = 'Portfolyo';
+    portfolioModeButton.className = 'posFinderModeButton';
     modeRow.appendChild(productModeButton);
     modeRow.appendChild(linkModeButton);
     modeRow.appendChild(deleteModeButton);
@@ -1365,6 +1385,8 @@
     modeRow.appendChild(listModeButton);
     modeRow.appendChild(mapModeButton);
     modeRow.appendChild(orderModeButton);
+    modeRow.appendChild(blogModeButton);
+    modeRow.appendChild(portfolioModeButton);
 
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
@@ -2597,8 +2619,8 @@
     var publishSection = settingsSection('Canlıya Yayınla', '🚀');
     var publishInfo = document.createElement('div');
     publishInfo.className = 'posFinderPublishInfo';
-    publishInfo.textContent = 'Taşıma, ekleme/silme, ürün düzenleme, sahne sırası/silme, iletişim bilgileri ve ayar değişikliklerini ' +
-      'doğrudan siteye yayınlar. Sadece yeni ürün ekleme (linkten içerik yazılması gerekiyor) ve yeni sahne (fotoğraf dosyaları) hâlâ Kopyala ile gönderilmeli.';
+    publishInfo.textContent = 'Taşıma, ekleme/silme, ürün düzenleme, sahne sırası/silme, iletişim bilgileri, ayar değişikliklerini ' +
+      've Blog/Portfolyo yazılarını doğrudan siteye yayınlar. Sadece yeni ürün ekleme (linkten içerik yazılması gerekiyor) ve yeni sahne (fotoğraf dosyaları) hâlâ Kopyala ile gönderilmeli.';
     var publishTokenInput = document.createElement('input');
     publishTokenInput.type = 'password';
     publishTokenInput.placeholder = 'GitHub erişim anahtarı (bir kere girilir, cihazda saklanır)';
@@ -2623,7 +2645,8 @@
     });
 
     function totalUnpublishedCount() {
-      return arrows.length + moves.length + removals.length + edits.length + settingsChanges.length;
+      return arrows.length + moves.length + removals.length + edits.length + settingsChanges.length +
+        blogPosts.length + portfolioItems.length;
     }
 
     // Warn before leaving the tab (close/reload/navigate away) with edits
@@ -2637,7 +2660,10 @@
 
     publishButton.addEventListener('click', function() {
       if (!window.EnzaPublish) { publishStatus.textContent = 'Yayınlama modülü yüklenemedi.'; return; }
-      var pendingSets = { arrows: arrows, moves: moves, removals: removals, edits: edits, settingsChanges: settingsChanges };
+      var pendingSets = {
+        arrows: arrows, moves: moves, removals: removals, edits: edits, settingsChanges: settingsChanges,
+        blogPosts: blogPosts, portfolioItems: portfolioItems
+      };
       var totalPending = totalUnpublishedCount();
       if (!totalPending) { publishStatus.textContent = 'Yayınlanacak bir değişiklik yok.'; return; }
       var previewLines = buildChangeSummaryLines({ skipManualSections: true });
@@ -2654,13 +2680,14 @@
             (result.warnings.length ? (' Uygulanamayanlar: ' + result.warnings.join(' | ')) : '');
           return;
         }
-        arrows = []; moves = []; removals = []; edits = [];
+        arrows = []; moves = []; removals = []; edits = []; blogPosts = []; portfolioItems = [];
         settingsChanges = settingsChanges.filter(function(c) { return window.EnzaPublish.SKIPPED_SETTINGS_TYPES[c.type]; });
-        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges();
+        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges(); saveBlogPosts(); savePortfolioItems();
         updateCount();
         var summary = 'Yayınlandı! (' + result.appliedCounts.arrows + ' ok, ' + result.appliedCounts.moves + ' taşıma, ' +
           result.appliedCounts.removals + ' silme, ' + result.appliedCounts.edits + ' düzenleme, ' +
-          result.appliedCounts.settingsChanges + ' ayar). Site birkaç dakika içinde güncellenir.';
+          result.appliedCounts.settingsChanges + ' ayar, ' + result.appliedCounts.blogPosts + ' blog yazısı, ' +
+          result.appliedCounts.portfolioItems + ' portfolyo öğesi). Site birkaç dakika içinde güncellenir.';
         if (result.warnings.length) summary += ' Elle uygulanması gerekenler: ' + result.warnings.join(' | ');
         publishStatus.textContent = summary;
       }).catch(function(err) {
@@ -3795,6 +3822,546 @@
       });
     });
 
+    // -- Blog & Portfolyo --
+    // Unlike every other panel above, these two publish real authored
+    // content (title/body/image all typed or dropped right here) rather
+    // than referencing something already on the pano, so they don't need
+    // pendingCoords/currentSceneWrapper at all - just their own list/editor
+    // sub-views and the shared image drop-zone below.
+    var BLOG_CATEGORIES = ['Yeni Ürünler', 'Dekorasyon Fikirleri', 'Kampanyalar', 'Mağazadan Haberler'];
+    var PORTFOLIO_CATEGORIES = ['Oturma Grubu', 'Yatak Odası', 'Yemek Odası', 'Aksesuar'];
+
+    function slugify(title) {
+      var map = { 'ç':'c','Ç':'c','ğ':'g','Ğ':'g','ı':'i','İ':'i','ö':'o','Ö':'o','ş':'s','Ş':'s','ü':'u','Ü':'u' };
+      var out = (title || '').split('').map(function(ch) { return map[ch] || ch; }).join('');
+      return out.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'yazi';
+    }
+    function todayIso() { return new Date().toISOString().slice(0, 10); }
+
+    // Blog body round-trip: each non-empty textarea line becomes its own
+    // <p>, and back again. Deliberately NOT escaped (unlike sanitize(),
+    // used for plain-text fields like titles) - the Bold/Bullet toolbar
+    // inserts real <b>/<ul><li> markup directly into the textarea, same
+    // trust model as the existing product-description editor's
+    // rebuildDescHtml(), which stores its textarea content as-is too.
+    function linesToParagraphHtml(text) {
+      return text.split('\n').filter(function(l) { return l.trim(); })
+        .map(function(l) { return '<p>' + l + '</p>'; }).join('');
+    }
+    function paragraphHtmlToLines(html) {
+      var lines = [];
+      (html || '').replace(/<p>([\s\S]*?)<\/p>/g, function(m, inner) { lines.push(inner); return m; });
+      return lines.join('\n');
+    }
+
+    // Drag-drop (or click-to-pick) image upload, shared by the Blog and
+    // Portfolyo editors. This is the one place in the whole panel that
+    // touches the network before "Şimdi Yayınla" is ever clicked - the
+    // image is committed to GitHub the moment it's dropped (via
+    // EnzaPublish.uploadImage), so only its short resulting path travels
+    // in the pending record afterwards, not the image data itself.
+    function buildImageDropZone(folder) {
+      var zone = document.createElement('div');
+      zone.className = 'posFinderDropZone';
+      var label = document.createElement('span');
+      label.className = 'posFinderDropZoneLabel';
+      label.textContent = 'Sürükleyin ya da tıklayın';
+      var preview = document.createElement('img');
+      preview.className = 'posFinderDropPreview';
+      preview.style.display = 'none';
+      var status = document.createElement('div');
+      status.className = 'posFinderDropZoneStatus';
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      zone.appendChild(preview);
+      zone.appendChild(label);
+      zone.appendChild(status);
+      zone.appendChild(input);
+
+      var currentPath = '';
+      function handleFile(file) {
+        if (!file) return;
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+        label.style.display = 'none';
+        status.textContent = 'Yükleniyor...';
+        if (!window.EnzaPublish) { status.textContent = 'Yayınlama modülü yüklenemedi.'; return; }
+        window.EnzaPublish.uploadImage(file, folder).then(function(result) {
+          currentPath = result.path;
+          status.textContent = 'Yüklendi ✓';
+        }).catch(function(err) {
+          status.textContent = 'Yükleme başarısız: ' + err.message;
+        });
+      }
+      zone.addEventListener('click', function() { input.click(); });
+      input.addEventListener('change', function() { handleFile(input.files[0]); });
+      zone.addEventListener('dragover', function(event) { event.preventDefault(); zone.classList.add('dragover'); });
+      zone.addEventListener('dragleave', function() { zone.classList.remove('dragover'); });
+      zone.addEventListener('drop', function(event) {
+        event.preventDefault();
+        zone.classList.remove('dragover');
+        handleFile(event.dataTransfer.files[0]);
+      });
+
+      return {
+        el: zone,
+        getPath: function() { return currentPath; },
+        reset: function(existingPath) {
+          currentPath = existingPath || '';
+          if (existingPath) {
+            preview.src = existingPath;
+            preview.style.display = 'block';
+            label.style.display = 'none';
+            status.textContent = '';
+          } else {
+            preview.style.display = 'none';
+            label.style.display = 'block';
+            status.textContent = '';
+          }
+        }
+      };
+    }
+
+    // Single-select chip row (Kategori) - same visual language as the
+    // existing badge/category chips elsewhere in this panel, just its own
+    // small instance per editor rather than reusing those globals (which
+    // are wired to product-editing state).
+    function buildChipRow(className, options) {
+      var row = document.createElement('div');
+      row.className = 'posFinderChipRow';
+      var selected = options[0] || '';
+      var buttons = options.map(function(opt) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = className;
+        btn.textContent = opt;
+        btn.addEventListener('click', function() {
+          selected = opt;
+          buttons.forEach(function(b) { b.classList.toggle('active', b === btn); });
+        });
+        row.appendChild(btn);
+        return btn;
+      });
+      return {
+        el: row,
+        get: function() { return selected; },
+        set: function(value) {
+          selected = value || options[0] || '';
+          buttons.forEach(function(b) { b.classList.toggle('active', b.textContent === selected); });
+        }
+      };
+    }
+
+    // Taslak/Yayında toggle - two mutually-exclusive buttons, same pattern
+    // as a chip row but with a fixed pair of options.
+    function buildStatusToggle() {
+      var row = document.createElement('div');
+      row.className = 'posFinderChipRow';
+      var status = 'draft';
+      var draftBtn = document.createElement('button');
+      draftBtn.type = 'button';
+      draftBtn.className = 'posFinderBadgeButton';
+      draftBtn.textContent = 'Taslak';
+      var publishedBtn = document.createElement('button');
+      publishedBtn.type = 'button';
+      publishedBtn.className = 'posFinderBadgeButton';
+      publishedBtn.textContent = 'Yayında';
+      function refresh() {
+        draftBtn.classList.toggle('active', status === 'draft');
+        publishedBtn.classList.toggle('active', status === 'published');
+      }
+      draftBtn.addEventListener('click', function() { status = 'draft'; refresh(); });
+      publishedBtn.addEventListener('click', function() { status = 'published'; refresh(); });
+      row.appendChild(draftBtn);
+      row.appendChild(publishedBtn);
+      refresh();
+      return {
+        el: row,
+        get: function() { return status; },
+        set: function(value) { status = value === 'published' ? 'published' : 'draft'; refresh(); }
+      };
+    }
+
+    // ---- Blog panel ----
+    var blogPanel = document.createElement('div');
+    blogPanel.id = 'posFinderBlogPanel';
+    blogPanel.style.display = 'none';
+
+    var blogListView = document.createElement('div');
+    blogListView.id = 'posFinderBlogListView';
+    var blogListHeader = document.createElement('div');
+    blogListHeader.className = 'posFinderContentListHeader';
+    var blogListTitle = document.createElement('span');
+    blogListTitle.textContent = 'Blog Yazıları';
+    var blogNewButton = document.createElement('button');
+    blogNewButton.type = 'button';
+    blogNewButton.textContent = '+ Yeni Yazı';
+    blogListHeader.appendChild(blogListTitle);
+    blogListHeader.appendChild(blogNewButton);
+    var blogListItems = document.createElement('div');
+    blogListItems.id = 'posFinderBlogListItems';
+    blogListView.appendChild(blogListHeader);
+    blogListView.appendChild(blogListItems);
+
+    var blogEditorView = document.createElement('div');
+    blogEditorView.id = 'posFinderBlogEditorView';
+    blogEditorView.style.display = 'none';
+    var blogBackLink = document.createElement('a');
+    blogBackLink.href = '#';
+    blogBackLink.className = 'posFinderBackLink';
+    blogBackLink.textContent = '← Blog Yazılarına Dön';
+    var blogTitleInput = document.createElement('input');
+    blogTitleInput.type = 'text';
+    blogTitleInput.className = 'posFinderBlogTitleInput';
+    blogTitleInput.placeholder = 'Başlık girin...';
+    var blogExcerptInput = document.createElement('textarea');
+    blogExcerptInput.id = 'posFinderBlogExcerpt';
+    blogExcerptInput.placeholder = 'Kısa özet (liste kartında görünür)';
+
+    var blogEditorColumns = document.createElement('div');
+    blogEditorColumns.className = 'posFinderEditorColumns';
+    var blogEditorMain = document.createElement('div');
+    blogEditorMain.className = 'posFinderEditorMain';
+    var blogEditorSidebar = document.createElement('div');
+    blogEditorSidebar.className = 'posFinderEditorSidebar';
+
+    var blogBodyToolbar = document.createElement('div');
+    blogBodyToolbar.className = 'posFinderDescToolbar';
+    var blogBoldButton = document.createElement('button');
+    blogBoldButton.type = 'button';
+    blogBoldButton.className = 'posFinderDescFormatButton';
+    blogBoldButton.textContent = 'K Kalın';
+    var blogBulletButton = document.createElement('button');
+    blogBulletButton.type = 'button';
+    blogBulletButton.className = 'posFinderDescFormatButton';
+    blogBulletButton.textContent = '≡ Madde İşareti';
+    blogBodyToolbar.appendChild(blogBoldButton);
+    blogBodyToolbar.appendChild(blogBulletButton);
+    var blogBodyTextarea = document.createElement('textarea');
+    blogBodyTextarea.id = 'posFinderBlogBodyInput';
+    blogBodyTextarea.placeholder = 'Yazı içeriği';
+    var blogBodyPreviewLabel = document.createElement('div');
+    blogBodyPreviewLabel.id = 'posFinderDescPreviewLabel';
+    blogBodyPreviewLabel.textContent = 'ZİYARETÇİ NE GÖRECEK';
+    var blogBodyPreview = document.createElement('div');
+    blogBodyPreview.id = 'posFinderDescPreview';
+    function updateBlogBodyPreview() {
+      blogBodyPreview.innerHTML = linesToParagraphHtml(blogBodyTextarea.value);
+    }
+    blogBodyTextarea.addEventListener('input', updateBlogBodyPreview);
+    function wrapBlogSelection(before, after) {
+      var start = blogBodyTextarea.selectionStart;
+      var end = blogBodyTextarea.selectionEnd;
+      var value = blogBodyTextarea.value;
+      var selected = value.slice(start, end);
+      blogBodyTextarea.value = value.slice(0, start) + before + selected + after + value.slice(end);
+      blogBodyTextarea.focus();
+      blogBodyTextarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+      updateBlogBodyPreview();
+    }
+    blogBoldButton.addEventListener('click', function() { wrapBlogSelection('<b>', '</b>'); });
+    blogBulletButton.addEventListener('click', function() {
+      var start = blogBodyTextarea.selectionStart;
+      var end = blogBodyTextarea.selectionEnd;
+      var value = blogBodyTextarea.value;
+      var selected = value.slice(start, end);
+      var lines = selected.length ? selected.split('\n') : [''];
+      var listHtml = '<ul>' + lines.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>';
+      blogBodyTextarea.value = value.slice(0, start) + listHtml + value.slice(end);
+      blogBodyTextarea.focus();
+      updateBlogBodyPreview();
+    });
+    blogEditorMain.appendChild(blogBodyToolbar);
+    blogEditorMain.appendChild(blogBodyTextarea);
+    blogEditorMain.appendChild(blogBodyPreviewLabel);
+    blogEditorMain.appendChild(blogBodyPreview);
+
+    var blogStatusToggle = buildStatusToggle();
+    var blogChips = buildChipRow('posFinderCategoryChip', BLOG_CATEGORIES);
+    var blogDropZone = buildImageDropZone('blog');
+    var blogSeoTitleInput = document.createElement('input');
+    blogSeoTitleInput.type = 'text';
+    blogSeoTitleInput.placeholder = 'Meta başlık (boş bırakılırsa yazı başlığı kullanılır)';
+    var blogSeoDescInput = document.createElement('textarea');
+    blogSeoDescInput.placeholder = 'Meta açıklama (boş bırakılırsa özet kullanılır)';
+    var blogSeoPreview = document.createElement('div');
+    blogSeoPreview.className = 'posFinderSeoPreview';
+    function updateBlogSeoPreview() {
+      var title = (blogSeoTitleInput.value.trim() || blogTitleInput.value.trim() || 'Başlık') + ' | enza HOME';
+      var desc = blogSeoDescInput.value.trim() || blogExcerptInput.value.trim() || '';
+      blogSeoPreview.innerHTML = '<div class="posFinderSeoPreviewTitle">' + sanitize(title) + '</div>' +
+        '<div class="posFinderSeoPreviewUrl">enzahomemanavgat.com › blog</div>' +
+        '<div class="posFinderSeoPreviewDesc">' + sanitize(desc) + '</div>';
+    }
+    [blogSeoTitleInput, blogSeoDescInput, blogTitleInput, blogExcerptInput].forEach(function(el) {
+      el.addEventListener('input', updateBlogSeoPreview);
+    });
+    var blogSaveButton = document.createElement('button');
+    blogSaveButton.type = 'button';
+    blogSaveButton.id = 'posFinderBlogSave';
+    blogSaveButton.textContent = 'Kaydet';
+
+    function sidebarBlock(labelText, el) {
+      var block = document.createElement('div');
+      block.className = 'posFinderEditorSidebarBlock';
+      var label = document.createElement('span');
+      label.className = 'posFinderFieldLabel';
+      label.textContent = labelText;
+      block.appendChild(label);
+      block.appendChild(el);
+      return block;
+    }
+    blogEditorSidebar.appendChild(sidebarBlock('Durum', blogStatusToggle.el));
+    blogEditorSidebar.appendChild(sidebarBlock('Kategori', blogChips.el));
+    blogEditorSidebar.appendChild(sidebarBlock('Öne Çıkan Görsel', blogDropZone.el));
+    blogEditorSidebar.appendChild(sidebarBlock('SEO Meta Başlık', blogSeoTitleInput));
+    blogEditorSidebar.appendChild(sidebarBlock('SEO Meta Açıklama', blogSeoDescInput));
+    blogEditorSidebar.appendChild(sidebarBlock('', blogSeoPreview));
+    blogEditorSidebar.appendChild(blogSaveButton);
+
+    blogEditorColumns.appendChild(blogEditorMain);
+    blogEditorColumns.appendChild(blogEditorSidebar);
+    blogEditorView.appendChild(blogBackLink);
+    blogEditorView.appendChild(blogTitleInput);
+    blogEditorView.appendChild(blogExcerptInput);
+    blogEditorView.appendChild(blogEditorColumns);
+
+    blogPanel.appendChild(blogListView);
+    blogPanel.appendChild(blogEditorView);
+
+    var editingBlogPost = null;
+    function openBlogEditor(post) {
+      editingBlogPost = post || null;
+      blogTitleInput.value = post ? post.title : '';
+      blogExcerptInput.value = post ? post.excerpt : '';
+      blogBodyTextarea.value = post ? paragraphHtmlToLines(post.bodyHtml) : '';
+      updateBlogBodyPreview();
+      blogStatusToggle.set(post ? post.status : 'draft');
+      blogChips.set(post ? post.category : BLOG_CATEGORIES[0]);
+      blogDropZone.reset(post ? post.image : '');
+      blogSeoTitleInput.value = post ? (post.seoTitle || '') : '';
+      blogSeoDescInput.value = post ? (post.seoDescription || '') : '';
+      updateBlogSeoPreview();
+      blogListView.style.display = 'none';
+      blogEditorView.style.display = 'block';
+    }
+    function closeBlogEditor() {
+      editingBlogPost = null;
+      blogListView.style.display = 'block';
+      blogEditorView.style.display = 'none';
+      renderBlogAdminList();
+    }
+    blogNewButton.addEventListener('click', function() { openBlogEditor(null); });
+    blogBackLink.addEventListener('click', function(event) { event.preventDefault(); closeBlogEditor(); });
+
+    blogSaveButton.addEventListener('click', function() {
+      var title = blogTitleInput.value.trim();
+      if (!title) { window.alert('Başlık girin.'); return; }
+      var record = {
+        id: editingBlogPost ? editingBlogPost.id : ('post-' + Date.now()),
+        slug: editingBlogPost ? editingBlogPost.slug : slugify(title),
+        title: title,
+        excerpt: blogExcerptInput.value.trim(),
+        bodyHtml: linesToParagraphHtml(blogBodyTextarea.value),
+        category: blogChips.get(),
+        image: blogDropZone.getPath(),
+        seoTitle: blogSeoTitleInput.value.trim(),
+        seoDescription: blogSeoDescInput.value.trim(),
+        status: blogStatusToggle.get(),
+        date: editingBlogPost ? editingBlogPost.date : todayIso()
+      };
+      blogPosts.push({ op: editingBlogPost ? 'edit' : 'add', id: record.id, record: record });
+      saveBlogPosts();
+      closeBlogEditor();
+    });
+
+    function renderBlogAdminList() {
+      blogListItems.innerHTML = '';
+      // Fold the pending ops down to "current effective state" for display -
+      // an 'edit'/'remove' after an earlier 'add' in the same session should
+      // show the latest version (or disappear), not both.
+      var effective = {};
+      var order = [];
+      blogPosts.forEach(function(p) {
+        if (p.op === 'remove') { delete effective[p.id]; return; }
+        if (!effective[p.id]) order.push(p.id);
+        effective[p.id] = p.record;
+      });
+      order = order.filter(function(id) { return effective[id]; });
+      if (!order.length) {
+        blogListItems.textContent = 'Henüz blog yazısı yok.';
+        return;
+      }
+      order.forEach(function(id) {
+        var post = effective[id];
+        if (!post) return;
+        var item = document.createElement('div');
+        item.className = 'posFinderContentListItem';
+        var info = document.createElement('div');
+        info.className = 'posFinderContentListItemInfo';
+        info.innerHTML = '<strong>' + sanitize(post.title) + '</strong><span class="posFinderContentListItemMeta">' +
+          (post.status === 'published' ? 'Yayında' : 'Taslak') + ' · ' + post.date + '</span>';
+        var editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.textContent = 'Düzenle';
+        editButton.addEventListener('click', function() { openBlogEditor(post); });
+        var deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Sil';
+        deleteButton.addEventListener('click', function() {
+          if (!window.confirm('"' + post.title + '" silinsin mi?')) return;
+          blogPosts.push({ op: 'remove', id: id });
+          saveBlogPosts();
+          renderBlogAdminList();
+        });
+        item.appendChild(info);
+        item.appendChild(editButton);
+        item.appendChild(deleteButton);
+        blogListItems.appendChild(item);
+      });
+    }
+
+    // ---- Portfolyo panel ----
+    var portfolioPanel = document.createElement('div');
+    portfolioPanel.id = 'posFinderPortfolioPanel';
+    portfolioPanel.style.display = 'none';
+
+    var portfolioListView = document.createElement('div');
+    var portfolioListHeader = document.createElement('div');
+    portfolioListHeader.className = 'posFinderContentListHeader';
+    var portfolioListTitle = document.createElement('span');
+    portfolioListTitle.textContent = 'Portfolyo Öğeleri';
+    var portfolioNewButton = document.createElement('button');
+    portfolioNewButton.type = 'button';
+    portfolioNewButton.textContent = '+ Yeni Öğe';
+    portfolioListHeader.appendChild(portfolioListTitle);
+    portfolioListHeader.appendChild(portfolioNewButton);
+    var portfolioListItems = document.createElement('div');
+    portfolioListView.appendChild(portfolioListHeader);
+    portfolioListView.appendChild(portfolioListItems);
+
+    var portfolioEditorView = document.createElement('div');
+    portfolioEditorView.style.display = 'none';
+    var portfolioBackLink = document.createElement('a');
+    portfolioBackLink.href = '#';
+    portfolioBackLink.className = 'posFinderBackLink';
+    portfolioBackLink.textContent = '← Portfolyoya Dön';
+    var portfolioTitleInput = document.createElement('input');
+    portfolioTitleInput.type = 'text';
+    portfolioTitleInput.className = 'posFinderBlogTitleInput';
+    portfolioTitleInput.placeholder = 'Başlık girin...';
+    var portfolioCaptionInput = document.createElement('textarea');
+    portfolioCaptionInput.placeholder = 'Kısa açıklama';
+    var portfolioChips = buildChipRow('posFinderCategoryChip', PORTFOLIO_CATEGORIES);
+    var portfolioStatusToggle = buildStatusToggle();
+    var portfolioDropZone = buildImageDropZone('portfolio');
+    var portfolioSaveButton = document.createElement('button');
+    portfolioSaveButton.type = 'button';
+    portfolioSaveButton.textContent = 'Kaydet';
+
+    var portfolioEditorColumns = document.createElement('div');
+    portfolioEditorColumns.className = 'posFinderEditorColumns';
+    var portfolioEditorMain = document.createElement('div');
+    portfolioEditorMain.className = 'posFinderEditorMain';
+    portfolioEditorMain.appendChild(portfolioDropZone.el);
+    var portfolioEditorSidebar = document.createElement('div');
+    portfolioEditorSidebar.className = 'posFinderEditorSidebar';
+    portfolioEditorSidebar.appendChild(sidebarBlock('Durum', portfolioStatusToggle.el));
+    portfolioEditorSidebar.appendChild(sidebarBlock('Kategori', portfolioChips.el));
+    portfolioEditorSidebar.appendChild(portfolioSaveButton);
+    portfolioEditorColumns.appendChild(portfolioEditorMain);
+    portfolioEditorColumns.appendChild(portfolioEditorSidebar);
+
+    portfolioEditorView.appendChild(portfolioBackLink);
+    portfolioEditorView.appendChild(portfolioTitleInput);
+    portfolioEditorView.appendChild(portfolioCaptionInput);
+    portfolioEditorView.appendChild(portfolioEditorColumns);
+
+    portfolioPanel.appendChild(portfolioListView);
+    portfolioPanel.appendChild(portfolioEditorView);
+
+    var editingPortfolioItem = null;
+    function openPortfolioEditor(item) {
+      editingPortfolioItem = item || null;
+      portfolioTitleInput.value = item ? item.title : '';
+      portfolioCaptionInput.value = item ? item.caption : '';
+      portfolioStatusToggle.set(item ? item.status : 'draft');
+      portfolioChips.set(item ? item.category : PORTFOLIO_CATEGORIES[0]);
+      portfolioDropZone.reset(item ? item.image : '');
+      portfolioListView.style.display = 'none';
+      portfolioEditorView.style.display = 'block';
+    }
+    function closePortfolioEditor() {
+      editingPortfolioItem = null;
+      portfolioListView.style.display = 'block';
+      portfolioEditorView.style.display = 'none';
+      renderPortfolioAdminList();
+    }
+    portfolioNewButton.addEventListener('click', function() { openPortfolioEditor(null); });
+    portfolioBackLink.addEventListener('click', function(event) { event.preventDefault(); closePortfolioEditor(); });
+
+    portfolioSaveButton.addEventListener('click', function() {
+      var title = portfolioTitleInput.value.trim();
+      if (!title) { window.alert('Başlık girin.'); return; }
+      var record = {
+        id: editingPortfolioItem ? editingPortfolioItem.id : ('port-' + Date.now()),
+        title: title,
+        category: portfolioChips.get(),
+        image: portfolioDropZone.getPath(),
+        caption: portfolioCaptionInput.value.trim(),
+        status: portfolioStatusToggle.get(),
+        date: editingPortfolioItem ? editingPortfolioItem.date : todayIso()
+      };
+      portfolioItems.push({ op: editingPortfolioItem ? 'edit' : 'add', id: record.id, record: record });
+      savePortfolioItems();
+      closePortfolioEditor();
+    });
+
+    function renderPortfolioAdminList() {
+      portfolioListItems.innerHTML = '';
+      var effective = {};
+      var order = [];
+      portfolioItems.forEach(function(p) {
+        if (p.op === 'remove') { delete effective[p.id]; return; }
+        if (!effective[p.id]) order.push(p.id);
+        effective[p.id] = p.record;
+      });
+      order = order.filter(function(id) { return effective[id]; });
+      if (!order.length) {
+        portfolioListItems.textContent = 'Henüz portfolyo öğesi yok.';
+        return;
+      }
+      order.forEach(function(id) {
+        var item = effective[id];
+        if (!item) return;
+        var row = document.createElement('div');
+        row.className = 'posFinderContentListItem';
+        var info = document.createElement('div');
+        info.className = 'posFinderContentListItemInfo';
+        info.innerHTML = '<strong>' + sanitize(item.title) + '</strong><span class="posFinderContentListItemMeta">' +
+          (item.status === 'published' ? 'Yayında' : 'Taslak') + ' · ' + item.category + '</span>';
+        var editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.textContent = 'Düzenle';
+        editButton.addEventListener('click', function() { openPortfolioEditor(item); });
+        var deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Sil';
+        deleteButton.addEventListener('click', function() {
+          if (!window.confirm('"' + item.title + '" silinsin mi?')) return;
+          portfolioItems.push({ op: 'remove', id: id });
+          savePortfolioItems();
+          renderPortfolioAdminList();
+        });
+        row.appendChild(info);
+        row.appendChild(editButton);
+        row.appendChild(deleteButton);
+        portfolioListItems.appendChild(row);
+      });
+    }
+
     // Header: drag handle + minimize toggle, so the box can be moved out of
     // the way and collapsed to a small pill instead of always taking up
     // this much space with every tool visible at once.
@@ -3917,6 +4484,8 @@
     content.appendChild(listPanel);
     content.appendChild(mapPanel);
     content.appendChild(orderPanel);
+    content.appendChild(blogPanel);
+    content.appendChild(portfolioPanel);
     content.appendChild(actionRow);
 
     // Manual resize handles - only meaningful in "wide" (dashboard) mode,
@@ -4058,7 +4627,7 @@
     // hotspot) get a big dashboard-style panel with the pano shrunk to a
     // small floating preview, instead of competing for space with a
     // full-size photo they don't actually need to click on.
-    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true };
+    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true, blog: true, portfolio: true };
     function setMode(newMode) {
       mode = newMode;
       var wasWide = document.body.classList.contains('posFinderWide');
@@ -4085,19 +4654,23 @@
       listModeButton.classList.toggle('active', mode === 'list');
       mapModeButton.classList.toggle('active', mode === 'map');
       orderModeButton.classList.toggle('active', mode === 'order');
+      blogModeButton.classList.toggle('active', mode === 'blog');
+      portfolioModeButton.classList.toggle('active', mode === 'portfolio');
       linkInput.style.display = mode === 'product' ? '' : 'none';
       draftFetchButton.style.display = (mode === 'product' && !editingEntry) ? '' : 'none';
       if (mode !== 'product') clearDraft();
       sceneSelect.style.display = mode === 'link' ? '' : 'none';
-      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order') ? 'none' : 'flex';
+      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio') ? 'none' : 'flex';
       photoPanel.style.display = mode === 'photo' ? 'block' : 'none';
       settingsPanel.style.display = mode === 'settings' ? 'block' : 'none';
       newScenePanel.style.display = mode === 'newScene' ? 'block' : 'none';
       listPanel.style.display = mode === 'list' ? 'block' : 'none';
       mapPanel.style.display = mode === 'map' ? 'block' : 'none';
       orderPanel.style.display = mode === 'order' ? 'block' : 'none';
-      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order') ? 'none' : 'flex';
-      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order') ? 'none' : '';
+      blogPanel.style.display = mode === 'blog' ? 'block' : 'none';
+      portfolioPanel.style.display = mode === 'portfolio' ? 'block' : 'none';
+      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio') ? 'none' : 'flex';
+      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio') ? 'none' : '';
       pendingCoords = null;
       resetInputRowForAdd();
       coordsLine.classList.remove('ready');
@@ -4110,6 +4683,8 @@
       if (mode === 'list') { populateListCategoryRow(); renderListResults(listSearchInput.value); }
       if (mode === 'map') renderMap();
       if (mode === 'order') renderOrderList();
+      if (mode === 'blog') renderBlogAdminList();
+      if (mode === 'portfolio') renderPortfolioAdminList();
       if (mode !== 'settings') {
         campaignEndDate = getEffectiveCampaignEndDate();
         showCampaignBanner(getEffectiveCampaignText());
@@ -4125,6 +4700,8 @@
     listModeButton.addEventListener('click', function() { setMode('list'); });
     mapModeButton.addEventListener('click', function() { setMode('map'); });
     orderModeButton.addEventListener('click', function() { setMode('order'); });
+    blogModeButton.addEventListener('click', function() { setMode('blog'); });
+    portfolioModeButton.addEventListener('click', function() { setMode('portfolio'); });
 
     function populateSceneSelect() {
       sceneSelect.innerHTML = '';
@@ -4431,7 +5008,8 @@
       countLabel.textContent = (entries.length - copiedMarker.entries) + ' ürün, ' + (arrows.length - copiedMarker.arrows) + ' yeni ok, ' +
         (moves.length - copiedMarker.moves) + ' taşındı, ' + (removals.length - copiedMarker.removals) + ' silindi, ' +
         (edits.length - copiedMarker.edits) + ' düzenlendi, ' + (settingsChanges.length - copiedMarker.settingsChanges) + ' ayar, ' +
-        (newScenes.length - copiedMarker.newScenes) + ' yeni sahne';
+        (newScenes.length - copiedMarker.newScenes) + ' yeni sahne, ' +
+        blogPosts.length + ' blog, ' + portfolioItems.length + ' portfolyo';
     }
 
     function saveEntries() { window.localStorage.setItem(ADD_KEY, JSON.stringify(entries)); updateCount(); }
