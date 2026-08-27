@@ -4,13 +4,20 @@
 // and only falls back to a cached copy on failure - never cache-first - so
 // it can never serve a visitor a stale tour after data.js/index.js/tiles
 // get updated. Bump CACHE_NAME to force old caches to be dropped.
-var CACHE_NAME = 'enza-shell-v1';
+var CACHE_NAME = 'enza-shell-v2';
 var SHELL_FILES = [
   './',
   'index.html',
+  'tur.html',
+  'blog.html',
+  'portfolyo.html',
+  'kampanyalar.html',
+  'hakkimizda.html',
   'style.css',
   'index.js',
+  'publish.js',
   'data.js',
+  'site-pages.js',
   'vendor/reset.min.css',
   'vendor/screenfull.min.js',
   'vendor/bowser.min.js',

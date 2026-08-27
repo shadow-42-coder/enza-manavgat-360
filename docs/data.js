@@ -1109,5 +1109,73 @@ var APP_DATA = {
         "tourTipText": "Проведите пальцем, чтобы осмотреться. Нажимайте на стрелки, чтобы перейти в другую комнату."
       }
     }
-  }
+  },
+  "blogPosts": [
+    {
+      "id": "seed-blog-1",
+      "slug": "kucuk-salonlarda-oturma-grubu-secimi",
+      "title": "Küçük Salonlarda Doğru Oturma Grubu Seçimi İçin 5 İpucu",
+      "excerpt": "Manavgat'taki küçük dairelerde doğru köşe koltuk veya kanepe seçimi, salonu hem ferah hem şık gösterir. İşte enza HOME Manavgat'tan pratik öneriler.",
+      "category": "Dekorasyon Fikirleri",
+      "image": "",
+      "seoTitle": "",
+      "seoDescription": "",
+      "status": "published",
+      "date": "2026-08-01",
+      "bodyHtml": "<p>Küçük bir salonda ferah bir görüntü elde etmek, büyük bir salondan daha fazla planlama ister. Doğru oturma grubunu seçerken ilk bakılması gereken şey mobilyanın değil, odanın kendisinin ölçüleridir.</p><p>Açık renk kumaşlar ve düşük ayaklı tasarımlar, küçük bir salonu görsel olarak daha ferah gösterir. İki adet 2'li kanepeyi L şeklinde birleştirmek, tek parça büyük bir köşe takımından çoğu zaman daha esnek bir çözümdür.</p><ul><li>Duvara yakın, ince ayaklı mobilyalar tercih edin</li><li>Sehpa yüksekliğini koltuk oturma yüksekliğiyle uyumlu seçin</li><li>Aydınlatmayı köşelere değil, oturma alanının ortasına yönlendirin</li></ul><p>Mağazamızda bu tür kararları vermeden önce mobilyanın kendi evinizde nasıl duracağını 360° sanal turumuzla ya da bize WhatsApp'tan yazarak görebilirsiniz.</p>"
+    },
+    {
+      "id": "seed-blog-2",
+      "slug": "2026-yatak-odasi-trendleri",
+      "title": "2026 Yatak Odası Trendleri: Sıcak Tonlar ve Doğal Kumaşlar",
+      "excerpt": "Yataş Enza Home'un yeni sezon yatak odası koleksiyonunda toprak tonları ve nefes alan doğal kumaşlar öne çıkıyor.",
+      "category": "Yeni Ürünler",
+      "image": "",
+      "seoTitle": "",
+      "seoDescription": "",
+      "status": "published",
+      "date": "2026-08-15",
+      "bodyHtml": "<p>2026 sezonunda yatak odalarında toprak tonları (bej, taba, kum rengi) ve nefes alan doğal kumaşlar öne çıkıyor. Yataş Enza Home güvencesiyle üretilen masif ahşap baza ve başlık takımları bu trendin merkezinde.</p><ul><li>Baza ve başlık kumaşlarını uyumlu tonlarda seçin</li><li>Gardırop içi aydınlatma, hem pratik hem şık bir detay</li><li>Mevsime göre değiştirilebilen nevresim takımları odaya tazelik katar</li></ul><p>Yeni koleksiyonu mağazamızda yakından görmek veya 360° sanal turumuzdan keşfetmek isterseniz bizi ziyaret edin.</p>"
+    }
+  ],
+  "portfolioItems": [
+    {
+      "id": "seed-port-1",
+      "title": "Manavgat'ta Modern Bir Salon Yenileme",
+      "category": "Oturma Grubu",
+      "image": "img/og-image.jpg",
+      "caption": "Müşterimizin Manavgat'taki dairesinde L köşe koltuk ve TV ünitesiyle yeniden tasarlanan salon. (Örnek görsel - gerçek fotoğrafla değiştirilecek)",
+      "status": "published",
+      "date": "2026-07-10"
+    },
+    {
+      "id": "seed-port-2",
+      "title": "Side'de Yazlık Daire İçin Yatak Odası Tasarımı",
+      "category": "Yatak Odası",
+      "image": "img/og-image.jpg",
+      "caption": "Yazlık kullanım için ferah, açık renkli bir yatak odası dizaynı, Yataş Enza Home baza ve başlık takımıyla. (Örnek görsel - gerçek fotoğrafla değiştirilecek)",
+      "status": "published",
+      "date": "2026-07-20"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "seed-camp-1",
+      "title": "Yaz Sezonu Oturma Grubu Fırsatları",
+      "description": "Seçili oturma grubu ve köşe koltuk modellerinde %15'e varan indirim! Stoklarla sınırlıdır, detaylar için mağazamızı arayın.",
+      "image": "",
+      "validUntil": "2026-09-30",
+      "status": "published",
+      "date": "2026-08-01"
+    },
+    {
+      "id": "seed-camp-2",
+      "title": "Ücretsiz Mimari Projelendirme",
+      "description": "enza HOME Manavgat'tan evinizin ölçülerine özel ücretsiz mimari projelendirme ve 3D görselleştirme hizmeti. Randevu için WhatsApp'tan yazın.",
+      "image": "",
+      "validUntil": "",
+      "status": "published",
+      "date": "2026-06-01"
+    }
+  ]
 };

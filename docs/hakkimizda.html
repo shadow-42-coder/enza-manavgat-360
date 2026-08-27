@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<title>Hakkımızda &amp; İletişim | enza HOME Manavgat</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="enza HOME Manavgat hakkında, iletişim bilgileri ve bize ulaşma yolları.">
+
+<link rel="icon" type="image/png" sizes="64x64" href="img/favicon-64.png">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="shortcut icon" href="favicon.ico">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css?v=38">
+</head>
+<body class="sitePage">
+
+<header class="sitePageHeader">
+  <a href="index.html" class="sitePageLogo"><img src="img/logo.png" alt="enza HOME Manavgat"></a>
+  <button type="button" class="sitePageNavToggle" aria-label="Menü" aria-expanded="false"><span></span><span></span><span></span></button>
+  <nav class="sitePageNav">
+    <a href="index.html">Ana Sayfa</a>
+    <a href="tur.html">360° Tur</a>
+    <a href="portfolyo.html">Portfolyo</a>
+    <a href="blog.html">Blog</a>
+    <a href="kampanyalar.html">Kampanyalar</a>
+    <a href="hakkimizda.html" class="active">Hakkımızda &amp; İletişim</a>
+  </nav>
+</header>
+
+<main class="sitePageMain">
+  <div class="sitePageIntro">
+    <span class="sitePageEyebrow">HAKKIMIZDA</span>
+    <h1>Manavgat'ta Yataş Enza Home Güvencesi</h1>
+    <p style="margin:0;color:#c3ccd4;font-size:15px;line-height:1.7;">enza HOME Manavgat olarak bölgemizde oturma grupları, yatak odası takımları ve Yataş Bedding koleksiyonlarını sunuyor; her müşterimize evine özel çözümler için ücretsiz mimari projelendirme desteği veriyoruz.</p>
+  </div>
+
+  <div class="contactInfoGrid">
+    <div>
+      <span class="sitePageEyebrow">İLETİŞİM BİLGİLERİMİZ</span>
+      <div class="contactInfoList" style="margin-top:14px;">
+        <a class="contactInfoRow" href="tel:+905493320707">0549 332 07 07</a>
+        <a class="contactInfoRow" href="tel:+902427771212">0242 777 12 12</a>
+        <a class="contactInfoRow" href="https://wa.me/905493320707?text=Merhaba%2C%20enza%20HOME%20Manavgat%20web%20sitesi%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener">WhatsApp'tan Yazın</a>
+        <a class="contactInfoRow" href="https://www.instagram.com/yatasenzahomemanavgat/" target="_blank" rel="noopener">@yatasenzahomemanavgat</a>
+        <a class="contactInfoRow" href="https://maps.google.com/?cid=5104403785270368674" target="_blank" rel="noopener">Google Haritada Gör</a>
+      </div>
+    </div>
+    <div>
+      <span class="sitePageEyebrow">BİZE YAZIN</span>
+      <form id="contactForm" class="sitePageForm" style="margin-top:14px;">
+        <label class="sitePageFormField">
+          <span>Adınız</span>
+          <input type="text" id="contactFormName" class="sitePageFormInput" required>
+        </label>
+        <label class="sitePageFormField">
+          <span>Mesajınız</span>
+          <textarea id="contactFormMessage" class="sitePageFormTextarea" required></textarea>
+        </label>
+        <button type="submit" class="btnWarm sitePageFormSubmit">WhatsApp'tan Gönder</button>
+      </form>
+    </div>
+  </div>
+</main>
+
+<footer class="sitePageFooter">
+  <img src="img/logo.png" alt="enza HOME Manavgat" class="sitePageFooterLogo">
+  <div class="sitePageFooterContact">
+    <a href="tel:+905493320707">0549 332 07 07</a>
+    <a href="tel:+902427771212">0242 777 12 12</a>
+    <a href="https://www.instagram.com/yatasenzahomemanavgat/" target="_blank" rel="noopener">Instagram</a>
+    <a href="https://maps.google.com/?cid=5104403785270368674" target="_blank" rel="noopener">Google Haritada Gör</a>
+    <a href="https://wa.me/905493320707?text=Merhaba%2C%20enza%20HOME%20Manavgat%20web%20sitesi%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener">WhatsApp'tan Yaz</a>
+  </div>
+</footer>
+
+<script src="data.js?v=21"></script>
+<script src="site-pages.js?v=2"></script>
+<script>
+  window.SitePages.initNav();
+  document.getElementById('contactForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var name = document.getElementById('contactFormName').value.trim();
+    var message = document.getElementById('contactFormMessage').value.trim();
+    if (!name || !message) return;
+    var text = 'Merhaba, ben ' + name + '. ' + message;
+    window.open('https://wa.me/905493320707?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  });
+</script>
+</body>
+</html>

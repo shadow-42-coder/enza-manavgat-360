@@ -26,6 +26,13 @@ window.SitePages = (function() {
     return items.filter(function(p) { return p.status === 'published'; })
       .sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
   }
+  function todayIso() { return new Date().toISOString().slice(0, 10); }
+  function publishedCampaigns() {
+    var today = todayIso();
+    var items = (window.APP_DATA && window.APP_DATA.campaigns) || [];
+    return items.filter(function(c) { return c.status === 'published' && (!c.validUntil || c.validUntil >= today); })
+      .sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+  }
 
   function renderBlogList() {
     var container = document.getElementById('blogListGrid');
@@ -115,5 +122,77 @@ window.SitePages = (function() {
     draw();
   }
 
-  return { renderBlogList: renderBlogList, renderBlogArticle: renderBlogArticle, renderPortfolioGrid: renderPortfolioGrid };
+  function renderCampaignGrid() {
+    var container = document.getElementById('campaignGrid');
+    if (!container) return;
+    var items = publishedCampaigns();
+    if (!items.length) {
+      container.innerHTML = '<p class="siteEmptyState">Şu anda aktif bir kampanya yok.</p>';
+      return;
+    }
+    container.innerHTML = items.map(function(c) {
+      return '<div class="campaignCard">' +
+        (c.image ? '<img class="campaignCardImage" src="' + esc(c.image) + '" alt="">' : '<div class="campaignCardImage campaignCardImagePlaceholder"></div>') +
+        '<div class="campaignCardBody">' +
+        '<h3 class="campaignCardTitle">' + esc(c.title) + '</h3>' +
+        '<p class="campaignCardDesc">' + esc(c.description) + '</p>' +
+        (c.validUntil ? '<span class="campaignCardValidity">Geçerlilik: ' + esc(formatDate(c.validUntil)) + '</span>' : '') +
+        '</div></div>';
+    }).join('');
+  }
+
+  // Ana Sayfa teasers - reuse the exact same filter/sort functions the list
+  // pages use, just capped to a handful of items.
+  function renderHomeBlogTeaser() {
+    var container = document.getElementById('homeBlogTeaser');
+    if (!container) return;
+    var posts = publishedBlogPosts().slice(0, 3);
+    if (!posts.length) { container.style.display = 'none'; return; }
+    container.innerHTML = posts.map(function(p) {
+      return '<a class="blogCard" href="blog.html?slug=' + encodeURIComponent(p.slug) + '">' +
+        (p.image ? '<img class="blogCardImage" src="' + esc(p.image) + '" alt="">' : '<div class="blogCardImage blogCardImagePlaceholder"></div>') +
+        '<div class="blogCardBody">' +
+        '<span class="blogCardCategory">' + esc(p.category) + '</span>' +
+        '<h3 class="blogCardTitle">' + esc(p.title) + '</h3>' +
+        '<p class="blogCardExcerpt">' + esc(p.excerpt) + '</p>' +
+        '</div></a>';
+    }).join('');
+  }
+  function renderHomeCampaignTeaser() {
+    var container = document.getElementById('homeCampaignTeaser');
+    if (!container) return;
+    var campaign = publishedCampaigns()[0];
+    if (!campaign) { container.style.display = 'none'; return; }
+    container.innerHTML = '<div class="homeCampaignBanner">' +
+      '<span class="sitePageEyebrow">KAMPANYA</span>' +
+      '<h3 class="homeCampaignTeaserTitle">' + esc(campaign.title) + '</h3>' +
+      '<p class="homeCampaignTeaserDesc">' + esc(campaign.description) + '</p>' +
+      '<a class="btnWarm" href="kampanyalar.html">Tüm Kampanyalar</a>' +
+      '</div>';
+  }
+
+  // Shared hamburger nav toggle - one function, called from a one-line
+  // inline <script> on every public page, so the open/close logic lives in
+  // exactly one place rather than being copy-pasted five times.
+  function initNav() {
+    var header = document.querySelector('.sitePageHeader');
+    if (!header) return;
+    var toggle = header.querySelector('.sitePageNavToggle');
+    var nav = header.querySelector('.sitePageNav');
+    if (!toggle || !nav) return;
+    toggle.addEventListener('click', function() {
+      var open = nav.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+
+  return {
+    renderBlogList: renderBlogList,
+    renderBlogArticle: renderBlogArticle,
+    renderPortfolioGrid: renderPortfolioGrid,
+    renderCampaignGrid: renderCampaignGrid,
+    renderHomeBlogTeaser: renderHomeBlogTeaser,
+    renderHomeCampaignTeaser: renderHomeCampaignTeaser,
+    initNav: initNav
+  };
 })();

@@ -18,6 +18,7 @@ window.EnzaPublish = (function() {
   var HTML_PATH = 'docs/tur.html';
   var IMG_BLOG_DIR = 'docs/img/blog';
   var IMG_PORTFOLIO_DIR = 'docs/img/portfolio';
+  var IMG_CAMPAIGN_DIR = 'docs/img/campaigns';
 
   function getToken() {
     try { return window.localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
@@ -67,7 +68,7 @@ window.EnzaPublish = (function() {
   function applyChanges(sourceData, sets) {
     var data = JSON.parse(JSON.stringify(sourceData));
     var warnings = [];
-    var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0, blogPosts: 0, portfolioItems: 0 };
+    var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0, blogPosts: 0, portfolioItems: 0, campaigns: 0 };
     var htmlOps = { contact: null, sceneOrder: null, deletedSceneIds: [] };
 
     (sets.arrows || []).forEach(function(a) {
@@ -254,6 +255,24 @@ window.EnzaPublish = (function() {
         data.portfolioItems = data.portfolioItems.filter(function(x) { return x.id !== p.id; });
         if (data.portfolioItems.length === portBefore) { warnings.push('Portfolyo öğesi silinemedi, bulunamadı: ' + p.id); return; }
         appliedCounts.portfolioItems++;
+      }
+    });
+
+    if (!data.campaigns) data.campaigns = [];
+    (sets.campaigns || []).forEach(function(p) {
+      if (p.op === 'add') {
+        data.campaigns.push(p.record);
+        appliedCounts.campaigns++;
+      } else if (p.op === 'edit') {
+        var campIdx = data.campaigns.findIndex(function(x) { return x.id === p.id; });
+        if (campIdx === -1) { warnings.push('Kampanya güncellenemedi, bulunamadı: ' + p.id); return; }
+        data.campaigns[campIdx] = p.record;
+        appliedCounts.campaigns++;
+      } else if (p.op === 'remove') {
+        var campBefore = data.campaigns.length;
+        data.campaigns = data.campaigns.filter(function(x) { return x.id !== p.id; });
+        if (data.campaigns.length === campBefore) { warnings.push('Kampanya silinemedi, bulunamadı: ' + p.id); return; }
+        appliedCounts.campaigns++;
       }
     });
 
@@ -475,7 +494,7 @@ window.EnzaPublish = (function() {
   function uploadImage(file, folder) {
     var token = getToken();
     if (!token) return Promise.reject(new Error('GitHub erişim anahtarı girilmemiş.'));
-    var dir = folder === 'portfolio' ? IMG_PORTFOLIO_DIR : IMG_BLOG_DIR;
+    var dir = folder === 'portfolio' ? IMG_PORTFOLIO_DIR : (folder === 'campaign' ? IMG_CAMPAIGN_DIR : IMG_BLOG_DIR);
     return fileToBase64(file).then(function(base64) {
       var safeName = Date.now() + '-' + file.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
       return githubRequest('PUT', '/contents/' + dir + '/' + safeName, {

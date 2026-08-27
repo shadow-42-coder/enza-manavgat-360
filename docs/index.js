@@ -1280,6 +1280,7 @@
     // Kopyala clipboard export below - there's nothing manual left to hand off.
     var BLOG_KEY = 'enzaPosCollectorBlogPosts';
     var PORTFOLIO_KEY = 'enzaPosCollectorPortfolioItems';
+    var CAMPAIGN_KEY = 'enzaPosCollectorCampaigns';
     var entries = [];
     var moves = [];
     var arrows = [];
@@ -1289,6 +1290,7 @@
     var newScenes = [];
     var blogPosts = [];
     var portfolioItems = [];
+    var campaigns = [];
     try { entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]'); } catch (e) { entries = []; }
     try { moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]'); } catch (e) { moves = []; }
     try { arrows = JSON.parse(window.localStorage.getItem(ARROW_KEY) || '[]'); } catch (e) { arrows = []; }
@@ -1298,8 +1300,10 @@
     try { newScenes = JSON.parse(window.localStorage.getItem(NEW_SCENE_KEY) || '[]'); } catch (e) { newScenes = []; }
     try { blogPosts = JSON.parse(window.localStorage.getItem(BLOG_KEY) || '[]'); } catch (e) { blogPosts = []; }
     try { portfolioItems = JSON.parse(window.localStorage.getItem(PORTFOLIO_KEY) || '[]'); } catch (e) { portfolioItems = []; }
+    try { campaigns = JSON.parse(window.localStorage.getItem(CAMPAIGN_KEY) || '[]'); } catch (e) { campaigns = []; }
     function saveBlogPosts() { window.localStorage.setItem(BLOG_KEY, JSON.stringify(blogPosts)); updateCount(); }
     function savePortfolioItems() { window.localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolioItems)); updateCount(); }
+    function saveCampaigns() { window.localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(campaigns)); updateCount(); }
 
     // "Kopyala" reports everything pending to the admin's clipboard so it can
     // be handed off (new products/scenes still need to be added by hand;
@@ -1376,6 +1380,9 @@
     var portfolioModeButton = document.createElement('button');
     portfolioModeButton.textContent = 'Portfolyo';
     portfolioModeButton.className = 'posFinderModeButton';
+    var campaignModeButton = document.createElement('button');
+    campaignModeButton.textContent = 'Kampanyalar';
+    campaignModeButton.className = 'posFinderModeButton';
     modeRow.appendChild(productModeButton);
     modeRow.appendChild(linkModeButton);
     modeRow.appendChild(deleteModeButton);
@@ -1387,6 +1394,7 @@
     modeRow.appendChild(orderModeButton);
     modeRow.appendChild(blogModeButton);
     modeRow.appendChild(portfolioModeButton);
+    modeRow.appendChild(campaignModeButton);
 
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
@@ -2646,7 +2654,7 @@
 
     function totalUnpublishedCount() {
       return arrows.length + moves.length + removals.length + edits.length + settingsChanges.length +
-        blogPosts.length + portfolioItems.length;
+        blogPosts.length + portfolioItems.length + campaigns.length;
     }
 
     // Warn before leaving the tab (close/reload/navigate away) with edits
@@ -2662,7 +2670,7 @@
       if (!window.EnzaPublish) { publishStatus.textContent = 'Yayınlama modülü yüklenemedi.'; return; }
       var pendingSets = {
         arrows: arrows, moves: moves, removals: removals, edits: edits, settingsChanges: settingsChanges,
-        blogPosts: blogPosts, portfolioItems: portfolioItems
+        blogPosts: blogPosts, portfolioItems: portfolioItems, campaigns: campaigns
       };
       var totalPending = totalUnpublishedCount();
       if (!totalPending) { publishStatus.textContent = 'Yayınlanacak bir değişiklik yok.'; return; }
@@ -2680,14 +2688,14 @@
             (result.warnings.length ? (' Uygulanamayanlar: ' + result.warnings.join(' | ')) : '');
           return;
         }
-        arrows = []; moves = []; removals = []; edits = []; blogPosts = []; portfolioItems = [];
+        arrows = []; moves = []; removals = []; edits = []; blogPosts = []; portfolioItems = []; campaigns = [];
         settingsChanges = settingsChanges.filter(function(c) { return window.EnzaPublish.SKIPPED_SETTINGS_TYPES[c.type]; });
-        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges(); saveBlogPosts(); savePortfolioItems();
+        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges(); saveBlogPosts(); savePortfolioItems(); saveCampaigns();
         updateCount();
         var summary = 'Yayınlandı! (' + result.appliedCounts.arrows + ' ok, ' + result.appliedCounts.moves + ' taşıma, ' +
           result.appliedCounts.removals + ' silme, ' + result.appliedCounts.edits + ' düzenleme, ' +
           result.appliedCounts.settingsChanges + ' ayar, ' + result.appliedCounts.blogPosts + ' blog yazısı, ' +
-          result.appliedCounts.portfolioItems + ' portfolyo öğesi). Site birkaç dakika içinde güncellenir.';
+          result.appliedCounts.portfolioItems + ' portfolyo öğesi, ' + result.appliedCounts.campaigns + ' kampanya). Site birkaç dakika içinde güncellenir.';
         if (result.warnings.length) summary += ' Elle uygulanması gerekenler: ' + result.warnings.join(' | ');
         publishStatus.textContent = summary;
       }).catch(function(err) {
@@ -4179,11 +4187,17 @@
 
     function renderBlogAdminList() {
       blogListItems.innerHTML = '';
-      // Fold the pending ops down to "current effective state" for display -
-      // an 'edit'/'remove' after an earlier 'add' in the same session should
-      // show the latest version (or disappear), not both.
+      // Start from what's already live in data.js (published earlier, in a
+      // past session even) so the list isn't empty just because nothing is
+      // pending right now - then fold this session's pending ops on top,
+      // an 'edit'/'remove' after an earlier 'add' should show the latest
+      // version (or disappear), not both.
       var effective = {};
       var order = [];
+      (data.blogPosts || []).forEach(function(post) {
+        order.push(post.id);
+        effective[post.id] = post;
+      });
       blogPosts.forEach(function(p) {
         if (p.op === 'remove') { delete effective[p.id]; return; }
         if (!effective[p.id]) order.push(p.id);
@@ -4323,6 +4337,10 @@
       portfolioListItems.innerHTML = '';
       var effective = {};
       var order = [];
+      (data.portfolioItems || []).forEach(function(item) {
+        order.push(item.id);
+        effective[item.id] = item;
+      });
       portfolioItems.forEach(function(p) {
         if (p.op === 'remove') { delete effective[p.id]; return; }
         if (!effective[p.id]) order.push(p.id);
@@ -4359,6 +4377,181 @@
         row.appendChild(editButton);
         row.appendChild(deleteButton);
         portfolioListItems.appendChild(row);
+      });
+    }
+
+    // ---- Kampanyalar panel ----
+    // Not to be confused with the single site-wide "Kampanya/duyuru şeridi"
+    // banner configured under Ayarlar (campaignInput/campaignEndDate/etc.
+    // above) - that's one dismissible announcement strip shown on the tour
+    // itself. This is a separate, browsable list of multiple campaign posts
+    // with their own images, shown on kampanyalar.html - same content-type
+    // pattern as Blog/Portfolyo, just simpler (no category, no rich text).
+    var campaignPanel = document.createElement('div');
+    campaignPanel.id = 'posFinderCampaignPanel';
+    campaignPanel.style.display = 'none';
+
+    var campaignListView = document.createElement('div');
+    var campaignListHeader = document.createElement('div');
+    campaignListHeader.className = 'posFinderContentListHeader';
+    var campaignListTitle = document.createElement('span');
+    campaignListTitle.textContent = 'Kampanyalar';
+    var campaignNewButton = document.createElement('button');
+    campaignNewButton.type = 'button';
+    campaignNewButton.textContent = '+ Yeni Kampanya';
+    campaignListHeader.appendChild(campaignListTitle);
+    campaignListHeader.appendChild(campaignNewButton);
+    var campaignListItems = document.createElement('div');
+    campaignListView.appendChild(campaignListHeader);
+    campaignListView.appendChild(campaignListItems);
+
+    var campaignEditorView = document.createElement('div');
+    campaignEditorView.style.display = 'none';
+    var campaignBackLink = document.createElement('a');
+    campaignBackLink.href = '#';
+    campaignBackLink.className = 'posFinderBackLink';
+    campaignBackLink.textContent = '← Kampanyalara Dön';
+    var campaignTitleInput = document.createElement('input');
+    campaignTitleInput.type = 'text';
+    campaignTitleInput.className = 'posFinderBlogTitleInput';
+    campaignTitleInput.placeholder = 'Kampanya başlığı';
+    var campaignDescTextarea = document.createElement('textarea');
+    campaignDescTextarea.placeholder = 'Kampanya açıklaması';
+    var campaignDropZone = buildImageDropZone('campaign');
+    var campaignStatusToggle = buildStatusToggle();
+    var campaignNoExpiryLabel = document.createElement('label');
+    campaignNoExpiryLabel.style.display = 'flex';
+    campaignNoExpiryLabel.style.alignItems = 'center';
+    campaignNoExpiryLabel.style.gap = '8px';
+    campaignNoExpiryLabel.style.marginBottom = '8px';
+    var campaignNoExpiryCheckbox = document.createElement('input');
+    campaignNoExpiryCheckbox.type = 'checkbox';
+    var campaignNoExpiryText = document.createElement('span');
+    campaignNoExpiryText.style.fontSize = '12px';
+    campaignNoExpiryText.style.color = 'var(--admin-text-muted)';
+    campaignNoExpiryText.textContent = 'Süresiz (bitiş tarihi yok)';
+    campaignNoExpiryLabel.appendChild(campaignNoExpiryCheckbox);
+    campaignNoExpiryLabel.appendChild(campaignNoExpiryText);
+    var campaignValidUntilInput = document.createElement('input');
+    campaignValidUntilInput.type = 'date';
+    campaignNoExpiryCheckbox.addEventListener('change', function() {
+      campaignValidUntilInput.style.display = campaignNoExpiryCheckbox.checked ? 'none' : 'block';
+      if (campaignNoExpiryCheckbox.checked) campaignValidUntilInput.value = '';
+    });
+    var campaignSaveButton = document.createElement('button');
+    campaignSaveButton.type = 'button';
+    campaignSaveButton.textContent = 'Kaydet';
+
+    var campaignEditorColumns = document.createElement('div');
+    campaignEditorColumns.className = 'posFinderEditorColumns';
+    var campaignEditorMain = document.createElement('div');
+    campaignEditorMain.className = 'posFinderEditorMain';
+    campaignEditorMain.appendChild(campaignDropZone.el);
+    var campaignEditorSidebar = document.createElement('div');
+    campaignEditorSidebar.className = 'posFinderEditorSidebar';
+    campaignEditorSidebar.appendChild(sidebarBlock('Durum', campaignStatusToggle.el));
+    campaignEditorSidebar.appendChild(sidebarBlock('Geçerlilik', (function() {
+      var wrap = document.createElement('div');
+      wrap.appendChild(campaignNoExpiryLabel);
+      wrap.appendChild(campaignValidUntilInput);
+      return wrap;
+    })()));
+    campaignEditorSidebar.appendChild(campaignSaveButton);
+    campaignEditorColumns.appendChild(campaignEditorMain);
+    campaignEditorColumns.appendChild(campaignEditorSidebar);
+
+    campaignEditorView.appendChild(campaignBackLink);
+    campaignEditorView.appendChild(campaignTitleInput);
+    campaignEditorView.appendChild(campaignDescTextarea);
+    campaignEditorView.appendChild(campaignEditorColumns);
+
+    campaignPanel.appendChild(campaignListView);
+    campaignPanel.appendChild(campaignEditorView);
+
+    var editingCampaignItem = null;
+    function openCampaignEditor(item) {
+      editingCampaignItem = item || null;
+      campaignTitleInput.value = item ? item.title : '';
+      campaignDescTextarea.value = item ? item.description : '';
+      campaignStatusToggle.set(item ? item.status : 'draft');
+      campaignDropZone.reset(item ? item.image : '');
+      var validUntil = item ? (item.validUntil || '') : '';
+      campaignNoExpiryCheckbox.checked = !validUntil;
+      campaignValidUntilInput.value = validUntil;
+      campaignValidUntilInput.style.display = validUntil ? 'block' : (item ? 'none' : 'block');
+      campaignListView.style.display = 'none';
+      campaignEditorView.style.display = 'block';
+    }
+    function closeCampaignEditor() {
+      editingCampaignItem = null;
+      campaignListView.style.display = 'block';
+      campaignEditorView.style.display = 'none';
+      renderCampaignAdminList();
+    }
+    campaignNewButton.addEventListener('click', function() { openCampaignEditor(null); });
+    campaignBackLink.addEventListener('click', function(event) { event.preventDefault(); closeCampaignEditor(); });
+
+    campaignSaveButton.addEventListener('click', function() {
+      var title = campaignTitleInput.value.trim();
+      if (!title) { window.alert('Başlık girin.'); return; }
+      var record = {
+        id: editingCampaignItem ? editingCampaignItem.id : ('camp-' + Date.now()),
+        title: title,
+        description: campaignDescTextarea.value.trim(),
+        image: campaignDropZone.getPath(),
+        validUntil: campaignNoExpiryCheckbox.checked ? '' : (campaignValidUntilInput.value || ''),
+        status: campaignStatusToggle.get(),
+        date: editingCampaignItem ? editingCampaignItem.date : todayIso()
+      };
+      campaigns.push({ op: editingCampaignItem ? 'edit' : 'add', id: record.id, record: record });
+      saveCampaigns();
+      closeCampaignEditor();
+    });
+
+    function renderCampaignAdminList() {
+      campaignListItems.innerHTML = '';
+      var effective = {};
+      var order = [];
+      (data.campaigns || []).forEach(function(item) {
+        order.push(item.id);
+        effective[item.id] = item;
+      });
+      campaigns.forEach(function(p) {
+        if (p.op === 'remove') { delete effective[p.id]; return; }
+        if (!effective[p.id]) order.push(p.id);
+        effective[p.id] = p.record;
+      });
+      order = order.filter(function(id) { return effective[id]; });
+      if (!order.length) {
+        campaignListItems.textContent = 'Henüz kampanya yok.';
+        return;
+      }
+      order.forEach(function(id) {
+        var item = effective[id];
+        if (!item) return;
+        var row = document.createElement('div');
+        row.className = 'posFinderContentListItem';
+        var info = document.createElement('div');
+        info.className = 'posFinderContentListItemInfo';
+        info.innerHTML = '<strong>' + sanitize(item.title) + '</strong><span class="posFinderContentListItemMeta">' +
+          (item.status === 'published' ? 'Yayında' : 'Taslak') + ' · ' + (item.validUntil ? ('Geçerlilik: ' + item.validUntil) : 'Süresiz') + '</span>';
+        var editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.textContent = 'Düzenle';
+        editButton.addEventListener('click', function() { openCampaignEditor(item); });
+        var deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Sil';
+        deleteButton.addEventListener('click', function() {
+          if (!window.confirm('"' + item.title + '" silinsin mi?')) return;
+          campaigns.push({ op: 'remove', id: id });
+          saveCampaigns();
+          renderCampaignAdminList();
+        });
+        row.appendChild(info);
+        row.appendChild(editButton);
+        row.appendChild(deleteButton);
+        campaignListItems.appendChild(row);
       });
     }
 
@@ -4486,6 +4679,7 @@
     content.appendChild(orderPanel);
     content.appendChild(blogPanel);
     content.appendChild(portfolioPanel);
+    content.appendChild(campaignPanel);
     content.appendChild(actionRow);
 
     // Manual resize handles - only meaningful in "wide" (dashboard) mode,
@@ -4627,7 +4821,7 @@
     // hotspot) get a big dashboard-style panel with the pano shrunk to a
     // small floating preview, instead of competing for space with a
     // full-size photo they don't actually need to click on.
-    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true, blog: true, portfolio: true };
+    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true, blog: true, portfolio: true, campaign: true };
     function setMode(newMode) {
       mode = newMode;
       var wasWide = document.body.classList.contains('posFinderWide');
@@ -4656,11 +4850,12 @@
       orderModeButton.classList.toggle('active', mode === 'order');
       blogModeButton.classList.toggle('active', mode === 'blog');
       portfolioModeButton.classList.toggle('active', mode === 'portfolio');
+      campaignModeButton.classList.toggle('active', mode === 'campaign');
       linkInput.style.display = mode === 'product' ? '' : 'none';
       draftFetchButton.style.display = (mode === 'product' && !editingEntry) ? '' : 'none';
       if (mode !== 'product') clearDraft();
       sceneSelect.style.display = mode === 'link' ? '' : 'none';
-      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio') ? 'none' : 'flex';
+      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign') ? 'none' : 'flex';
       photoPanel.style.display = mode === 'photo' ? 'block' : 'none';
       settingsPanel.style.display = mode === 'settings' ? 'block' : 'none';
       newScenePanel.style.display = mode === 'newScene' ? 'block' : 'none';
@@ -4669,8 +4864,9 @@
       orderPanel.style.display = mode === 'order' ? 'block' : 'none';
       blogPanel.style.display = mode === 'blog' ? 'block' : 'none';
       portfolioPanel.style.display = mode === 'portfolio' ? 'block' : 'none';
-      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio') ? 'none' : 'flex';
-      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio') ? 'none' : '';
+      campaignPanel.style.display = mode === 'campaign' ? 'block' : 'none';
+      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign') ? 'none' : 'flex';
+      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign') ? 'none' : '';
       pendingCoords = null;
       resetInputRowForAdd();
       coordsLine.classList.remove('ready');
@@ -4685,6 +4881,7 @@
       if (mode === 'order') renderOrderList();
       if (mode === 'blog') renderBlogAdminList();
       if (mode === 'portfolio') renderPortfolioAdminList();
+      if (mode === 'campaign') renderCampaignAdminList();
       if (mode !== 'settings') {
         campaignEndDate = getEffectiveCampaignEndDate();
         showCampaignBanner(getEffectiveCampaignText());
@@ -4702,6 +4899,7 @@
     orderModeButton.addEventListener('click', function() { setMode('order'); });
     blogModeButton.addEventListener('click', function() { setMode('blog'); });
     portfolioModeButton.addEventListener('click', function() { setMode('portfolio'); });
+    campaignModeButton.addEventListener('click', function() { setMode('campaign'); });
 
     function populateSceneSelect() {
       sceneSelect.innerHTML = '';
@@ -5009,7 +5207,7 @@
         (moves.length - copiedMarker.moves) + ' taşındı, ' + (removals.length - copiedMarker.removals) + ' silindi, ' +
         (edits.length - copiedMarker.edits) + ' düzenlendi, ' + (settingsChanges.length - copiedMarker.settingsChanges) + ' ayar, ' +
         (newScenes.length - copiedMarker.newScenes) + ' yeni sahne, ' +
-        blogPosts.length + ' blog, ' + portfolioItems.length + ' portfolyo';
+        blogPosts.length + ' blog, ' + portfolioItems.length + ' portfolyo, ' + campaigns.length + ' kampanya';
     }
 
     function saveEntries() { window.localStorage.setItem(ADD_KEY, JSON.stringify(entries)); updateCount(); }

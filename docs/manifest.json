@@ -1,7 +1,7 @@
 {
-  "name": "enza HOME Manavgat | 360° Sanal Mağaza Turu",
+  "name": "enza HOME Manavgat",
   "short_name": "enza HOME Manavgat",
-  "description": "enza HOME Manavgat mağazasını 360° sanal tur ile gezin.",
+  "description": "enza HOME Manavgat - mobilya, yatak odası, 360° sanal tur, portfolyo ve blog.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

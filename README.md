@@ -1,12 +1,19 @@
-# enza HOME Manavgat — 360° Sanal Mağaza Turu
+# enza HOME Manavgat — Şirket Sitesi + 360° Sanal Mağaza Turu
 
-enza HOME Manavgat mağazasının 360° sanal turu. [Marzipano](https://www.marzipano.net) ile
-oluşturulmuş, `docs/` klasöründe barındırılan statik bir web uygulamasıdır.
+enza HOME Manavgat'ın çok sayfalı şirket sitesi. `docs/` klasöründe barındırılan, build adımı
+olmayan statik bir web sitesidir.
 
-- **Canlı site:** GitHub Pages üzerinden yayınlandıktan sonra
-  `https://shadow-42-coder.github.io/enza-manavgat-360/` adresinde olacak.
-- **İçerik:** 20 sahne, mağazanın zemin katındaki oturma grubu / yatak odası / yemek odası
-  vitrinleri, Cafenza kafe köşesi, enza HOME danışma alanı ve dış cephe.
+- **Canlı site:** `https://shadow-42-coder.github.io/enza-manavgat-360/`
+- **Sayfalar:**
+  - `index.html` — Ana Sayfa (giriş noktası)
+  - `tur.html` — [Marzipano](https://www.marzipano.net) ile oluşturulmuş 360° sanal tur (20 sahne)
+  - `portfolyo.html` — müşteri evlerine hazırlanan render/tasarım galerisi
+  - `blog.html` — mobilya/dekorasyon yazıları (liste + `?slug=...` ile tekil yazı)
+  - `kampanyalar.html` — güncel kampanya/duyurular
+  - `hakkimizda.html` — hakkımızda + iletişim bilgileri + WhatsApp'a giden iletişim formu
+- **Admin panel:** `tur.html?pos=1` üzerinden giriş yapılır, tur içeriğinin yanı sıra Blog,
+  Portfolyo ve Kampanyalar da buradan yönetilir — "Şimdi Yayınla" ile GitHub'a doğrudan
+  commit edilir (bkz. `docs/publish.js`).
 
 ## GitHub Pages ile yayınlama (GitHub Desktop)
 
@@ -35,19 +42,35 @@ sonra `http://localhost:8080` adresini açın.
 
 ## Önbellek
 
-`index.html` içinde `style.css`, `data.js`, `index.js` dosyaları `?v=3` gibi bir sürüm
-numarasıyla yükleniyor. Bu dosyalardan birini değiştirdiğinizde (siz veya Claude), tarayıcı
-önbelleğinin ziyaretçilere eski içerik göstermemesi için `index.html`'deki üçünün de sürüm
-numarasını bir artırın.
+Her sayfa `style.css`, `data.js`, `index.js`, `publish.js`, `site-pages.js` dosyalarını
+`?v=N` gibi bir sürüm numarasıyla yüklüyor. Bu dosyalardan birini değiştirdiğinizde (siz veya
+Claude), tarayıcı önbelleğinin ziyaretçilere eski içerik göstermemesi için **o dosyayı
+kullanan her sayfadaki** sürüm numarasını bir artırın (hepsi aynı numarada olmak zorunda
+değil, ama tutarlı tutmak takip kolaylığı sağlar).
 
 ## Düzenleme
 
-- `docs/data.js` — sahne isimleri ve sahneler arası geçiş (hotspot) tanımları. Hotspot
+- `docs/data.js` — sahne isimleri, sahneler arası geçiş (hotspot) tanımları, ve Blog/Portfolyo/
+  Kampanyalar içerikleri (`blogPosts`/`portfolioItems`/`campaigns` dizileri — admin panelden
+  "Şimdi Yayınla" ile buraya yazılır, elle düzenlemeye gerek yok). Sahne hotspot
   `yaw`/`pitch`/`rotation`/`target` değerleri gerçek fotoğraflara göre kalibre edilmiştir,
   değiştirmeyin.
-- `docs/index.html`, `docs/style.css` — marka/görsel düzen, iletişim linkleri (Instagram,
-  telefon, Google Haritalar).
+- `docs/publish.js` — admin panelin "Şimdi Yayınla" butonunun kullandığı GitHub Contents API
+  entegrasyonu. `HTML_PATH` sabiti `docs/tur.html`'i gösterir (Ana Sayfa değil) — turun kendi
+  iletişim bilgisi/sahne sırası gibi değişiklikleri hep oraya yazılır.
+- `docs/index.js` — tur motoru + admin panelin tamamı (~7000 satır).
+- `docs/site-pages.js` — Ana Sayfa/Blog/Portfolyo/Kampanyalar/Hakkımızda sayfalarının
+  `data.js`'ten okuyup ekrana bastığı, `index.js`'ten bağımsız küçük script.
+- `docs/style.css` — hem tur/admin panelin hem de yeni sayfaların ortak marka renkleri
+  (`--brand-*`/`--admin-*` CSS değişkenleri) ve stilleri.
 - `docs/img/logo.svg` — enza HOME logosu (gerçek mağaza tabelasından örneklenen renklerle).
+
+### `seed-` önekli örnek içerikler
+
+`data.js`'teki `blogPosts`/`portfolioItems`/`campaigns` içinde `id`'si `seed-` ile başlayan
+kayıtlar, admin panel ilk açıldığında boş görünmesin diye eklenmiş örnek içeriklerdir
+(gerçek görsel yerine geçici olarak `img/og-image.jpg` kullanılıyor). İsterseniz admin
+panelden düzenleyip gerçek içerikle değiştirin, isterseniz silin.
 
 ## Google Street View
 

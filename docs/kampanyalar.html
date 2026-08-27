@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<title>Blog | enza HOME Manavgat</title>
+<title>Kampanyalar | enza HOME Manavgat</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="enza HOME Manavgat'tan mobilya, dekorasyon ve ev fikirleri.">
+<meta name="description" content="enza HOME Manavgat'ın güncel kampanya ve fırsatları.">
 
 <link rel="icon" type="image/png" sizes="64x64" href="img/favicon-64.png">
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
@@ -24,23 +24,18 @@
     <a href="index.html">Ana Sayfa</a>
     <a href="tur.html">360° Tur</a>
     <a href="portfolyo.html">Portfolyo</a>
-    <a href="blog.html" class="active">Blog</a>
-    <a href="kampanyalar.html">Kampanyalar</a>
+    <a href="blog.html">Blog</a>
+    <a href="kampanyalar.html" class="active">Kampanyalar</a>
     <a href="hakkimizda.html">Hakkımızda &amp; İletişim</a>
   </nav>
 </header>
 
 <main class="sitePageMain">
-  <div id="blogListView">
-    <div class="sitePageIntro">
-      <span class="sitePageEyebrow">BLOG</span>
-      <h1>Mobilya, Dekorasyon ve Ev Fikirleri</h1>
-    </div>
-    <div id="blogListGrid" class="blogGrid"></div>
+  <div class="sitePageIntro">
+    <span class="sitePageEyebrow">KAMPANYALAR</span>
+    <h1>Güncel Kampanya ve Fırsatlarımız</h1>
   </div>
-  <article id="blogArticleView" class="sitePageArticle" style="display:none;">
-    <div id="blogArticle"></div>
-  </article>
+  <div id="campaignGrid" class="campaignGrid"></div>
 </main>
 
 <footer class="sitePageFooter">
@@ -58,14 +53,7 @@
 <script src="site-pages.js?v=2"></script>
 <script>
   window.SitePages.initNav();
-  var slug = new URLSearchParams(window.location.search).get('slug');
-  if (slug) {
-    document.getElementById('blogListView').style.display = 'none';
-    document.getElementById('blogArticleView').style.display = 'block';
-    window.SitePages.renderBlogArticle(slug);
-  } else {
-    window.SitePages.renderBlogList();
-  }
+  window.SitePages.renderCampaignGrid();
 </script>
 </body>
 </html>

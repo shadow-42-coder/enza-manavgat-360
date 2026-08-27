@@ -13,16 +13,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="style.css?v=37">
+<link rel="stylesheet" href="style.css?v=38">
 </head>
 <body class="sitePage">
 
 <header class="sitePageHeader">
   <a href="index.html" class="sitePageLogo"><img src="img/logo.png" alt="enza HOME Manavgat"></a>
+  <button type="button" class="sitePageNavToggle" aria-label="Menü" aria-expanded="false"><span></span><span></span><span></span></button>
   <nav class="sitePageNav">
-    <a href="index.html">360° Tur</a>
-    <a href="blog.html">Blog</a>
+    <a href="index.html">Ana Sayfa</a>
+    <a href="tur.html">360° Tur</a>
     <a href="portfolyo.html" class="active">Portfolyo</a>
+    <a href="blog.html">Blog</a>
+    <a href="kampanyalar.html">Kampanyalar</a>
+    <a href="hakkimizda.html">Hakkımızda &amp; İletişim</a>
   </nav>
 </header>
 
@@ -42,11 +46,15 @@
     <a href="tel:+902427771212">0242 777 12 12</a>
     <a href="https://www.instagram.com/yatasenzahomemanavgat/" target="_blank" rel="noopener">Instagram</a>
     <a href="https://maps.google.com/?cid=5104403785270368674" target="_blank" rel="noopener">Google Haritada Gör</a>
+    <a href="https://wa.me/905493320707?text=Merhaba%2C%20enza%20HOME%20Manavgat%20web%20sitesi%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener">WhatsApp'tan Yaz</a>
   </div>
 </footer>
 
-<script src="data.js?v=20"></script>
-<script src="site-pages.js?v=1"></script>
-<script>window.SitePages.renderPortfolioGrid();</script>
+<script src="data.js?v=21"></script>
+<script src="site-pages.js?v=2"></script>
+<script>
+  window.SitePages.initNav();
+  window.SitePages.renderPortfolioGrid();
+</script>
 </body>
 </html>
