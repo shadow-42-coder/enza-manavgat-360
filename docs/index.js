@@ -2615,13 +2615,84 @@
     var mapsInput = document.createElement('input');
     mapsInput.type = 'text';
     mapsInput.placeholder = 'Google Haritalar linki';
+    var addressInput = document.createElement('input');
+    addressInput.type = 'text';
+    addressInput.placeholder = 'Açık adres (Hakkımızda sayfasında ve site verisinde gösterilir)';
     var contactButton = document.createElement('button');
     contactButton.textContent = 'İletişim Bilgilerini Güncelle';
     contactSection.appendChild(phone1Input);
     contactSection.appendChild(phone2Input);
     contactSection.appendChild(instagramInput);
     contactSection.appendChild(mapsInput);
+    contactSection.appendChild(addressInput);
     contactSection.appendChild(contactButton);
+
+    // -- Site content (Ana Sayfa hero + value props + Hakkımızda text) --
+    // Unlike the tour's own settings above, this content lives only in
+    // data.js (data.siteContent) - the new public pages (index.html,
+    // hakkimizda.html) render it via site-pages.js, there's no HTML to
+    // patch for it.
+    var siteContentSection = settingsSection('Site İçeriği (Ana Sayfa & Hakkımızda)', '📝');
+    var heroEyebrowInput = document.createElement('input');
+    heroEyebrowInput.type = 'text';
+    heroEyebrowInput.placeholder = 'Ana Sayfa üst etiket (ör. ENZA HOME MANAVGAT)';
+    var heroTitleInput = document.createElement('input');
+    heroTitleInput.type = 'text';
+    heroTitleInput.placeholder = 'Ana Sayfa başlığı';
+    var heroSubtitleInput = document.createElement('textarea');
+    heroSubtitleInput.placeholder = 'Ana Sayfa alt açıklama metni';
+    var valuePropInputs = [0, 1, 2].map(function(i) {
+      var titleInput = document.createElement('input');
+      titleInput.type = 'text';
+      titleInput.placeholder = (i + 1) + '. kutu başlığı';
+      var descInput = document.createElement('input');
+      descInput.type = 'text';
+      descInput.placeholder = (i + 1) + '. kutu açıklaması';
+      return { titleInput: titleInput, descInput: descInput };
+    });
+    var aboutTitleInput = document.createElement('input');
+    aboutTitleInput.type = 'text';
+    aboutTitleInput.placeholder = 'Hakkımızda başlığı';
+    var aboutTextInput = document.createElement('textarea');
+    aboutTextInput.placeholder = 'Hakkımızda metni';
+    var siteContentButton = document.createElement('button');
+    siteContentButton.textContent = 'Site İçeriğini Güncelle';
+    siteContentSection.appendChild(heroEyebrowInput);
+    siteContentSection.appendChild(heroTitleInput);
+    siteContentSection.appendChild(heroSubtitleInput);
+    valuePropInputs.forEach(function(vp) {
+      siteContentSection.appendChild(vp.titleInput);
+      siteContentSection.appendChild(vp.descInput);
+    });
+    siteContentSection.appendChild(aboutTitleInput);
+    siteContentSection.appendChild(aboutTextInput);
+    siteContentSection.appendChild(siteContentButton);
+
+    siteContentButton.addEventListener('click', function() {
+      var beforeSnapshot = settingsChanges.slice();
+      var content = {
+        heroEyebrow: heroEyebrowInput.value.trim(),
+        heroTitle: heroTitleInput.value.trim(),
+        heroSubtitle: heroSubtitleInput.value.trim(),
+        valueProps: valuePropInputs.map(function(vp) {
+          return { title: vp.titleInput.value.trim(), desc: vp.descInput.value.trim() };
+        }),
+        aboutTitle: aboutTitleInput.value.trim(),
+        aboutText: aboutTextInput.value.trim()
+      };
+      settingsChanges = settingsChanges.filter(function(c) { return c.type !== 'siteContent'; });
+      settingsChanges.push({ type: 'siteContent', content: content });
+      var afterSnapshot = settingsChanges.slice();
+      saveSettingsChanges();
+      settingsStatus.textContent = 'Site içeriği kaydedildi (henüz canlı değil, "Şimdi Yayınla" ile gönderin).';
+      pushHistory('site içeriği değiştirme', function() {
+        settingsChanges = beforeSnapshot;
+        saveSettingsChanges();
+      }, function() {
+        settingsChanges = afterSnapshot;
+        saveSettingsChanges();
+      });
+    });
 
     // -- Instant publish (GitHub) --
     var publishSection = settingsSection('Canlıya Yayınla', '🚀');
@@ -3045,6 +3116,7 @@
     settingsPanel.appendChild(campaignSection._accordionWrapper);
     settingsPanel.appendChild(tukendiSection._accordionWrapper);
     settingsPanel.appendChild(contactSection._accordionWrapper);
+    settingsPanel.appendChild(siteContentSection._accordionWrapper);
     settingsPanel.appendChild(qrSection._accordionWrapper);
 
     settingsPanel.appendChild(settingsGroupHeader('Bakım & Kontrol'));
@@ -3962,6 +4034,105 @@
       };
     }
 
+    // Same selectable-chip-row behavior as buildChipRow, but the option
+    // list itself is admin-editable (add/remove categories) instead of
+    // fixed at construction time. The list is stored in
+    // data.settings[storageKey] (published via a 'categories' settingsChange,
+    // publish.js:1) - falls back to defaultOptions when nothing's been
+    // saved yet, so already-seeded content keeps working unchanged.
+    function buildManageableCategoryRow(storageKey, defaultOptions) {
+      var wrap = document.createElement('div');
+      var chipRow = document.createElement('div');
+      chipRow.className = 'posFinderChipRow';
+      var addRow = document.createElement('div');
+      addRow.className = 'posFinderChipRow';
+      addRow.style.marginTop = '8px';
+      var addInput = document.createElement('input');
+      addInput.type = 'text';
+      addInput.placeholder = 'Yeni kategori';
+      addInput.style.marginBottom = '0';
+      var addButton = document.createElement('button');
+      addButton.type = 'button';
+      addButton.textContent = '+ Ekle';
+      addRow.appendChild(addInput);
+      addRow.appendChild(addButton);
+      wrap.appendChild(chipRow);
+      wrap.appendChild(addRow);
+
+      function currentList() {
+        var list = data.settings && data.settings[storageKey];
+        return (list && list.length) ? list : defaultOptions;
+      }
+      function persist(newList) {
+        settingsChanges = settingsChanges.filter(function(c) { return !(c.type === 'categories' && c.key === storageKey); });
+        settingsChanges.push({ type: 'categories', key: storageKey, list: newList });
+        saveSettingsChanges();
+        if (!data.settings) data.settings = {};
+        data.settings[storageKey] = newList;
+      }
+
+      var selected = currentList()[0] || '';
+      var buttons = [];
+      function render() {
+        chipRow.innerHTML = '';
+        buttons = [];
+        currentList().forEach(function(opt) {
+          var chipWrap = document.createElement('span');
+          chipWrap.style.position = 'relative';
+          chipWrap.style.display = 'inline-flex';
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'posFinderCategoryChip';
+          btn.textContent = opt;
+          btn.classList.toggle('active', opt === selected);
+          btn.addEventListener('click', function() {
+            selected = opt;
+            buttons.forEach(function(b) { b.classList.toggle('active', b === btn); });
+          });
+          var removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.title = '"' + opt + '" kategorisini sil';
+          removeBtn.textContent = '×';
+          removeBtn.className = 'posFinderCategoryChipRemove';
+          removeBtn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            var list = currentList();
+            if (list.length <= 1) { window.alert('En az bir kategori kalmalı.'); return; }
+            var newList = list.filter(function(c) { return c !== opt; });
+            if (selected === opt) selected = newList[0];
+            persist(newList);
+            render();
+          });
+          chipWrap.appendChild(btn);
+          chipWrap.appendChild(removeBtn);
+          buttons.push(btn);
+          chipRow.appendChild(chipWrap);
+        });
+      }
+      render();
+
+      addButton.addEventListener('click', function() {
+        var name = addInput.value.trim();
+        if (!name) return;
+        var list = currentList();
+        if (list.indexOf(name) !== -1) { addInput.value = ''; return; }
+        var newList = list.concat([name]);
+        persist(newList);
+        selected = name;
+        addInput.value = '';
+        render();
+      });
+
+      return {
+        el: wrap,
+        get: function() { return selected; },
+        set: function(value) {
+          selected = value || currentList()[0] || '';
+          buttons.forEach(function(b) { b.classList.toggle('active', b.textContent === selected); });
+        }
+      };
+    }
+
     // Taslak/Yayında toggle - two mutually-exclusive buttons, same pattern
     // as a chip row but with a fixed pair of options.
     function buildStatusToggle() {
@@ -4087,7 +4258,7 @@
     blogEditorMain.appendChild(blogBodyPreview);
 
     var blogStatusToggle = buildStatusToggle();
-    var blogChips = buildChipRow('posFinderCategoryChip', BLOG_CATEGORIES);
+    var blogChips = buildManageableCategoryRow('blogCategories', BLOG_CATEGORIES);
     var blogDropZone = buildImageDropZone('blog');
     var blogSeoTitleInput = document.createElement('input');
     blogSeoTitleInput.type = 'text';
@@ -4147,7 +4318,7 @@
       blogBodyTextarea.value = post ? paragraphHtmlToLines(post.bodyHtml) : '';
       updateBlogBodyPreview();
       blogStatusToggle.set(post ? post.status : 'draft');
-      blogChips.set(post ? post.category : BLOG_CATEGORIES[0]);
+      blogChips.set(post ? post.category : null);
       blogDropZone.reset(post ? post.image : '');
       blogSeoTitleInput.value = post ? (post.seoTitle || '') : '';
       blogSeoDescInput.value = post ? (post.seoDescription || '') : '';
@@ -4268,7 +4439,7 @@
     portfolioTitleInput.placeholder = 'Başlık girin...';
     var portfolioCaptionInput = document.createElement('textarea');
     portfolioCaptionInput.placeholder = 'Kısa açıklama';
-    var portfolioChips = buildChipRow('posFinderCategoryChip', PORTFOLIO_CATEGORIES);
+    var portfolioChips = buildManageableCategoryRow('portfolioCategories', PORTFOLIO_CATEGORIES);
     var portfolioStatusToggle = buildStatusToggle();
     var portfolioDropZone = buildImageDropZone('portfolio');
     var portfolioSaveButton = document.createElement('button');
@@ -4302,7 +4473,7 @@
       portfolioTitleInput.value = item ? item.title : '';
       portfolioCaptionInput.value = item ? item.caption : '';
       portfolioStatusToggle.set(item ? item.status : 'draft');
-      portfolioChips.set(item ? item.category : PORTFOLIO_CATEGORIES[0]);
+      portfolioChips.set(item ? item.category : null);
       portfolioDropZone.reset(item ? item.image : '');
       portfolioListView.style.display = 'none';
       portfolioEditorView.style.display = 'block';
@@ -4952,7 +5123,23 @@
         if (igLink) instagramInput.value = igLink.href.replace(/\/$/, '').split('/').pop();
         var mapsLink = document.querySelector('#sceneListFooter .contactLink[href*="maps.google.com"]');
         if (mapsLink) mapsInput.value = mapsLink.href;
+        addressInput.value = (data.settings && data.settings.contact && data.settings.contact.address) || '';
         phone1Input.dataset.filled = '1';
+      }
+      if (!heroTitleInput.dataset.filled) {
+        var sc = data.siteContent || {};
+        heroEyebrowInput.value = sc.heroEyebrow || '';
+        heroTitleInput.value = sc.heroTitle || '';
+        heroSubtitleInput.value = sc.heroSubtitle || '';
+        (sc.valueProps || []).forEach(function(vp, i) {
+          if (valuePropInputs[i]) {
+            valuePropInputs[i].titleInput.value = vp.title || '';
+            valuePropInputs[i].descInput.value = vp.desc || '';
+          }
+        });
+        aboutTitleInput.value = sc.aboutTitle || '';
+        aboutTextInput.value = sc.aboutText || '';
+        heroTitleInput.dataset.filled = '1';
       }
       if (!kioskIntervalInput.dataset.filled) {
         kioskIntervalInput.value = (data.settings && data.settings.kioskIntervalSeconds) || 8;
@@ -5060,7 +5247,9 @@
         phone1: phone1Input.value.trim(),
         phone2: phone2Input.value.trim(),
         instagram: instagramInput.value.trim(),
-        mapsLink: mapsInput.value.trim()
+        mapsLink: mapsInput.value.trim(),
+        whatsapp: (data.settings && data.settings.contact && data.settings.contact.whatsapp) || '+' + phone1Input.value.replace(/\D/g, '').replace(/^0/, '90'),
+        address: addressInput.value.trim()
       });
       var afterSnapshot = settingsChanges.slice();
       saveSettingsChanges();

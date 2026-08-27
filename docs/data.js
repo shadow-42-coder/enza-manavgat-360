@@ -1016,7 +1016,15 @@ var APP_DATA = {
     "viewControlButtons": true,
     "featuredProductEnabled": false,
     "featuredProductTitle": "Bold Köşe Koltuk Takımı – Sonil 50201 Gri",
-    "seasonalEffect": "none"
+    "seasonalEffect": "none",
+    "contact": {
+      "phone1": "0549 332 07 07",
+      "phone2": "0242 777 12 12",
+      "instagram": "yatasenzahomemanavgat",
+      "mapsLink": "https://maps.google.com/?cid=5104403785270368674",
+      "whatsapp": "+905493320707",
+      "address": "Ilıca Mah. Antalya Bulvarı D-400 Karayolu Üzeri No:181/2, 07600 Manavgat/Antalya"
+    }
   },
   "i18n": {
     "en": {
@@ -1177,5 +1185,26 @@ var APP_DATA = {
       "status": "published",
       "date": "2026-06-01"
     }
-  ]
+  ],
+  "siteContent": {
+    "heroEyebrow": "ENZA HOME MANAVGAT",
+    "heroTitle": "Mağazamızı Evinizden Gezin, Hayalinizdeki Evi Burada Kurun",
+    "heroSubtitle": "Yataş Enza Home güvencesiyle oturma grupları, yatak odası takımları ve bedding koleksiyonlarını 360° sanal turumuzla adım adım keşfedin — ya da bizi Manavgat'taki mağazamızda ağırlayalım.",
+    "valueProps": [
+      {
+        "title": "Yataş Güvencesi",
+        "desc": "Türkiye'nin köklü markası Yataş'ın kalite ve garanti standartlarıyla üretilen ürünler."
+      },
+      {
+        "title": "Ücretsiz Mimari Projelendirme",
+        "desc": "Evinize özel ölçü ve yerleşim planını, mimari projelendirme hizmetimizle birlikte çıkarıyoruz."
+      },
+      {
+        "title": "Manavgat Merkezi Konum",
+        "desc": "Manavgat'ın merkezinde, kolay ulaşılabilir bir konumda hizmetinizdeyiz."
+      }
+    ],
+    "aboutTitle": "Manavgat'ta Yataş Enza Home Güvencesi",
+    "aboutText": "enza HOME Manavgat olarak bölgemizde oturma grupları, yatak odası takımları ve Yataş Bedding koleksiyonlarını sunuyor; her müşterimize evine özel çözümler için ücretsiz mimari projelendirme desteği veriyoruz."
+  }
 };

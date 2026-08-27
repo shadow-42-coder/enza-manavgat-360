@@ -171,6 +171,84 @@ window.SitePages = (function() {
       '</div>';
   }
 
+  // Single source of truth for contact info, shared by the footer, the
+  // Hakkımızda page, and (indirectly, via publish.js) the tour's own
+  // HTML-patched footer - see docs/publish.js's 'contact' settingsChange
+  // handling. Falls back to the real published values so a page never
+  // shows blank contact info before the admin has ever touched this.
+  function getContact() {
+    var c = (window.APP_DATA && window.APP_DATA.settings && window.APP_DATA.settings.contact) || {};
+    return {
+      phone1: c.phone1 || '0549 332 07 07',
+      phone2: c.phone2 || '0242 777 12 12',
+      instagram: c.instagram || 'yatasenzahomemanavgat',
+      mapsLink: c.mapsLink || 'https://maps.google.com/?cid=5104403785270368674',
+      whatsapp: c.whatsapp || '+905493320707',
+      address: c.address || ''
+    };
+  }
+  function telHref(display) {
+    var digits = (display || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.charAt(0) === '0') digits = digits.slice(1);
+    if (digits.indexOf('90') !== 0) digits = '90' + digits;
+    return 'tel:+' + digits;
+  }
+  var WHATSAPP_DEFAULT_TEXT = 'Merhaba, enza HOME Manavgat web sitesi hakkında bilgi almak istiyorum.';
+  function waHref(whatsapp) {
+    return 'https://wa.me/' + (whatsapp || '').replace(/\D/g, '') + '?text=' + encodeURIComponent(WHATSAPP_DEFAULT_TEXT);
+  }
+
+  function renderSharedFooterContact() {
+    var container = document.getElementById('sitePageFooterContact');
+    if (!container) return;
+    var c = getContact();
+    var parts = [];
+    if (c.phone1) parts.push('<a href="' + telHref(c.phone1) + '">' + esc(c.phone1) + '</a>');
+    if (c.phone2) parts.push('<a href="' + telHref(c.phone2) + '">' + esc(c.phone2) + '</a>');
+    if (c.instagram) parts.push('<a href="https://www.instagram.com/' + esc(c.instagram) + '/" target="_blank" rel="noopener">Instagram</a>');
+    if (c.mapsLink) parts.push('<a href="' + esc(c.mapsLink) + '" target="_blank" rel="noopener">Google Haritada Gör</a>');
+    if (c.whatsapp) parts.push('<a href="' + waHref(c.whatsapp) + '" target="_blank" rel="noopener">WhatsApp\'tan Yaz</a>');
+    container.innerHTML = parts.join('');
+  }
+
+  function renderHomeContent() {
+    var sc = (window.APP_DATA && window.APP_DATA.siteContent) || {};
+    var eyebrow = document.getElementById('homeHeroEyebrow');
+    var title = document.getElementById('homeHeroTitle');
+    var subtitle = document.getElementById('homeHeroSubtitle');
+    if (eyebrow && sc.heroEyebrow) eyebrow.textContent = sc.heroEyebrow;
+    if (title && sc.heroTitle) title.textContent = sc.heroTitle;
+    if (subtitle && sc.heroSubtitle) subtitle.textContent = sc.heroSubtitle;
+    var vpContainer = document.getElementById('homeValueProps');
+    if (vpContainer && sc.valueProps && sc.valueProps.length) {
+      vpContainer.innerHTML = sc.valueProps.map(function(vp) {
+        return '<div class="homeValueProp"><h3>' + esc(vp.title) + '</h3><p>' + esc(vp.desc) + '</p></div>';
+      }).join('');
+    }
+  }
+
+  function renderAboutContent() {
+    var sc = (window.APP_DATA && window.APP_DATA.siteContent) || {};
+    var titleEl = document.getElementById('aboutTitle');
+    var textEl = document.getElementById('aboutText');
+    if (titleEl && sc.aboutTitle) titleEl.textContent = sc.aboutTitle;
+    if (textEl && sc.aboutText) textEl.textContent = sc.aboutText;
+
+    var listEl = document.getElementById('aboutContactList');
+    if (listEl) {
+      var c = getContact();
+      var rows = [];
+      if (c.address) rows.push('<a class="contactInfoRow" href="' + esc(c.mapsLink) + '" target="_blank" rel="noopener">' + esc(c.address) + '</a>');
+      if (c.phone1) rows.push('<a class="contactInfoRow" href="' + telHref(c.phone1) + '">' + esc(c.phone1) + '</a>');
+      if (c.phone2) rows.push('<a class="contactInfoRow" href="' + telHref(c.phone2) + '">' + esc(c.phone2) + '</a>');
+      if (c.whatsapp) rows.push('<a class="contactInfoRow" href="' + waHref(c.whatsapp) + '" target="_blank" rel="noopener">WhatsApp\'tan Yazın</a>');
+      if (c.instagram) rows.push('<a class="contactInfoRow" href="https://www.instagram.com/' + esc(c.instagram) + '/" target="_blank" rel="noopener">@' + esc(c.instagram) + '</a>');
+      if (c.mapsLink) rows.push('<a class="contactInfoRow" href="' + esc(c.mapsLink) + '" target="_blank" rel="noopener">Google Haritada Gör</a>');
+      listEl.innerHTML = rows.join('');
+    }
+  }
+
   // Shared hamburger nav toggle - one function, called from a one-line
   // inline <script> on every public page, so the open/close logic lives in
   // exactly one place rather than being copy-pasted five times.
@@ -193,6 +271,9 @@ window.SitePages = (function() {
     renderCampaignGrid: renderCampaignGrid,
     renderHomeBlogTeaser: renderHomeBlogTeaser,
     renderHomeCampaignTeaser: renderHomeCampaignTeaser,
+    renderSharedFooterContact: renderSharedFooterContact,
+    renderHomeContent: renderHomeContent,
+    renderAboutContent: renderAboutContent,
     initNav: initNav
   };
 })();

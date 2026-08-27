@@ -129,6 +129,25 @@ window.EnzaPublish = (function() {
       if (!data.settings) data.settings = {};
       if (c.type === 'contact') {
         htmlOps.contact = { phone1: c.phone1, phone2: c.phone2, instagram: c.instagram, mapsLink: c.mapsLink };
+        // Also keep a structured copy in data.settings.contact - this is
+        // the only place tur.html's contact info was ever recorded before
+        // (only baked into its HTML via the regex patch above), so the new
+        // public pages (which read data.js, not tur.html's markup) had
+        // nothing to read. One save now updates both.
+        data.settings.contact = {
+          phone1: c.phone1, phone2: c.phone2, instagram: c.instagram,
+          mapsLink: c.mapsLink, whatsapp: c.whatsapp, address: c.address
+        };
+        appliedCounts.settingsChanges++;
+      } else if (c.type === 'siteContent') {
+        data.siteContent = c.content;
+        appliedCounts.settingsChanges++;
+      } else if (c.type === 'categories') {
+        if (c.key !== 'blogCategories' && c.key !== 'portfolioCategories') {
+          warnings.push('Bilinmeyen kategori listesi, elle kontrol gerekli: "' + c.key + '"');
+          return;
+        }
+        data.settings[c.key] = c.list;
         appliedCounts.settingsChanges++;
       } else if (c.type === 'sceneOrder') {
         htmlOps.sceneOrder = c.order;

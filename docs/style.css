@@ -2079,6 +2079,22 @@ body.posFinderWide #posFinderCampaignPanel {
   gap: 8px;
 }
 
+.posFinderCategoryChipRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  line-height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+}
+
 .posFinderDropZone {
   position: relative;
   border: 1.5px dashed var(--admin-border);
