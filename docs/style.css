@@ -4197,10 +4197,24 @@ body.posFinderModeSettings #posFinderSettingsPanel .posFinderAccordionItem {
    fonts (Fraunces/IBM Plex Mono) so they read as siblings of the tour.
    ========================================================================== */
 
+/* The base html,body rule above (overflow:hidden, height:100%) is built for
+   the fixed-viewport 360 tour (tur.html), which must never scroll itself -
+   Marzipano's own pano fills the screen. The ordinary document pages
+   (Ana Sayfa, Blog, vb.) are normal flowing documents and need the actual
+   page root (html) to be scrollable, not just the body - otherwise touch
+   swipe/scroll never engages on mobile even though body technically has
+   overflow:auto (body's height:auto means it never overflows itself; html
+   is the element that actually needs to scroll). */
+html.sitePageHtml {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 body.sitePage {
   height: auto;
   min-height: 100%;
-  overflow: auto;
+  overflow: visible;
   user-select: text;
   -webkit-user-select: text;
 }
