@@ -229,9 +229,34 @@ window.SitePages = (function() {
     return items.filter(function(p) { return p.status === 'published'; });
   }
 
+  // Kart rozetinde üst kategori yerine (ör. "Koltuklar") daha spesifik türü
+  // göstermek için (ör. "Berjer") - başlıktan basit anahtar kelime eşleşmesi.
+  // Filtreleme yine enzahome.com.tr'nin gerçek 10 üst kategorisine göre
+  // yapılıyor (data.js'teki category alanı), bu sadece görünen etiket.
+  var PRODUCT_TYPE_PATTERNS = [
+    [/berjer/i, 'Berjer'], [/köşe takım/i, 'Köşe Takımı'], [/modüler/i, 'Köşe Takımı'],
+    [/4'lü/i, "4'lü Koltuk"], [/3'lü/i, "3'lü Koltuk"], [/koltuk takım/i, 'Koltuk Takımı'],
+    [/şifonyer/i, 'Şifonyer'], [/komodin/i, 'Komodin'], [/\bdolap\b/i, 'Dolap'],
+    [/baza/i, 'Baza'], [/zigon sehpa/i, 'Zigon Sehpa'], [/orta sehpa/i, 'Sehpa'], [/\bsehpa\b/i, 'Sehpa'],
+    [/kitaplık/i, 'Kitaplık'], [/tv ünites/i, 'TV Ünitesi'], [/\bmasa\b/i, 'Masa'],
+    [/keson/i, 'Keson'], [/\bayna\b/i, 'Ayna'], [/duvar modül/i, 'Duvar Modülü'],
+    [/karyola/i, 'Karyola'], [/oda takım/i, 'Oda Takımı'], [/çalışma masas/i, 'Çalışma Masası'],
+    [/\byatak\b/i, 'Yatak'], [/uyku seti/i, 'Uyku Seti'], [/alt değiştirme/i, 'Bebek Ürünü'],
+    [/havlu/i, 'Havlu'], [/pike/i, 'Pike'], [/çarşaf/i, 'Çarşaf'], [/nevresim/i, 'Nevresim'],
+    [/\bhalı\b/i, 'Halı'], [/lambader/i, 'Lambader'], [/abajur/i, 'Abajur'], [/sarkıt/i, 'Sarkıt'],
+    [/dekoratif obje/i, 'Dekoratif Obje'], [/tabak ve kase/i, 'Tabak & Kase'], [/\btablo\b/i, 'Tablo'],
+    [/sandalye/i, 'Sandalye']
+  ];
+  function deriveProductType(title, category) {
+    for (var i = 0; i < PRODUCT_TYPE_PATTERNS.length; i++) {
+      if (PRODUCT_TYPE_PATTERNS[i][0].test(title)) return PRODUCT_TYPE_PATTERNS[i][1];
+    }
+    return category;
+  }
+
   // Ürünler sayfası - kart üzerine gelince (veya dokununca) arkası dönen
-  // flip-card ızgarası. Arka yüzde WhatsApp'tan sorma CTA'sı var, fiyat
-  // gösterilmiyor (mağaza fiyatı online katalogdan farklı olabilir).
+  // flip-card ızgarası. Arka yüzde WhatsApp'tan sorma CTA'sı ve Sepete Ekle
+  // var, fiyat gösterilmiyor (mağaza fiyatı online katalogdan farklı olabilir).
   function renderProductGrid() {
     var container = document.getElementById('productGrid');
     var filterRow = document.getElementById('productFilterRow');
@@ -250,23 +275,31 @@ window.SitePages = (function() {
       var visible = activeCategory ? items.filter(function(p) { return p.category === activeCategory; }) : items;
       container.innerHTML = visible.map(function(p) {
         var waUrl = 'https://wa.me/' + (c.whatsapp || '').replace(/\D/g, '') + '?text=' + encodeURIComponent('Merhaba, "' + p.title + '" ürünü hakkında bilgi almak istiyorum.');
-        return '<div class="productCard revealOnScroll">' +
+        return '<div class="productCard revealOnScroll" data-product-id="' + esc(p.id) + '" data-product-title="' + esc(p.title) + '">' +
           '<div class="productCardInner">' +
           '<div class="productCardFace productCardFront">' +
           '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy">' +
-          '<span class="productCardCategory">' + esc(p.category) + '</span>' +
+          '<span class="productCardCategory">' + esc(deriveProductType(p.title, p.category)) + '</span>' +
           '</div>' +
           '<div class="productCardFace productCardBack">' +
           '<h3>' + esc(p.title) + '</h3>' +
+          '<div class="productCardBackActions">' +
+          '<button type="button" class="btnOutline productCardAddToCart">Sepete Ekle</button>' +
           '<a class="btnWarm" href="' + waUrl + '" target="_blank" rel="noopener">WhatsApp\'tan Sor</a>' +
+          '</div>' +
           '</div>' +
           '</div></div>';
       }).join('');
       // Hover already flips on desktop (CSS); on touch devices, tapping the
       // photo toggles a .flipped class instead, since :hover doesn't apply.
-      Array.prototype.forEach.call(container.querySelectorAll('.productCardInner'), function(inner) {
+      Array.prototype.forEach.call(container.querySelectorAll('.productCard'), function(card) {
+        var inner = card.querySelector('.productCardInner');
         inner.querySelector('.productCardFront').addEventListener('click', function() {
           inner.classList.toggle('flipped');
+        });
+        card.querySelector('.productCardAddToCart').addEventListener('click', function(e) {
+          e.stopPropagation();
+          addToCart({ id: card.dataset.productId, title: card.dataset.productTitle });
         });
       });
       initScrollReveal();
@@ -632,10 +665,116 @@ window.SitePages = (function() {
 
   // Kalıcı yüzen iletişim kümesi (WhatsApp + Ara) + yukarı kaydır butonu -
   // her yeni sayfa için tek bir çağrıyla eklenir (initNav() gibi).
+  // Sepet - "sepete atıp tek seferde fiyat sorma" isteği. Sunucusuz, tamamen
+  // localStorage'da tutulur (bu sitenin geri kalanı gibi); "Gönder" tek bir
+  // WhatsApp mesajında tüm seçili ürünleri listeler. Fiyat hesaplamaz -
+  // mağaza fiyatı verir, burası sadece hangi ürünlerin sorulacağını toplar.
+  var CART_KEY = 'enzaCart';
+  function getCart() {
+    try { return JSON.parse(window.localStorage.getItem(CART_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function saveCart(cart) {
+    try { window.localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {}
+    updateCartBadge();
+  }
+  function addToCart(product) {
+    var cart = getCart();
+    if (cart.some(function(item) { return item.id === product.id; })) {
+      openCartPanel();
+      return;
+    }
+    cart.push(product);
+    saveCart(cart);
+    openCartPanel();
+  }
+  function removeFromCart(id) {
+    saveCart(getCart().filter(function(item) { return item.id !== id; }));
+    renderCartPanelItems();
+  }
+  var cartBadgeEl = null;
+  function updateCartBadge() {
+    if (!cartBadgeEl) return;
+    var count = getCart().length;
+    cartBadgeEl.textContent = String(count);
+    cartBadgeEl.style.display = count ? 'flex' : 'none';
+  }
+
+  var cartPanelEl = null;
+  function buildCartPanel() {
+    if (cartPanelEl) return cartPanelEl;
+    var overlay = document.createElement('div');
+    overlay.className = 'siteCartOverlay';
+    overlay.innerHTML =
+      '<div class="siteCartPanel">' +
+      '<div class="siteCartPanelHeader"><h3>Sepetim</h3><button type="button" class="siteCartClose" aria-label="Kapat">×</button></div>' +
+      '<div class="siteCartItems"></div>' +
+      '<div class="siteCartActions">' +
+      '<button type="button" class="btnOutline siteCartClearBtn">Sepeti Temizle</button>' +
+      '<a class="btnWarm siteCartSendBtn" target="_blank" rel="noopener">WhatsApp\'tan Fiyat Sor</a>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) closeCartPanel(); });
+    overlay.querySelector('.siteCartClose').addEventListener('click', closeCartPanel);
+    overlay.querySelector('.siteCartClearBtn').addEventListener('click', function() {
+      if (!getCart().length) return;
+      if (!window.confirm('Sepetteki tüm ürünler kaldırılsın mı?')) return;
+      saveCart([]);
+      renderCartPanelItems();
+    });
+    cartPanelEl = overlay;
+    return overlay;
+  }
+  function renderCartPanelItems() {
+    var overlay = buildCartPanel();
+    var itemsEl = overlay.querySelector('.siteCartItems');
+    var cart = getCart();
+    if (!cart.length) {
+      itemsEl.innerHTML = '<p class="siteEmptyState">Sepetiniz boş. Ürünler sayfasından beğendiğiniz ürünleri "Sepete Ekle" ile buraya ekleyebilirsiniz.</p>';
+    } else {
+      itemsEl.innerHTML = cart.map(function(item) {
+        return '<div class="siteCartItem"><span>' + esc(item.title) + '</span><button type="button" class="siteCartItemRemove" data-id="' + esc(item.id) + '" aria-label="Kaldır">×</button></div>';
+      }).join('');
+      Array.prototype.forEach.call(itemsEl.querySelectorAll('.siteCartItemRemove'), function(btn) {
+        btn.addEventListener('click', function() { removeFromCart(btn.dataset.id); });
+      });
+    }
+    var c = getContact();
+    var sendBtn = overlay.querySelector('.siteCartSendBtn');
+    if (cart.length) {
+      var lines = cart.map(function(item, i) { return (i + 1) + '. ' + item.title; }).join('\n');
+      var text = 'Merhaba, aşağıdaki ürünler hakkında fiyat ve stok bilgisi almak istiyorum:\n' + lines;
+      sendBtn.href = 'https://wa.me/' + (c.whatsapp || '').replace(/\D/g, '') + '?text=' + encodeURIComponent(text);
+      sendBtn.style.pointerEvents = '';
+      sendBtn.style.opacity = '';
+    } else {
+      sendBtn.href = 'javascript:void(0)';
+      sendBtn.style.pointerEvents = 'none';
+      sendBtn.style.opacity = '0.5';
+    }
+  }
+  function openCartPanel() {
+    renderCartPanelItems();
+    buildCartPanel().classList.add('open');
+  }
+  function closeCartPanel() {
+    if (cartPanelEl) cartPanelEl.classList.remove('open');
+  }
+
   function initSiteWidgets() {
     var c = getContact();
     var contactWrap = document.createElement('div');
     contactWrap.className = 'siteFloatingContact';
+    var cartBtn = document.createElement('button');
+    cartBtn.type = 'button';
+    cartBtn.className = 'siteFloatingContactBtn cart';
+    cartBtn.setAttribute('aria-label', 'Sepetim');
+    cartBadgeEl = document.createElement('span');
+    cartBadgeEl.className = 'siteCartBadge';
+    cartBtn.appendChild(cartBadgeEl);
+    cartBtn.addEventListener('click', openCartPanel);
+    contactWrap.appendChild(cartBtn);
+    updateCartBadge();
     if (c.whatsapp) {
       var wa = document.createElement('a');
       wa.href = waHref(c.whatsapp);
