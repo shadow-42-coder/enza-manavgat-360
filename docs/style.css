@@ -4267,10 +4267,16 @@ body.sitePage {
 }
 
 .sitePageMain {
-  max-width: 1080px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 48px 32px 96px;
+  padding: 48px 40px 96px;
 }
+
+/* Long-form reading content (article body, FAQ, privacy text) stays at the
+   old narrower width even inside the wider .sitePageMain, since a 1320px
+   line length would hurt readability - only grids/hero/marquee sections
+   use the full new width. */
+.sitePageArticle, .faqList, .sitePageProse { max-width: 760px; }
 
 .sitePageIntro { display: flex; flex-direction: column; gap: 14px; max-width: 720px; margin-bottom: 36px; }
 .sitePageEyebrow {

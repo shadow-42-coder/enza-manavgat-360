@@ -3982,7 +3982,9 @@
     // sub-views and the shared image drop-zone below.
     var BLOG_CATEGORIES = ['Yeni Ürünler', 'Dekorasyon Fikirleri', 'Kampanyalar', 'Mağazadan Haberler'];
     var PORTFOLIO_CATEGORIES = ['Oturma Grubu', 'Yatak Odası', 'Yemek Odası', 'Aksesuar'];
-    var PRODUCT_CATEGORIES = ['Oturma Grubu', 'Yatak Odası', 'Yemek Odası', 'Aksesuar'];
+    // enzahome.com.tr'nin gerçek kategori yapısıyla birebir aynı (kullanıcı
+    // isteği) - Portfolyo'nun kendi 4'lü kategori listesinden bilerek ayrı.
+    var PRODUCT_CATEGORIES = ['Koltuklar', 'Yemek Odası', 'Yatak Odası', 'Tamamlayıcı Mobilya', 'Genç Odası', 'Yatak', 'Ev Tekstili', 'Halı', 'Aydınlatma', 'Aksesuar'];
 
     function slugify(title) {
       var map = { 'ç':'c','Ç':'c','ğ':'g','Ğ':'g','ı':'i','İ':'i','ö':'o','Ö':'o','ş':'s','Ş':'s','ü':'u','Ü':'u' };

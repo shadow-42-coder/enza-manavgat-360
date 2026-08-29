@@ -1213,114 +1213,938 @@ var APP_DATA = {
     {
       "id": "seed-prod-1",
       "title": "Hera 3'lü Yataklı Koltuk, Kadife Dokulu, Koyu Somon",
-      "category": "Oturma Grubu",
+      "category": "Koltuklar",
       "image": "img/urunler/hera-3lu-koltuk.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
       "id": "seed-prod-2",
-      "title": "Briza Plus 3'lü Yataklı Koltuk, Kadife Dokulu, Kızıl Kahve",
-      "category": "Oturma Grubu",
-      "image": "img/urunler/briza-plus-3lu-koltuk.jpg",
+      "title": "Marsell Berjer, Örme, Taba",
+      "category": "Koltuklar",
+      "image": "img/urunler/marsell-berjer-taba.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
       "id": "seed-prod-3",
-      "title": "Paloma 3'lü Yataklı Koltuk, Keten Dokulu, Krem",
-      "category": "Oturma Grubu",
-      "image": "img/urunler/paloma-3lu-koltuk.jpg",
+      "title": "Briza Plus 3'lü Yataklı Koltuk, Kadife Dokulu, Kızıl Kahve",
+      "category": "Koltuklar",
+      "image": "img/urunler/briza-plus-3lu-koltuk.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
       "id": "seed-prod-4",
-      "title": "Perge 3'lü Yataklı Koltuk, Yeşil",
-      "category": "Oturma Grubu",
-      "image": "img/urunler/perge-3lu-koltuk.jpg",
+      "title": "Briza Plus 3'lü Yataklı Koltuk, Vizon",
+      "category": "Koltuklar",
+      "image": "img/urunler/briza-plus-3lu-vizon.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
       "id": "seed-prod-5",
-      "title": "Panna Modüler Köşe Takımı",
-      "category": "Oturma Grubu",
-      "image": "img/urunler/panna-modular-kose.jpg",
+      "title": "Paloma 3'lü Yataklı Koltuk, Keten Dokulu, Krem",
+      "category": "Koltuklar",
+      "image": "img/urunler/paloma-3lu-koltuk.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
       "id": "seed-prod-6",
+      "title": "Marsana Berjer, Keten Dokulu, Bej",
+      "category": "Koltuklar",
+      "image": "img/urunler/marsana-berjer-bej.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-7",
+      "title": "Verona Berjer, Keten Dokulu, Krem",
+      "category": "Koltuklar",
+      "image": "img/urunler/verona-berjer-krem.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-8",
+      "title": "Panna Modüler Köşe Takımı",
+      "category": "Koltuklar",
+      "image": "img/urunler/panna-modular-kose.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-9",
+      "title": "Cante 3'lü Yataklı Koltuk, Kadife Dokulu, Kum",
+      "category": "Koltuklar",
+      "image": "img/urunler/cante-3lu-kum.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-10",
+      "title": "Perge 3'lü Yataklı Koltuk, Yeşil",
+      "category": "Koltuklar",
+      "image": "img/urunler/perge-3lu-koltuk.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-11",
+      "title": "Forte Plus 3'lü Yataklı Koltuk, Keten Dokulu, Gri",
+      "category": "Koltuklar",
+      "image": "img/urunler/forte-plus-3lu-gri.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-12",
       "title": "Kalinsta Şifonyer, 68x99 cm",
       "category": "Yatak Odası",
       "image": "img/urunler/kalinsta-sifonyer.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
-      "id": "seed-prod-7",
+      "id": "seed-prod-13",
       "title": "Kalinsta Komodin, 56x50 cm",
       "category": "Yatak Odası",
       "image": "img/urunler/kalinsta-komodin.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
-      "id": "seed-prod-8",
+      "id": "seed-prod-14",
+      "title": "Kalinsta Dolap, 126x198 cm",
+      "category": "Yatak Odası",
+      "image": "img/urunler/kalinsta-dolap-126x198.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-15",
+      "title": "Kalinsta Dolap, 85x198 cm",
+      "category": "Yatak Odası",
+      "image": "img/urunler/kalinsta-dolap-85x198.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-16",
+      "title": "Marsana Komodin, 53x47 cm",
+      "category": "Yatak Odası",
+      "image": "img/urunler/marsana-komodin.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-17",
       "title": "Perge Başlıklı Baza, 160x200 cm, Kemik",
       "category": "Yatak Odası",
       "image": "img/urunler/perge-basikli-baza.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
-      "id": "seed-prod-9",
+      "id": "seed-prod-18",
       "title": "Terra Başlıklı Baza, 140x200 cm",
       "category": "Yatak Odası",
       "image": "img/urunler/terra-baslikli-baza.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
-      "id": "seed-prod-10",
+      "id": "seed-prod-19",
+      "title": "Marsana Şifonyer, 100x94 cm",
+      "category": "Yatak Odası",
+      "image": "img/urunler/marsana-sifonyer.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-20",
+      "title": "Fit & Flex Başlıklı Baza, 160x200 cm",
+      "category": "Yatak Odası",
+      "image": "img/urunler/fitflex-baslikli-baza.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-21",
       "title": "Palladio Sandalye, Keten Dokulu Kumaş, Bej",
       "category": "Yemek Odası",
       "image": "img/urunler/palladio-sandalye-bej.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
-      "id": "seed-prod-11",
+      "id": "seed-prod-22",
+      "title": "Marsana Sandalye, Dokuma Kumaş, Bej",
+      "category": "Yemek Odası",
+      "image": "img/urunler/marsana-sandalye-bej.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-23",
+      "title": "Palladio Sandalye, Keten Dokulu Kumaş, Koyu Gri",
+      "category": "Yemek Odası",
+      "image": "img/urunler/palladio-sandalye-koyugri.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-24",
       "title": "Perge Sandalye, Şönil Kumaş, Krem",
       "category": "Yemek Odası",
       "image": "img/urunler/perge-sandalye-krem.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
-      "id": "seed-prod-12",
+      "id": "seed-prod-25",
+      "title": "Flabel Sandalye, Keten Dokulu Kumaş, Koyu Gri",
+      "category": "Yemek Odası",
+      "image": "img/urunler/flabel-sandalye-koyugri.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-26",
+      "title": "Paloma Sandalye, Dokuma Kumaş, Kum Rengi",
+      "category": "Yemek Odası",
+      "image": "img/urunler/paloma-sandalye-kum.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-27",
+      "title": "Pavia Sandalye, Keten Dokulu Kumaş, Gri",
+      "category": "Yemek Odası",
+      "image": "img/urunler/pavia-sandalye-gri.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-28",
       "title": "Berta Sandalye, Şönil Kumaş, Bej",
       "category": "Yemek Odası",
       "image": "img/urunler/berta-sandalye-bej.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
-      "id": "seed-prod-13",
-      "title": "Sirius Tablo, El Yapımı, 100x100 cm",
-      "category": "Aksesuar",
-      "image": "img/urunler/sirius-tablo.jpg",
+      "id": "seed-prod-29",
+      "title": "Kalinsta Sehpa, Ceviz Renk",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/kalinsta-sehpa-ceviz.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
     },
     {
-      "id": "seed-prod-14",
+      "id": "seed-prod-30",
+      "title": "Flabel Masa, 70-140x70 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/flabel-masa.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-31",
+      "title": "Marsana Zigon Sehpa",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/marsana-zigon-sehpa.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-32",
+      "title": "Fit & Flex Kitaplıklı Komodin, 40x217 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/fitflex-kitaplikli-komodin.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-33",
+      "title": "Karina Mutfak Masası, Mermer Desenli, 120x80 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/karina-mutfak-masasi.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-34",
+      "title": "Largos Masa, 120-150x69 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/largos-masa.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-35",
+      "title": "Vetrosa Zigon Sehpa Takımı",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/vetrosa-zigon-sehpa.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-36",
+      "title": "Fit & Flex Kitaplık, Sorbe, 40x217 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/fitflex-kitaplik-sorbe.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-37",
+      "title": "Pavia TV Ünitesi Kitaplık Modülü, 64x200 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/pavia-tv-unitesi.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-38",
+      "title": "Berta Orta Sehpa, 120x42 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/berta-orta-sehpa.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-39",
+      "title": "Kalinsta Sehpa, Beyaz Renk",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/kalinsta-sehpa-beyaz.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-40",
+      "title": "Hampton Kitaplık, Gri-Siyah, 93x190 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/hampton-kitaplik-gri.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-41",
+      "title": "Hampton Kitaplık, Antrasit-Siyah, 93x190 cm",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/hampton-kitaplik-antrasit.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-42",
+      "title": "Veny Sandalye, Metal Gövde",
+      "category": "Tamamlayıcı Mobilya",
+      "image": "img/urunler/veny-sandalye.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-43",
+      "title": "Vera Çalışma Masası, 120x78,5 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/vera-calisma-masasi.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-44",
+      "title": "Fit & Flex Çalışma Masası, Sol, 120x79 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/fitflex-calisma-masasi-sol.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-45",
+      "title": "Alva Çalışma Masası, 125x150 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/alva-calisma-masasi.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-46",
+      "title": "Fit & Flex Sol Raflı Keson, 32x76 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/fitflex-sol-rafli-keson.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-47",
+      "title": "Kalinsta Çalışma Masası, 130x75 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/kalinsta-calisma-masasi.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-48",
+      "title": "Fit & Flex Çalışma Masası, Sağ, 120x79 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/fitflex-calisma-masasi-sag.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-49",
+      "title": "Loreto Çalışma Masası, 120x79 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/loreto-calisma-masasi.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-50",
+      "title": "Mistral Genç Odası Takımı, Arizona Ceviz & Vizon Krem",
+      "category": "Genç Odası",
+      "image": "img/urunler/mistral-genc-odasi.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-51",
+      "title": "Mistral Ayna, 90x54 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/mistral-ayna.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-52",
+      "title": "Fit & Flex Duvar Modülü, 170x30 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/fitflex-duvar-modulu.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-53",
+      "title": "Loreto Başlıklı Karyola + Dolap + Çalışma Masası Seti",
+      "category": "Genç Odası",
+      "image": "img/urunler/loreto-karyola-set.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-54",
+      "title": "Loreto Çalışma Masası Modülü, 121x31 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/loreto-calisma-masasi-modul.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-55",
+      "title": "Mistral Çalışma Masası, 119x160 cm",
+      "category": "Genç Odası",
+      "image": "img/urunler/mistral-calisma-masasi.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-56",
+      "title": "Loreto Genç Başlıklı Baza, 100x200 cm, Kahve Yeşil",
+      "category": "Genç Odası",
+      "image": "img/urunler/loreto-genc-baza.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-57",
+      "title": "Prestige Prime Premium Seri Yatak, 90x190 cm",
+      "category": "Yatak",
+      "image": "img/urunler/prestige-prime-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-58",
+      "title": "Natura Rest Hybrid Seri Yatak, 150x200 cm",
+      "category": "Yatak",
+      "image": "img/urunler/natura-rest-hybrid-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-59",
+      "title": "Adapt Rest Paket Yaylı Seri Yatak, 90x190 cm",
+      "category": "Yatak",
+      "image": "img/urunler/adapt-rest-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-60",
+      "title": "Zero Gravity Latex Pocket Yaylı Seri Yatak, 90x190 cm",
+      "category": "Yatak",
+      "image": "img/urunler/zero-gravity-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-61",
+      "title": "Easy Rest Sünger Yatak, 80x200 cm",
+      "category": "Yatak",
+      "image": "img/urunler/easy-rest-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-62",
+      "title": "Bedcamp Kamp Yatağı",
+      "category": "Yatak",
+      "image": "img/urunler/bedcamp-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-63",
+      "title": "Optimum Flex Roll Pack Ortopedik Sünger Yatak, 90x190 cm",
+      "category": "Yatak",
+      "image": "img/urunler/optimum-flex-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-64",
+      "title": "Optimum Support Roll Pack Ortopedik Sünger Yatak, 90x190 cm",
+      "category": "Yatak",
+      "image": "img/urunler/optimum-support-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-65",
+      "title": "Cleanped Hijyenik Alt Değiştirme Minderi",
+      "category": "Yatak",
+      "image": "img/urunler/cleanped-alt-degistirme.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-66",
+      "title": "Athletic DHT Yaylı Seri Yatak",
+      "category": "Yatak",
+      "image": "img/urunler/athletic-dht-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-67",
+      "title": "Blue Star DHT Yaylı Yatak",
+      "category": "Yatak",
+      "image": "img/urunler/bluestar-dht-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-68",
+      "title": "Ergocoil Infinity Pro Hybrid Seri Yatak, 100x200 cm",
+      "category": "Yatak",
+      "image": "img/urunler/ergocoil-infinity-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-69",
+      "title": "Visco Sense Comfort Roll Pack Ortopedik Yatak, 90x190 cm",
+      "category": "Yatak",
+      "image": "img/urunler/viscosense-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-70",
+      "title": "Tesla Sleep Power Paket Yaylı Seri Yatak, 90x190 cm",
+      "category": "Yatak",
+      "image": "img/urunler/tesla-sleep-yatak.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-71",
+      "title": "Baby Shower Hediye Seti, Anne & Bebek Uyku Seti",
+      "category": "Yatak",
+      "image": "img/urunler/babyshower-uyku-seti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-72",
+      "title": "Uden 4'lü Havlu Sepeti",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/uden-havlu-sepeti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-73",
+      "title": "Renzo 4'lü Havlu Sepeti",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/renzo-havlu-sepeti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-74",
+      "title": "Aurin 4'lü Havlu Sepeti",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/aurin-havlu-sepeti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-75",
+      "title": "Cosnes 4'lü Havlu Sepeti",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/cosnes-havlu-sepeti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-76",
+      "title": "Renzo 4'lü Havlu Sepeti (Diğer Renk)",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/renzo-havlu-sepeti-2.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-77",
+      "title": "Sancia Baskılı Pamuk Pike Seti",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/sancia-pike-seti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-78",
+      "title": "Laveta Baskılı Pamuk Pike Seti",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/laveta-pike-seti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-79",
+      "title": "Stain Baskılı Pamuk Pike Seti",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/stain-pike-seti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-80",
+      "title": "Lena Baskılı Pamuk Pike Seti",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/lena-pike-seti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-81",
+      "title": "Karl Çarşaf Seti, Tek Kişilik",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/karl-carsaf-seti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-82",
+      "title": "Nedym Çarşaf Seti, Tek Kişilik",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/nedym-carsaf-seti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-83",
+      "title": "Bouquet Çarşaf Seti, Tek Kişilik",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/bouquet-carsaf-seti.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-84",
+      "title": "Kelda Ranforce Nevresim Takımı, Çift Kişilik",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/kelda-nevresim.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-85",
+      "title": "Gloria Ranforce Nevresim Takımı, Tek Kişilik",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/gloria-nevresim.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-86",
+      "title": "Gio Ranforce Nevresim Takımı, Tek Kişilik",
+      "category": "Ev Tekstili",
+      "image": "img/urunler/gio-nevresim.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-87",
+      "title": "Brena Halı, Bej, 0.50 x 0.80",
+      "category": "Halı",
+      "image": "img/urunler/brena-hali-kucuk.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-88",
+      "title": "Maya Halı, Krem, 1.60 x 2.30",
+      "category": "Halı",
+      "image": "img/urunler/maya-hali.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-89",
+      "title": "Verla Halı, Bej, 1.60 x 2.30",
+      "category": "Halı",
+      "image": "img/urunler/verla-hali-bej.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-90",
+      "title": "Terraco Halı, Açık Kahverengi, 1.70 x 2.40",
+      "category": "Halı",
+      "image": "img/urunler/terraco-hali.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-91",
+      "title": "Lissa Halı, Gri, 1.60 x 2.30",
+      "category": "Halı",
+      "image": "img/urunler/lissa-hali.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-92",
+      "title": "Sava Halı, Kırık Beyaz, 80x150",
+      "category": "Halı",
+      "image": "img/urunler/sava-hali.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-93",
+      "title": "Bled Halı, Antrasit, 1.20 x 1.80",
+      "category": "Halı",
+      "image": "img/urunler/bled-hali.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-94",
+      "title": "Talia Halı, Koyu Mavi/Çok Renkli, 1.60 x 2.25",
+      "category": "Halı",
+      "image": "img/urunler/talia-hali.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-95",
+      "title": "Brena Halı, Bej, 1.60 x 2.30",
+      "category": "Halı",
+      "image": "img/urunler/brena-hali-buyuk.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-96",
+      "title": "Verla Halı, Gri, 0.80 x 0.50",
+      "category": "Halı",
+      "image": "img/urunler/verla-hali-gri.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-97",
+      "title": "Kalinsta Lambader, Ceviz",
+      "category": "Aydınlatma",
+      "image": "img/urunler/kalinsta-lambader-ceviz.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-98",
+      "title": "Alena Abajur, Krem",
+      "category": "Aydınlatma",
+      "image": "img/urunler/alena-abajur.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-99",
+      "title": "Lea Sarkıt, Çok Renkli",
+      "category": "Aydınlatma",
+      "image": "img/urunler/lea-sarkit.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-100",
+      "title": "Clementine Lambader, Krem",
+      "category": "Aydınlatma",
+      "image": "img/urunler/clementine-lambader.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-101",
+      "title": "Soila Abajur, Kahve",
+      "category": "Aydınlatma",
+      "image": "img/urunler/soila-abajur.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-102",
+      "title": "Lea Lambader, Çok Renkli",
+      "category": "Aydınlatma",
+      "image": "img/urunler/lea-lambader.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-103",
+      "title": "Kalinsta Sarkıt, Siyah",
+      "category": "Aydınlatma",
+      "image": "img/urunler/kalinsta-sarkit.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-104",
+      "title": "Elais Abajur, Çok Renkli",
+      "category": "Aydınlatma",
+      "image": "img/urunler/elais-abajur.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-105",
+      "title": "Kalinsta Lambader, Beyaz",
+      "category": "Aydınlatma",
+      "image": "img/urunler/kalinsta-lambader-beyaz.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-106",
+      "title": "Epic Lambader, Bej",
+      "category": "Aydınlatma",
+      "image": "img/urunler/epic-lambader.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-107",
+      "title": "Clementine Abajur, Krem",
+      "category": "Aydınlatma",
+      "image": "img/urunler/clementine-abajur.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-108",
+      "title": "Bloom Sarkıt, Krem",
+      "category": "Aydınlatma",
+      "image": "img/urunler/bloom-sarkit.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-109",
+      "title": "Linen Üçlü Lambader, Çok Renkli",
+      "category": "Aydınlatma",
+      "image": "img/urunler/linen-uclu-lambader.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-110",
+      "title": "Oblo Abajur, Siyah",
+      "category": "Aydınlatma",
+      "image": "img/urunler/oblo-abajur.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-111",
+      "title": "Epic Sehpalı Lambader, Siyah",
+      "category": "Aydınlatma",
+      "image": "img/urunler/epic-sehpali-lambader.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-112",
+      "title": "Etna Metal Dekoratif Obje, Siyah",
+      "category": "Aksesuar",
+      "image": "img/urunler/etna-obje.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-113",
+      "title": "Sigma Dekoratif Obje, Seramik",
+      "category": "Aksesuar",
+      "image": "img/urunler/sigma-obje.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-114",
       "title": "Otilia Dekoratif Tabak ve Kase, Mermer",
       "category": "Aksesuar",
       "image": "img/urunler/otilia-tabak-kase.jpg",
       "status": "published",
-      "date": "2026-08-27"
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-115",
+      "title": "Sirius Tablo, El Yapımı, 100x100 cm",
+      "category": "Aksesuar",
+      "image": "img/urunler/sirius-tablo.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-116",
+      "title": "Lane Tablo, El Yapımı, 150x100 cm",
+      "category": "Aksesuar",
+      "image": "img/urunler/lane-tablo.jpg",
+      "status": "published",
+      "date": "2026-08-29"
+    },
+    {
+      "id": "seed-prod-117",
+      "title": "Lada Dekoratif Tabak ve Kase, Seramik, Krem",
+      "category": "Aksesuar",
+      "image": "img/urunler/lada-tabak-kase.jpg",
+      "status": "published",
+      "date": "2026-08-29"
     }
   ]
 };
