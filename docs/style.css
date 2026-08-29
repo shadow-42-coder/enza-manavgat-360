@@ -2029,6 +2029,7 @@ body.posFinderWide #posFinderCampaignPanel {
 #posFinderPortfolioPanel input[type="text"],
 #posFinderCampaignPanel input[type="text"],
 #posFinderTestimonialPanel input[type="text"],
+#posFinderProductCatalogPanel input[type="text"],
 #posFinderCampaignPanel input[type="date"],
 #posFinderTestimonialPanel select {
   width: 100%;
@@ -2140,7 +2141,8 @@ body.posFinderWide #posFinderCampaignPanel {
 #posFinderBlogSave,
 #posFinderPortfolioPanel .posFinderEditorSidebar > button:last-child,
 #posFinderCampaignPanel .posFinderEditorSidebar > button:last-child,
-#posFinderTestimonialPanel .posFinderEditorSidebar > button:last-child {
+#posFinderTestimonialPanel .posFinderEditorSidebar > button:last-child,
+#posFinderProductCatalogPanel .posFinderEditorSidebar > button:last-child {
   background: var(--admin-accent);
   color: #fff;
   border: none;
@@ -4851,6 +4853,87 @@ body.posFinderWide #homeReturnButton { display: none !important; }
   line-height: 1;
   cursor: pointer;
   padding: 0;
+}
+
+/* -- Ürünler: flip-card ızgarası (ön: fotoğraf, arka: ad + WhatsApp CTA) -- */
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 22px;
+}
+.productCard { perspective: 1200px; height: 260px; }
+.productCardInner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  border-radius: 12px;
+}
+.productCard:hover .productCardInner,
+.productCard:focus-within .productCardInner,
+.productCardInner.flipped { transform: rotateY(180deg); }
+.productCardFace {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.productCardFront { background: var(--brand-panel-hover); }
+.productCardFront img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.productCardCategory {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  background: rgba(15,20,26,0.8);
+  color: var(--brand-warm);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+.productCardBack {
+  transform: rotateY(180deg);
+  background: linear-gradient(135deg, #22303f, #1a2530);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  padding: 20px;
+}
+.productCardBack h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 16px; margin: 0; }
+
+/* -- Ana Sayfa kayan ürün fotoğrafları şeridi (saf CSS, sayfa kaydırmasına dokunmaz) -- */
+.homeProductMarqueeSection { overflow: hidden; padding: 28px 0; }
+.productMarqueeTrack {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  animation: productMarqueeScroll 32s linear infinite;
+}
+.homeProductMarqueeSection:hover .productMarqueeTrack { animation-play-state: paused; }
+.productMarqueeItem {
+  flex: 0 0 auto;
+  width: 150px;
+  height: 110px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  display: block;
+}
+.productMarqueeItem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@keyframes productMarqueeScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .productMarqueeTrack { animation: none; }
 }
 
 /* -- Admin: Medya Kütüphanesi -- */

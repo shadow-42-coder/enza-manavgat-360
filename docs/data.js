@@ -1208,5 +1208,119 @@ var APP_DATA = {
     "aboutText": "enza HOME Manavgat olarak bölgemizde oturma grupları, yatak odası takımları ve Yataş Bedding koleksiyonlarını sunuyor; her müşterimize evine özel çözümler için ücretsiz mimari projelendirme desteği veriyoruz.",
     "heroImages": []
   },
-  "testimonials": []
+  "testimonials": [],
+  "products": [
+    {
+      "id": "seed-prod-1",
+      "title": "Hera 3'lü Yataklı Koltuk, Kadife Dokulu, Koyu Somon",
+      "category": "Oturma Grubu",
+      "image": "img/urunler/hera-3lu-koltuk.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-2",
+      "title": "Briza Plus 3'lü Yataklı Koltuk, Kadife Dokulu, Kızıl Kahve",
+      "category": "Oturma Grubu",
+      "image": "img/urunler/briza-plus-3lu-koltuk.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-3",
+      "title": "Paloma 3'lü Yataklı Koltuk, Keten Dokulu, Krem",
+      "category": "Oturma Grubu",
+      "image": "img/urunler/paloma-3lu-koltuk.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-4",
+      "title": "Perge 3'lü Yataklı Koltuk, Yeşil",
+      "category": "Oturma Grubu",
+      "image": "img/urunler/perge-3lu-koltuk.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-5",
+      "title": "Panna Modüler Köşe Takımı",
+      "category": "Oturma Grubu",
+      "image": "img/urunler/panna-modular-kose.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-6",
+      "title": "Kalinsta Şifonyer, 68x99 cm",
+      "category": "Yatak Odası",
+      "image": "img/urunler/kalinsta-sifonyer.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-7",
+      "title": "Kalinsta Komodin, 56x50 cm",
+      "category": "Yatak Odası",
+      "image": "img/urunler/kalinsta-komodin.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-8",
+      "title": "Perge Başlıklı Baza, 160x200 cm, Kemik",
+      "category": "Yatak Odası",
+      "image": "img/urunler/perge-basikli-baza.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-9",
+      "title": "Terra Başlıklı Baza, 140x200 cm",
+      "category": "Yatak Odası",
+      "image": "img/urunler/terra-baslikli-baza.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-10",
+      "title": "Palladio Sandalye, Keten Dokulu Kumaş, Bej",
+      "category": "Yemek Odası",
+      "image": "img/urunler/palladio-sandalye-bej.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-11",
+      "title": "Perge Sandalye, Şönil Kumaş, Krem",
+      "category": "Yemek Odası",
+      "image": "img/urunler/perge-sandalye-krem.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-12",
+      "title": "Berta Sandalye, Şönil Kumaş, Bej",
+      "category": "Yemek Odası",
+      "image": "img/urunler/berta-sandalye-bej.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-13",
+      "title": "Sirius Tablo, El Yapımı, 100x100 cm",
+      "category": "Aksesuar",
+      "image": "img/urunler/sirius-tablo.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    },
+    {
+      "id": "seed-prod-14",
+      "title": "Otilia Dekoratif Tabak ve Kase, Mermer",
+      "category": "Aksesuar",
+      "image": "img/urunler/otilia-tabak-kase.jpg",
+      "status": "published",
+      "date": "2026-08-27"
+    }
+  ]
 };

@@ -21,6 +21,7 @@ window.EnzaPublish = (function() {
   var IMG_CAMPAIGN_DIR = 'docs/img/campaigns';
   var IMG_HERO_DIR = 'docs/img/hero';
   var IMG_TESTIMONIAL_DIR = 'docs/img/testimonials';
+  var IMG_PRODUCT_DIR = 'docs/img/urunler';
 
   function getToken() {
     try { return window.localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; }
@@ -70,7 +71,7 @@ window.EnzaPublish = (function() {
   function applyChanges(sourceData, sets) {
     var data = JSON.parse(JSON.stringify(sourceData));
     var warnings = [];
-    var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0, blogPosts: 0, portfolioItems: 0, campaigns: 0, testimonials: 0 };
+    var appliedCounts = { arrows: 0, moves: 0, removals: 0, edits: 0, settingsChanges: 0, blogPosts: 0, portfolioItems: 0, campaigns: 0, testimonials: 0, products: 0 };
     var htmlOps = { contact: null, sceneOrder: null, deletedSceneIds: [] };
 
     (sets.arrows || []).forEach(function(a) {
@@ -145,7 +146,7 @@ window.EnzaPublish = (function() {
         data.siteContent = c.content;
         appliedCounts.settingsChanges++;
       } else if (c.type === 'categories') {
-        if (c.key !== 'blogCategories' && c.key !== 'portfolioCategories') {
+        if (c.key !== 'blogCategories' && c.key !== 'portfolioCategories' && c.key !== 'productCategories') {
           warnings.push('Bilinmeyen kategori listesi, elle kontrol gerekli: "' + c.key + '"');
           return;
         }
@@ -294,6 +295,24 @@ window.EnzaPublish = (function() {
         data.campaigns = data.campaigns.filter(function(x) { return x.id !== p.id; });
         if (data.campaigns.length === campBefore) { warnings.push('Kampanya silinemedi, bulunamadı: ' + p.id); return; }
         appliedCounts.campaigns++;
+      }
+    });
+
+    if (!data.products) data.products = [];
+    (sets.products || []).forEach(function(p) {
+      if (p.op === 'add') {
+        data.products.push(p.record);
+        appliedCounts.products++;
+      } else if (p.op === 'edit') {
+        var prodIdx = data.products.findIndex(function(x) { return x.id === p.id; });
+        if (prodIdx === -1) { warnings.push('Ürün güncellenemedi, bulunamadı: ' + p.id); return; }
+        data.products[prodIdx] = p.record;
+        appliedCounts.products++;
+      } else if (p.op === 'remove') {
+        var prodBefore = data.products.length;
+        data.products = data.products.filter(function(x) { return x.id !== p.id; });
+        if (data.products.length === prodBefore) { warnings.push('Ürün silinemedi, bulunamadı: ' + p.id); return; }
+        appliedCounts.products++;
       }
     });
 
@@ -535,7 +554,8 @@ window.EnzaPublish = (function() {
     portfolio: IMG_PORTFOLIO_DIR,
     campaign: IMG_CAMPAIGN_DIR,
     hero: IMG_HERO_DIR,
-    testimonial: IMG_TESTIMONIAL_DIR
+    testimonial: IMG_TESTIMONIAL_DIR,
+    product: IMG_PRODUCT_DIR
   };
   function uploadImage(file, folder) {
     var token = getToken();

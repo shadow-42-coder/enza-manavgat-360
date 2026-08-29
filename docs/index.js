@@ -1282,6 +1282,7 @@
     var PORTFOLIO_KEY = 'enzaPosCollectorPortfolioItems';
     var CAMPAIGN_KEY = 'enzaPosCollectorCampaigns';
     var TESTIMONIAL_KEY = 'enzaPosCollectorTestimonials';
+    var PRODUCT_KEY = 'enzaPosCollectorProducts';
     var entries = [];
     var moves = [];
     var arrows = [];
@@ -1293,6 +1294,7 @@
     var portfolioItems = [];
     var campaigns = [];
     var testimonials = [];
+    var products = [];
     try { entries = JSON.parse(window.localStorage.getItem(ADD_KEY) || '[]'); } catch (e) { entries = []; }
     try { moves = JSON.parse(window.localStorage.getItem(MOVE_KEY) || '[]'); } catch (e) { moves = []; }
     try { arrows = JSON.parse(window.localStorage.getItem(ARROW_KEY) || '[]'); } catch (e) { arrows = []; }
@@ -1304,10 +1306,12 @@
     try { portfolioItems = JSON.parse(window.localStorage.getItem(PORTFOLIO_KEY) || '[]'); } catch (e) { portfolioItems = []; }
     try { campaigns = JSON.parse(window.localStorage.getItem(CAMPAIGN_KEY) || '[]'); } catch (e) { campaigns = []; }
     try { testimonials = JSON.parse(window.localStorage.getItem(TESTIMONIAL_KEY) || '[]'); } catch (e) { testimonials = []; }
+    try { products = JSON.parse(window.localStorage.getItem(PRODUCT_KEY) || '[]'); } catch (e) { products = []; }
     function saveBlogPosts() { window.localStorage.setItem(BLOG_KEY, JSON.stringify(blogPosts)); updateCount(); }
     function savePortfolioItems() { window.localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolioItems)); updateCount(); }
     function saveCampaigns() { window.localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(campaigns)); updateCount(); }
     function saveTestimonials() { window.localStorage.setItem(TESTIMONIAL_KEY, JSON.stringify(testimonials)); updateCount(); }
+    function saveProducts() { window.localStorage.setItem(PRODUCT_KEY, JSON.stringify(products)); updateCount(); }
 
     // "Kopyala" reports everything pending to the admin's clipboard so it can
     // be handed off (new products/scenes still need to be added by hand;
@@ -1393,6 +1397,9 @@
     var mediaModeButton = document.createElement('button');
     mediaModeButton.textContent = 'Medya';
     mediaModeButton.className = 'posFinderModeButton';
+    var productCatalogModeButton = document.createElement('button');
+    productCatalogModeButton.textContent = 'Ürünler';
+    productCatalogModeButton.className = 'posFinderModeButton';
     modeRow.appendChild(productModeButton);
     modeRow.appendChild(linkModeButton);
     modeRow.appendChild(deleteModeButton);
@@ -1407,6 +1414,7 @@
     modeRow.appendChild(campaignModeButton);
     modeRow.appendChild(testimonialModeButton);
     modeRow.appendChild(mediaModeButton);
+    modeRow.appendChild(productCatalogModeButton);
 
     var coordsLine = document.createElement('div');
     coordsLine.id = 'posFinderCoords';
@@ -2788,7 +2796,7 @@
 
     function totalUnpublishedCount() {
       return arrows.length + moves.length + removals.length + edits.length + settingsChanges.length +
-        blogPosts.length + portfolioItems.length + campaigns.length + testimonials.length;
+        blogPosts.length + portfolioItems.length + campaigns.length + testimonials.length + products.length;
     }
 
     // Warn before leaving the tab (close/reload/navigate away) with edits
@@ -2804,7 +2812,7 @@
       if (!window.EnzaPublish) { publishStatus.textContent = 'Yayınlama modülü yüklenemedi.'; return; }
       var pendingSets = {
         arrows: arrows, moves: moves, removals: removals, edits: edits, settingsChanges: settingsChanges,
-        blogPosts: blogPosts, portfolioItems: portfolioItems, campaigns: campaigns, testimonials: testimonials
+        blogPosts: blogPosts, portfolioItems: portfolioItems, campaigns: campaigns, testimonials: testimonials, products: products
       };
       var totalPending = totalUnpublishedCount();
       if (!totalPending) { publishStatus.textContent = 'Yayınlanacak bir değişiklik yok.'; return; }
@@ -2822,15 +2830,15 @@
             (result.warnings.length ? (' Uygulanamayanlar: ' + result.warnings.join(' | ')) : '');
           return;
         }
-        arrows = []; moves = []; removals = []; edits = []; blogPosts = []; portfolioItems = []; campaigns = []; testimonials = [];
+        arrows = []; moves = []; removals = []; edits = []; blogPosts = []; portfolioItems = []; campaigns = []; testimonials = []; products = [];
         settingsChanges = settingsChanges.filter(function(c) { return window.EnzaPublish.SKIPPED_SETTINGS_TYPES[c.type]; });
-        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges(); saveBlogPosts(); savePortfolioItems(); saveCampaigns(); saveTestimonials();
+        saveArrows(); saveMoves(); saveRemovals(); saveEdits(); saveSettingsChanges(); saveBlogPosts(); savePortfolioItems(); saveCampaigns(); saveTestimonials(); saveProducts();
         updateCount();
         var summary = 'Yayınlandı! (' + result.appliedCounts.arrows + ' ok, ' + result.appliedCounts.moves + ' taşıma, ' +
           result.appliedCounts.removals + ' silme, ' + result.appliedCounts.edits + ' düzenleme, ' +
           result.appliedCounts.settingsChanges + ' ayar, ' + result.appliedCounts.blogPosts + ' blog yazısı, ' +
           result.appliedCounts.portfolioItems + ' portfolyo öğesi, ' + result.appliedCounts.campaigns + ' kampanya, ' +
-          result.appliedCounts.testimonials + ' yorum). Site birkaç dakika içinde güncellenir.';
+          result.appliedCounts.testimonials + ' yorum, ' + result.appliedCounts.products + ' ürün). Site birkaç dakika içinde güncellenir.';
         if (result.warnings.length) summary += ' Elle uygulanması gerekenler: ' + result.warnings.join(' | ');
         publishStatus.textContent = summary;
       }).catch(function(err) {
@@ -3974,6 +3982,7 @@
     // sub-views and the shared image drop-zone below.
     var BLOG_CATEGORIES = ['Yeni Ürünler', 'Dekorasyon Fikirleri', 'Kampanyalar', 'Mağazadan Haberler'];
     var PORTFOLIO_CATEGORIES = ['Oturma Grubu', 'Yatak Odası', 'Yemek Odası', 'Aksesuar'];
+    var PRODUCT_CATEGORIES = ['Oturma Grubu', 'Yatak Odası', 'Yemek Odası', 'Aksesuar'];
 
     function slugify(title) {
       var map = { 'ç':'c','Ç':'c','ğ':'g','Ğ':'g','ı':'i','İ':'i','ö':'o','Ö':'o','ş':'s','Ş':'s','ü':'u','Ü':'u' };
@@ -5065,6 +5074,149 @@
       });
     }
 
+    // Ürünler (Product katalog) - Blog/Portfolyo ile aynı desen. Bilerek
+    // Portfolyo'dan (müşteri evi render'ları) ayrı: burası mağazada satılan
+    // gerçek ürünlerin katalog fotoğrafları için (ör. Yataş enza HOME resmi
+    // ürün görselleri), "product" olarak DEĞİL "productCatalog" olarak
+    // adlandırıldı çünkü "product" zaten sahne üzerine ürün ekleme modunun
+    // (mode === 'product') ismi.
+    var productCatalogPanel = document.createElement('div');
+    productCatalogPanel.id = 'posFinderProductCatalogPanel';
+    productCatalogPanel.style.display = 'none';
+
+    var productCatalogListView = document.createElement('div');
+    var productCatalogListHeader = document.createElement('div');
+    productCatalogListHeader.className = 'posFinderContentListHeader';
+    var productCatalogListTitle = document.createElement('span');
+    productCatalogListTitle.textContent = 'Ürünler';
+    var productCatalogNewButton = document.createElement('button');
+    productCatalogNewButton.type = 'button';
+    productCatalogNewButton.textContent = '+ Yeni Ürün';
+    productCatalogListHeader.appendChild(productCatalogListTitle);
+    productCatalogListHeader.appendChild(productCatalogNewButton);
+    var productCatalogListItems = document.createElement('div');
+    productCatalogListView.appendChild(productCatalogListHeader);
+    productCatalogListView.appendChild(productCatalogListItems);
+
+    var productCatalogEditorView = document.createElement('div');
+    productCatalogEditorView.style.display = 'none';
+    var productCatalogBackLink = document.createElement('a');
+    productCatalogBackLink.href = '#';
+    productCatalogBackLink.className = 'posFinderBackLink';
+    productCatalogBackLink.textContent = '← Ürünlere Dön';
+    var productCatalogTitleInput = document.createElement('input');
+    productCatalogTitleInput.type = 'text';
+    productCatalogTitleInput.className = 'posFinderBlogTitleInput';
+    productCatalogTitleInput.placeholder = 'Ürün adı';
+    var productCatalogChips = buildManageableCategoryRow('productCategories', PRODUCT_CATEGORIES);
+    var productCatalogStatusToggle = buildStatusToggle();
+    var productCatalogDropZone = buildImageDropZone('product');
+    var productCatalogSaveButton = document.createElement('button');
+    productCatalogSaveButton.type = 'button';
+    productCatalogSaveButton.textContent = 'Kaydet';
+
+    var productCatalogEditorColumns = document.createElement('div');
+    productCatalogEditorColumns.className = 'posFinderEditorColumns';
+    var productCatalogEditorMain = document.createElement('div');
+    productCatalogEditorMain.className = 'posFinderEditorMain';
+    productCatalogEditorMain.appendChild(productCatalogDropZone.el);
+    var productCatalogEditorSidebar = document.createElement('div');
+    productCatalogEditorSidebar.className = 'posFinderEditorSidebar';
+    productCatalogEditorSidebar.appendChild(sidebarBlock('Durum', productCatalogStatusToggle.el));
+    productCatalogEditorSidebar.appendChild(sidebarBlock('Kategori', productCatalogChips.el));
+    productCatalogEditorSidebar.appendChild(productCatalogSaveButton);
+    productCatalogEditorColumns.appendChild(productCatalogEditorMain);
+    productCatalogEditorColumns.appendChild(productCatalogEditorSidebar);
+
+    productCatalogEditorView.appendChild(productCatalogBackLink);
+    productCatalogEditorView.appendChild(productCatalogTitleInput);
+    productCatalogEditorView.appendChild(productCatalogEditorColumns);
+
+    productCatalogPanel.appendChild(productCatalogListView);
+    productCatalogPanel.appendChild(productCatalogEditorView);
+
+    var editingProductCatalogItem = null;
+    function openProductCatalogEditor(item) {
+      editingProductCatalogItem = item || null;
+      productCatalogTitleInput.value = item ? item.title : '';
+      productCatalogStatusToggle.set(item ? item.status : 'draft');
+      productCatalogChips.set(item ? item.category : null);
+      productCatalogDropZone.reset(item ? item.image : '');
+      productCatalogListView.style.display = 'none';
+      productCatalogEditorView.style.display = 'block';
+    }
+    function closeProductCatalogEditor() {
+      editingProductCatalogItem = null;
+      productCatalogListView.style.display = 'block';
+      productCatalogEditorView.style.display = 'none';
+      renderProductCatalogAdminList();
+    }
+    productCatalogNewButton.addEventListener('click', function() { openProductCatalogEditor(null); });
+    productCatalogBackLink.addEventListener('click', function(event) { event.preventDefault(); closeProductCatalogEditor(); });
+
+    productCatalogSaveButton.addEventListener('click', function() {
+      var title = productCatalogTitleInput.value.trim();
+      if (!title) { window.alert('Ürün adı girin.'); return; }
+      var record = {
+        id: editingProductCatalogItem ? editingProductCatalogItem.id : ('prod-' + Date.now()),
+        title: title,
+        category: productCatalogChips.get(),
+        image: productCatalogDropZone.getPath(),
+        status: productCatalogStatusToggle.get(),
+        date: editingProductCatalogItem ? editingProductCatalogItem.date : todayIso()
+      };
+      products.push({ op: editingProductCatalogItem ? 'edit' : 'add', id: record.id, record: record });
+      saveProducts();
+      closeProductCatalogEditor();
+    });
+
+    function renderProductCatalogAdminList() {
+      productCatalogListItems.innerHTML = '';
+      var effective = {};
+      var order = [];
+      (data.products || []).forEach(function(item) {
+        order.push(item.id);
+        effective[item.id] = item;
+      });
+      products.forEach(function(p) {
+        if (p.op === 'remove') { delete effective[p.id]; return; }
+        if (!effective[p.id]) order.push(p.id);
+        effective[p.id] = p.record;
+      });
+      order = order.filter(function(id) { return effective[id]; });
+      if (!order.length) {
+        productCatalogListItems.textContent = 'Henüz ürün yok.';
+        return;
+      }
+      order.forEach(function(id) {
+        var item = effective[id];
+        if (!item) return;
+        var row = document.createElement('div');
+        row.className = 'posFinderContentListItem';
+        var info = document.createElement('div');
+        info.className = 'posFinderContentListItemInfo';
+        info.innerHTML = '<strong>' + sanitize(item.title) + '</strong><span class="posFinderContentListItemMeta">' +
+          (item.status === 'published' ? 'Yayında' : 'Taslak') + ' · ' + sanitize(item.category) + '</span>';
+        var editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.textContent = 'Düzenle';
+        editButton.addEventListener('click', function() { openProductCatalogEditor(item); });
+        var deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.textContent = 'Sil';
+        deleteButton.addEventListener('click', function() {
+          if (!window.confirm('"' + item.title + '" silinsin mi?')) return;
+          products.push({ op: 'remove', id: id });
+          saveProducts();
+          renderProductCatalogAdminList();
+        });
+        row.appendChild(info);
+        row.appendChild(editButton);
+        row.appendChild(deleteButton);
+        productCatalogListItems.appendChild(row);
+      });
+    }
+
     // Header: drag handle + minimize toggle, so the box can be moved out of
     // the way and collapsed to a small pill instead of always taking up
     // this much space with every tool visible at once.
@@ -5192,6 +5344,7 @@
     content.appendChild(campaignPanel);
     content.appendChild(testimonialPanel);
     content.appendChild(mediaPanel);
+    content.appendChild(productCatalogPanel);
     content.appendChild(actionRow);
 
     // Manual resize handles - only meaningful in "wide" (dashboard) mode,
@@ -5333,7 +5486,7 @@
     // hotspot) get a big dashboard-style panel with the pano shrunk to a
     // small floating preview, instead of competing for space with a
     // full-size photo they don't actually need to click on.
-    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true, blog: true, portfolio: true, campaign: true, testimonial: true, media: true };
+    var WIDE_MODES = { settings: true, newScene: true, list: true, map: true, order: true, photo: true, blog: true, portfolio: true, campaign: true, testimonial: true, media: true, productCatalog: true };
     function setMode(newMode) {
       mode = newMode;
       var wasWide = document.body.classList.contains('posFinderWide');
@@ -5365,11 +5518,12 @@
       campaignModeButton.classList.toggle('active', mode === 'campaign');
       testimonialModeButton.classList.toggle('active', mode === 'testimonial');
       mediaModeButton.classList.toggle('active', mode === 'media');
+      productCatalogModeButton.classList.toggle('active', mode === 'productCatalog');
       linkInput.style.display = mode === 'product' ? '' : 'none';
       draftFetchButton.style.display = (mode === 'product' && !editingEntry) ? '' : 'none';
       if (mode !== 'product') clearDraft();
       sceneSelect.style.display = mode === 'link' ? '' : 'none';
-      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media') ? 'none' : 'flex';
+      inputRow.style.display = (mode === 'delete' || mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media' || mode === 'productCatalog') ? 'none' : 'flex';
       photoPanel.style.display = mode === 'photo' ? 'block' : 'none';
       settingsPanel.style.display = mode === 'settings' ? 'block' : 'none';
       newScenePanel.style.display = mode === 'newScene' ? 'block' : 'none';
@@ -5381,8 +5535,9 @@
       campaignPanel.style.display = mode === 'campaign' ? 'block' : 'none';
       testimonialPanel.style.display = mode === 'testimonial' ? 'block' : 'none';
       mediaPanel.style.display = mode === 'media' ? 'block' : 'none';
-      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media') ? 'none' : 'flex';
-      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media') ? 'none' : '';
+      productCatalogPanel.style.display = mode === 'productCatalog' ? 'block' : 'none';
+      actionRow.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media' || mode === 'productCatalog') ? 'none' : 'flex';
+      coordsLine.style.display = (mode === 'photo' || mode === 'settings' || mode === 'newScene' || mode === 'list' || mode === 'map' || mode === 'order' || mode === 'blog' || mode === 'portfolio' || mode === 'campaign' || mode === 'testimonial' || mode === 'media' || mode === 'productCatalog') ? 'none' : '';
       pendingCoords = null;
       resetInputRowForAdd();
       coordsLine.classList.remove('ready');
@@ -5400,6 +5555,7 @@
       if (mode === 'campaign') renderCampaignAdminList();
       if (mode === 'testimonial') renderTestimonialAdminList();
       if (mode === 'media') loadMediaFolder();
+      if (mode === 'productCatalog') renderProductCatalogAdminList();
       if (mode !== 'settings') {
         campaignEndDate = getEffectiveCampaignEndDate();
         showCampaignBanner(getEffectiveCampaignText());
@@ -5420,6 +5576,7 @@
     campaignModeButton.addEventListener('click', function() { setMode('campaign'); });
     testimonialModeButton.addEventListener('click', function() { setMode('testimonial'); });
     mediaModeButton.addEventListener('click', function() { setMode('media'); });
+    productCatalogModeButton.addEventListener('click', function() { setMode('productCatalog'); });
 
     function populateSceneSelect() {
       sceneSelect.innerHTML = '';
@@ -5745,7 +5902,7 @@
         (moves.length - copiedMarker.moves) + ' taşındı, ' + (removals.length - copiedMarker.removals) + ' silindi, ' +
         (edits.length - copiedMarker.edits) + ' düzenlendi, ' + (settingsChanges.length - copiedMarker.settingsChanges) + ' ayar, ' +
         (newScenes.length - copiedMarker.newScenes) + ' yeni sahne, ' +
-        blogPosts.length + ' blog, ' + portfolioItems.length + ' portfolyo, ' + campaigns.length + ' kampanya, ' + testimonials.length + ' yorum';
+        blogPosts.length + ' blog, ' + portfolioItems.length + ' portfolyo, ' + campaigns.length + ' kampanya, ' + testimonials.length + ' yorum, ' + products.length + ' ürün';
     }
 
     function saveEntries() { window.localStorage.setItem(ADD_KEY, JSON.stringify(entries)); updateCount(); }

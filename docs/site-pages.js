@@ -224,6 +224,91 @@ window.SitePages = (function() {
     initScrollReveal();
   }
 
+  function publishedProducts() {
+    var items = (window.APP_DATA && window.APP_DATA.products) || [];
+    return items.filter(function(p) { return p.status === 'published'; });
+  }
+
+  // Ürünler sayfası - kart üzerine gelince (veya dokununca) arkası dönen
+  // flip-card ızgarası. Arka yüzde WhatsApp'tan sorma CTA'sı var, fiyat
+  // gösterilmiyor (mağaza fiyatı online katalogdan farklı olabilir).
+  function renderProductGrid() {
+    var container = document.getElementById('productGrid');
+    var filterRow = document.getElementById('productFilterRow');
+    if (!container) return;
+    var items = publishedProducts();
+    if (!items.length) {
+      container.innerHTML = '<p class="siteEmptyState">Henüz ürün eklenmedi.</p>';
+      return;
+    }
+    var categories = [];
+    items.forEach(function(p) { if (categories.indexOf(p.category) === -1) categories.push(p.category); });
+    var activeCategory = null;
+    var c = getContact();
+
+    function draw() {
+      var visible = activeCategory ? items.filter(function(p) { return p.category === activeCategory; }) : items;
+      container.innerHTML = visible.map(function(p) {
+        var waUrl = 'https://wa.me/' + (c.whatsapp || '').replace(/\D/g, '') + '?text=' + encodeURIComponent('Merhaba, "' + p.title + '" ürünü hakkında bilgi almak istiyorum.');
+        return '<div class="productCard revealOnScroll">' +
+          '<div class="productCardInner">' +
+          '<div class="productCardFace productCardFront">' +
+          '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy">' +
+          '<span class="productCardCategory">' + esc(p.category) + '</span>' +
+          '</div>' +
+          '<div class="productCardFace productCardBack">' +
+          '<h3>' + esc(p.title) + '</h3>' +
+          '<a class="btnWarm" href="' + waUrl + '" target="_blank" rel="noopener">WhatsApp\'tan Sor</a>' +
+          '</div>' +
+          '</div></div>';
+      }).join('');
+      // Hover already flips on desktop (CSS); on touch devices, tapping the
+      // photo toggles a .flipped class instead, since :hover doesn't apply.
+      Array.prototype.forEach.call(container.querySelectorAll('.productCardInner'), function(inner) {
+        inner.querySelector('.productCardFront').addEventListener('click', function() {
+          inner.classList.toggle('flipped');
+        });
+      });
+      initScrollReveal();
+    }
+
+    if (filterRow && categories.length > 1) {
+      var chips = [];
+      function addChip(label, cat) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'portfolioFilterChip' + (cat === activeCategory ? ' active' : '');
+        chip.textContent = label;
+        chip.addEventListener('click', function() {
+          activeCategory = cat;
+          chips.forEach(function(ch) { ch.el.classList.toggle('active', ch.cat === cat); });
+          draw();
+        });
+        filterRow.appendChild(chip);
+        chips.push({ el: chip, cat: cat });
+      }
+      addChip('Tümü', null);
+      categories.forEach(function(cat) { addChip(cat, cat); });
+      chips[0].el.classList.add('active');
+    }
+    draw();
+  }
+
+  // Ana Sayfa'da kayan ürün fotoğrafları şeridi (enzahome.com.tr'deki gibi) -
+  // saf CSS animasyonla, gerçek sayfa kaydırmasını hiç etkilemez. Liste iki
+  // kez tekrarlanır ki döngü kesintisiz görünsün.
+  function renderHomeProductMarquee() {
+    var container = document.getElementById('homeProductMarquee');
+    if (!container) return;
+    var items = publishedProducts();
+    if (!items.length) { container.style.display = 'none'; return; }
+    var cardsHtml = items.map(function(p) {
+      return '<a class="productMarqueeItem" href="urunler.html" title="' + esc(p.title) + '">' +
+        '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy"></a>';
+    }).join('');
+    container.innerHTML = '<div class="productMarqueeTrack">' + cardsHtml + cardsHtml + '</div>';
+  }
+
   // Ana Sayfa teasers - reuse the exact same filter/sort functions the list
   // pages use, just capped to a handful of items.
   function renderHomeBlogTeaser() {
@@ -590,6 +675,8 @@ window.SitePages = (function() {
     renderHomeCampaignTeaser: renderHomeCampaignTeaser,
     renderHomeFeaturedProduct: renderHomeFeaturedProduct,
     renderTestimonials: renderTestimonials,
+    renderProductGrid: renderProductGrid,
+    renderHomeProductMarquee: renderHomeProductMarquee,
     renderSharedFooterContact: renderSharedFooterContact,
     renderHomeContent: renderHomeContent,
     renderAboutContent: renderAboutContent,
