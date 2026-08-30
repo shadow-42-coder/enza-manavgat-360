@@ -4435,10 +4435,13 @@ body.sitePage {
   min-height: 44px;
   border-radius: 999px;
   border: 1.5px solid rgba(255,255,255,0.35);
+  background: transparent;
   color: #fff;
   font-weight: 600;
   font-size: 14px;
+  font-family: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
 /* Ana Sayfa */
