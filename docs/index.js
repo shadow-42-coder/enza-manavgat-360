@@ -5096,9 +5096,32 @@
     productCatalogNewButton.textContent = '+ Yeni Ürün';
     productCatalogListHeader.appendChild(productCatalogListTitle);
     productCatalogListHeader.appendChild(productCatalogNewButton);
+    // Katalog binlerce ürüne çıkabildiği için (enzahome.com.tr'den toplu
+    // içe aktarım) düz bir liste kullanılamaz hale geldi - arama kutusu +
+    // sınırlı sayıda gösterim ekleniyor.
+    var productCatalogSearchInput = document.createElement('input');
+    productCatalogSearchInput.type = 'text';
+    productCatalogSearchInput.placeholder = 'Ürün adında ara...';
+    productCatalogSearchInput.style.margin = '10px 0';
+    productCatalogSearchInput.addEventListener('input', function() {
+      productCatalogVisibleCount = PRODUCT_CATALOG_PAGE_SIZE;
+      renderProductCatalogAdminList();
+    });
     var productCatalogListItems = document.createElement('div');
     productCatalogListView.appendChild(productCatalogListHeader);
+    productCatalogListView.appendChild(productCatalogSearchInput);
     productCatalogListView.appendChild(productCatalogListItems);
+    var productCatalogLoadMoreButton = document.createElement('button');
+    productCatalogLoadMoreButton.type = 'button';
+    productCatalogLoadMoreButton.textContent = 'Daha Fazla Göster';
+    productCatalogLoadMoreButton.style.marginTop = '10px';
+    productCatalogLoadMoreButton.addEventListener('click', function() {
+      productCatalogVisibleCount += PRODUCT_CATALOG_PAGE_SIZE;
+      renderProductCatalogAdminList();
+    });
+    productCatalogListView.appendChild(productCatalogLoadMoreButton);
+    var PRODUCT_CATALOG_PAGE_SIZE = 40;
+    var productCatalogVisibleCount = PRODUCT_CATALOG_PAGE_SIZE;
 
     var productCatalogEditorView = document.createElement('div');
     productCatalogEditorView.style.display = 'none';
@@ -5188,8 +5211,16 @@
       order = order.filter(function(id) { return effective[id]; });
       if (!order.length) {
         productCatalogListItems.textContent = 'Henüz ürün yok.';
+        productCatalogLoadMoreButton.style.display = 'none';
         return;
       }
+      var searchTerm = productCatalogSearchInput.value.trim().toLocaleLowerCase('tr');
+      if (searchTerm) {
+        order = order.filter(function(id) { return effective[id].title.toLocaleLowerCase('tr').indexOf(searchTerm) !== -1; });
+      }
+      var totalMatching = order.length;
+      order = order.slice(0, productCatalogVisibleCount);
+      productCatalogLoadMoreButton.style.display = order.length < totalMatching ? '' : 'none';
       order.forEach(function(id) {
         var item = effective[id];
         if (!item) return;

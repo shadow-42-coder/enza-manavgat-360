@@ -235,7 +235,7 @@ window.SitePages = (function() {
   // yapılıyor (data.js'teki category alanı), bu sadece görünen etiket.
   var PRODUCT_TYPE_PATTERNS = [
     [/berjer/i, 'Berjer'], [/köşe takım/i, 'Köşe Takımı'], [/modüler/i, 'Köşe Takımı'],
-    [/4'lü/i, "4'lü Koltuk"], [/3'lü/i, "3'lü Koltuk"], [/koltuk takım/i, 'Koltuk Takımı'],
+    [/4('lü|\s*lu)\b/i, "4'lü Koltuk"], [/3('lü|\s*lu)\b/i, "3'lü Koltuk"], [/koltuk takım/i, 'Koltuk Takımı'],
     [/şifonyer/i, 'Şifonyer'], [/komodin/i, 'Komodin'], [/\bdolap\b/i, 'Dolap'],
     [/baza/i, 'Baza'], [/zigon sehpa/i, 'Zigon Sehpa'], [/orta sehpa/i, 'Sehpa'], [/\bsehpa\b/i, 'Sehpa'],
     [/kitaplık/i, 'Kitaplık'], [/tv ünites/i, 'TV Ünitesi'], [/\bmasa\b/i, 'Masa'],
@@ -257,6 +257,10 @@ window.SitePages = (function() {
   // Ürünler sayfası - kart üzerine gelince (veya dokununca) arkası dönen
   // flip-card ızgarası. Arka yüzde WhatsApp'tan sorma CTA'sı ve Sepete Ekle
   // var, fiyat gösterilmiyor (mağaza fiyatı online katalogdan farklı olabilir).
+  // Katalog yüzlerce/binlerce ürüne çıkabildiği için (bkz. Ürünler admin
+  // paneli) hepsini tek seferde DOM'a basmak tarayıcıyı yavaşlatır - bu
+  // yüzden "Daha Fazla Göster" ile parça parça (PAGE_SIZE'lık) render edilir.
+  var PRODUCT_PAGE_SIZE = 48;
   function renderProductGrid() {
     var container = document.getElementById('productGrid');
     var filterRow = document.getElementById('productFilterRow');
@@ -270,38 +274,57 @@ window.SitePages = (function() {
     items.forEach(function(p) { if (categories.indexOf(p.category) === -1) categories.push(p.category); });
     var activeCategory = null;
     var c = getContact();
+    var visibleCount = PRODUCT_PAGE_SIZE;
+
+    var countLabel = document.createElement('p');
+    countLabel.className = 'productCountLabel';
+    var loadMoreWrap = document.createElement('div');
+    loadMoreWrap.className = 'productLoadMoreWrap';
+    var loadMoreBtn = document.createElement('button');
+    loadMoreBtn.type = 'button';
+    loadMoreBtn.className = 'btnOutline';
+    loadMoreBtn.textContent = 'Daha Fazla Göster';
+    loadMoreBtn.addEventListener('click', function() {
+      visibleCount += PRODUCT_PAGE_SIZE;
+      draw();
+    });
+    loadMoreWrap.appendChild(loadMoreBtn);
+
+    function cardHtml(p) {
+      var waUrl = 'https://wa.me/' + (c.whatsapp || '').replace(/\D/g, '') + '?text=' + encodeURIComponent('Merhaba, "' + p.title + '" ürünü hakkında bilgi almak istiyorum.');
+      return '<div class="productCard revealOnScroll" data-product-id="' + esc(p.id) + '" data-product-title="' + esc(p.title) + '">' +
+        '<div class="productCardInner">' +
+        '<div class="productCardFace productCardFront">' +
+        '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy">' +
+        '<span class="productCardCategory">' + esc(deriveProductType(p.title, p.category)) + '</span>' +
+        '</div>' +
+        '<div class="productCardFace productCardBack">' +
+        '<h3>' + esc(p.title) + '</h3>' +
+        '<div class="productCardBackActions">' +
+        '<button type="button" class="btnOutline productCardAddToCart">Sepete Ekle</button>' +
+        '<a class="btnWarm" href="' + waUrl + '" target="_blank" rel="noopener">WhatsApp\'tan Sor</a>' +
+        '</div>' +
+        '</div>' +
+        '</div></div>';
+    }
+    function wireCard(card) {
+      var inner = card.querySelector('.productCardInner');
+      inner.querySelector('.productCardFront').addEventListener('click', function() {
+        inner.classList.toggle('flipped');
+      });
+      card.querySelector('.productCardAddToCart').addEventListener('click', function(e) {
+        e.stopPropagation();
+        addToCart({ id: card.dataset.productId, title: card.dataset.productTitle });
+      });
+    }
 
     function draw() {
-      var visible = activeCategory ? items.filter(function(p) { return p.category === activeCategory; }) : items;
-      container.innerHTML = visible.map(function(p) {
-        var waUrl = 'https://wa.me/' + (c.whatsapp || '').replace(/\D/g, '') + '?text=' + encodeURIComponent('Merhaba, "' + p.title + '" ürünü hakkında bilgi almak istiyorum.');
-        return '<div class="productCard revealOnScroll" data-product-id="' + esc(p.id) + '" data-product-title="' + esc(p.title) + '">' +
-          '<div class="productCardInner">' +
-          '<div class="productCardFace productCardFront">' +
-          '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy">' +
-          '<span class="productCardCategory">' + esc(deriveProductType(p.title, p.category)) + '</span>' +
-          '</div>' +
-          '<div class="productCardFace productCardBack">' +
-          '<h3>' + esc(p.title) + '</h3>' +
-          '<div class="productCardBackActions">' +
-          '<button type="button" class="btnOutline productCardAddToCart">Sepete Ekle</button>' +
-          '<a class="btnWarm" href="' + waUrl + '" target="_blank" rel="noopener">WhatsApp\'tan Sor</a>' +
-          '</div>' +
-          '</div>' +
-          '</div></div>';
-      }).join('');
-      // Hover already flips on desktop (CSS); on touch devices, tapping the
-      // photo toggles a .flipped class instead, since :hover doesn't apply.
-      Array.prototype.forEach.call(container.querySelectorAll('.productCard'), function(card) {
-        var inner = card.querySelector('.productCardInner');
-        inner.querySelector('.productCardFront').addEventListener('click', function() {
-          inner.classList.toggle('flipped');
-        });
-        card.querySelector('.productCardAddToCart').addEventListener('click', function(e) {
-          e.stopPropagation();
-          addToCart({ id: card.dataset.productId, title: card.dataset.productTitle });
-        });
-      });
+      var all = activeCategory ? items.filter(function(p) { return p.category === activeCategory; }) : items;
+      var visible = all.slice(0, visibleCount);
+      container.innerHTML = visible.map(cardHtml).join('');
+      Array.prototype.forEach.call(container.querySelectorAll('.productCard'), wireCard);
+      countLabel.textContent = visible.length + ' / ' + all.length + ' ürün gösteriliyor';
+      loadMoreWrap.style.display = visible.length < all.length ? 'block' : 'none';
       initScrollReveal();
     }
 
@@ -314,6 +337,7 @@ window.SitePages = (function() {
         chip.textContent = label;
         chip.addEventListener('click', function() {
           activeCategory = cat;
+          visibleCount = PRODUCT_PAGE_SIZE;
           chips.forEach(function(ch) { ch.el.classList.toggle('active', ch.cat === cat); });
           draw();
         });
@@ -324,17 +348,25 @@ window.SitePages = (function() {
       categories.forEach(function(cat) { addChip(cat, cat); });
       chips[0].el.classList.add('active');
     }
+    container.parentNode.insertBefore(countLabel, container);
+    container.parentNode.insertBefore(loadMoreWrap, container.nextSibling);
     draw();
   }
 
   // Ana Sayfa'da kayan ürün fotoğrafları şeridi (enzahome.com.tr'deki gibi) -
   // saf CSS animasyonla, gerçek sayfa kaydırmasını hiç etkilemez. Liste iki
   // kez tekrarlanır ki döngü kesintisiz görünsün.
+  // Katalog binlerce ürüne çıkabildiği için hepsini şeride basmak (özellikle
+  // iki kez, kesintisiz döngü için) sayfa yüklenişini ciddi yavaşlatır -
+  // rastgele bir örneklem yeterli, zaten şerit sürekli farklı ürünler
+  // gösterme amacı taşımıyor, sadece "kayan fotoğraflar" hissi veriyor.
+  var HOME_MARQUEE_SAMPLE_SIZE = 24;
   function renderHomeProductMarquee() {
     var container = document.getElementById('homeProductMarquee');
     if (!container) return;
-    var items = publishedProducts();
-    if (!items.length) { container.style.display = 'none'; return; }
+    var all = publishedProducts();
+    if (!all.length) { container.style.display = 'none'; return; }
+    var items = all.length <= HOME_MARQUEE_SAMPLE_SIZE ? all : all.slice().sort(function() { return Math.random() - 0.5; }).slice(0, HOME_MARQUEE_SAMPLE_SIZE);
     var cardsHtml = items.map(function(p) {
       return '<a class="productMarqueeItem" href="urunler.html" title="' + esc(p.title) + '">' +
         '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy"></a>';

@@ -4861,6 +4861,9 @@ body.posFinderWide #homeReturnButton { display: none !important; }
   padding: 0;
 }
 
+.productCountLabel { color: var(--brand-text-muted); font-size: 13px; margin: 0 0 16px; }
+.productLoadMoreWrap { display: flex; justify-content: center; margin-top: 28px; }
+
 /* -- Ürünler: flip-card ızgarası (ön: fotoğraf, arka: ad + WhatsApp CTA) -- */
 .productGrid {
   display: grid;
