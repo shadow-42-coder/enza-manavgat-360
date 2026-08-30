@@ -4864,6 +4864,18 @@ body.posFinderWide #homeReturnButton { display: none !important; }
   padding: 0;
 }
 
+.productSubFilterRow { display: none; flex-wrap: wrap; gap: 8px; margin: -14px 0 24px; }
+.productSubFilterChip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: var(--brand-text-muted);
+  cursor: pointer;
+}
+.productSubFilterChip.active { background: rgba(201,161,90,0.15); border-color: var(--brand-warm); color: var(--brand-warm); }
 .productCountLabel { color: var(--brand-text-muted); font-size: 13px; margin: 0 0 16px; }
 .productLoadMoreWrap { display: flex; justify-content: center; margin-top: 28px; }
 
@@ -4883,6 +4895,7 @@ body.posFinderWide #homeReturnButton { display: none !important; }
   transform-style: preserve-3d;
   border-radius: 12px;
 }
+.productCardInner:hover,
 .productCardInner.flipped { transform: rotateY(180deg); }
 .productCardTitle { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 14.5px; margin: 0; line-height: 1.3; }
 .productCardVariants { display: flex; flex-wrap: wrap; gap: 7px; }

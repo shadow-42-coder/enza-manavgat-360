@@ -262,9 +262,14 @@ window.SitePages = (function() {
   // yüzden "Daha Fazla Göster" ile parça parça (PAGE_SIZE'lık) render edilir.
   var PRODUCT_PAGE_SIZE = 48;
   var PRODUCT_VARIANTS_VISIBLE = 6;
+  // enzahome.com.tr'nin kendi üst menü sırası (Online Özel/Outlet/Fit&Flex
+  // hariç - kataloğumuzda yok) - kategori kırıntıları bu sırayla, listede
+  // olmayan bir kategori çıkarsa sona eklenir.
+  var CATEGORY_DISPLAY_ORDER = ['Koltuklar', 'Yemek Odası', 'Yatak Odası', 'Tamamlayıcı Mobilya', 'Genç Odası', 'Yatak', 'Ev Tekstili', 'Halı', 'Aydınlatma', 'Aksesuar'];
   function renderProductGrid() {
     var container = document.getElementById('productGrid');
     var filterRow = document.getElementById('productFilterRow');
+    var subFilterRow = document.getElementById('productSubFilterRow');
     if (!container) return;
     var items = publishedProducts();
     if (!items.length) {
@@ -273,7 +278,13 @@ window.SitePages = (function() {
     }
     var categories = [];
     items.forEach(function(p) { if (categories.indexOf(p.category) === -1) categories.push(p.category); });
+    categories.sort(function(a, b) {
+      var ia = CATEGORY_DISPLAY_ORDER.indexOf(a); if (ia === -1) ia = 999;
+      var ib = CATEGORY_DISPLAY_ORDER.indexOf(b); if (ib === -1) ib = 999;
+      return ia - ib || a.localeCompare(b);
+    });
     var activeCategory = null;
+    var activeType = null;
     var c = getContact();
     var visibleCount = PRODUCT_PAGE_SIZE;
 
@@ -367,8 +378,47 @@ window.SitePages = (function() {
       }
     }
 
+    function categoryItems(cat) {
+      return cat ? items.filter(function(p) { return p.category === cat; }) : items;
+    }
+
+    // enzahome.com.tr'deki gibi bir kategoriye girince altında tür bazlı
+    // (ör. Berjer / 3'lü Koltuk / Köşe Takımı) ikinci bir filtre satırı -
+    // deriveProductType() zaten kart rozetleri için hesaplanan aynı türü
+    // kullanır, ayrı bir sınıflandırma icat edilmedi.
+    function renderSubFilters() {
+      if (!subFilterRow) return;
+      subFilterRow.innerHTML = '';
+      if (!activeCategory) { subFilterRow.style.display = 'none'; return; }
+      var types = [];
+      categoryItems(activeCategory).forEach(function(p) {
+        var t = deriveProductType(p.title, p.category);
+        if (t !== activeCategory && types.indexOf(t) === -1) types.push(t);
+      });
+      if (types.length < 2) { subFilterRow.style.display = 'none'; return; }
+      subFilterRow.style.display = 'flex';
+      var subChips = [];
+      function addSubChip(label, type) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'productSubFilterChip' + (type === activeType ? ' active' : '');
+        chip.textContent = label;
+        chip.addEventListener('click', function() {
+          activeType = type;
+          visibleCount = PRODUCT_PAGE_SIZE;
+          subChips.forEach(function(ch) { ch.el.classList.toggle('active', ch.type === type); });
+          draw();
+        });
+        subFilterRow.appendChild(chip);
+        subChips.push({ el: chip, type: type });
+      }
+      addSubChip('Tümü', null);
+      types.sort(function(a, b) { return a.localeCompare(b); }).forEach(function(t) { addSubChip(t, t); });
+    }
+
     function draw() {
-      var all = activeCategory ? items.filter(function(p) { return p.category === activeCategory; }) : items;
+      var all = categoryItems(activeCategory);
+      if (activeType) all = all.filter(function(p) { return deriveProductType(p.title, p.category) === activeType; });
       var visible = all.slice(0, visibleCount);
       container.innerHTML = visible.map(cardHtml).join('');
       Array.prototype.forEach.call(container.querySelectorAll('.productCard'), function(card, i) { wireCard(card, visible[i]); });
@@ -386,17 +436,20 @@ window.SitePages = (function() {
         chip.textContent = label;
         chip.addEventListener('click', function() {
           activeCategory = cat;
+          activeType = null;
           visibleCount = PRODUCT_PAGE_SIZE;
           chips.forEach(function(ch) { ch.el.classList.toggle('active', ch.cat === cat); });
+          renderSubFilters();
           draw();
         });
         filterRow.appendChild(chip);
         chips.push({ el: chip, cat: cat });
       }
-      addChip('Tümü', null);
       categories.forEach(function(cat) { addChip(cat, cat); });
-      chips[0].el.classList.add('active');
+      addChip('Tümü', null);
+      chips[chips.length - 1].el.classList.add('active');
     }
+    renderSubFilters();
     container.parentNode.insertBefore(countLabel, container);
     container.parentNode.insertBefore(loadMoreWrap, container.nextSibling);
     draw();
