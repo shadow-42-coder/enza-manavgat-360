@@ -4873,11 +4873,11 @@ body.posFinderWide #homeReturnButton { display: none !important; }
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 22px;
 }
-.productCard { perspective: 1200px; height: 260px; }
+.productCard { display: flex; flex-direction: column; gap: 10px; perspective: 1200px; }
 .productCardInner {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 220px;
   transition: transform 0.6s;
   transform-style: preserve-3d;
   border-radius: 12px;
@@ -4885,6 +4885,41 @@ body.posFinderWide #homeReturnButton { display: none !important; }
 .productCard:hover .productCardInner,
 .productCard:focus-within .productCardInner,
 .productCardInner.flipped { transform: rotateY(180deg); }
+.productCardTitle { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 14.5px; margin: 0; line-height: 1.3; }
+.productCardVariants { display: flex; flex-wrap: wrap; gap: 7px; }
+.productVariantSwatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.25);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+.productVariantSwatch.active { border-color: var(--brand-warm); }
+.productVariantChip {
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: transparent;
+  color: var(--brand-text-muted);
+  font-size: 10.5px;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+}
+.productVariantChip.active { border-color: var(--brand-warm); color: var(--brand-warm); }
+.productVariantMoreBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255,255,255,0.3);
+  background: transparent;
+  color: var(--brand-text-muted);
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  padding: 0;
+}
 .productCardFace {
   position: absolute;
   inset: 0;

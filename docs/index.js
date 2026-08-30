@@ -5136,6 +5136,14 @@
     var productCatalogChips = buildManageableCategoryRow('productCategories', PRODUCT_CATEGORIES);
     var productCatalogStatusToggle = buildStatusToggle();
     var productCatalogDropZone = buildImageDropZone('product');
+    // Toplu ithal edilen ürünler (enzahome.com.tr) renk/boy varyantlarıyla
+    // gelir (data.js: item.variants[]) - admin panelinden tek tek varyant
+    // düzenlemek kapsam dışı bırakıldı, sadece salt-okunur bir önizleme
+    // gösteriliyor. Kaydet, varsa mevcut varyantları (2. ve sonrası) koruyup
+    // sadece kapak görselini (1. varyant) günceller.
+    var productCatalogVariantsInfo = document.createElement('div');
+    productCatalogVariantsInfo.className = 'posFinderHeroImageList';
+    productCatalogVariantsInfo.style.display = 'none';
     var productCatalogSaveButton = document.createElement('button');
     productCatalogSaveButton.type = 'button';
     productCatalogSaveButton.textContent = 'Kaydet';
@@ -5145,6 +5153,7 @@
     var productCatalogEditorMain = document.createElement('div');
     productCatalogEditorMain.className = 'posFinderEditorMain';
     productCatalogEditorMain.appendChild(productCatalogDropZone.el);
+    productCatalogEditorMain.appendChild(productCatalogVariantsInfo);
     var productCatalogEditorSidebar = document.createElement('div');
     productCatalogEditorSidebar.className = 'posFinderEditorSidebar';
     productCatalogEditorSidebar.appendChild(sidebarBlock('Durum', productCatalogStatusToggle.el));
@@ -5163,10 +5172,21 @@
     var editingProductCatalogItem = null;
     function openProductCatalogEditor(item) {
       editingProductCatalogItem = item || null;
+      var variants = item ? (item.variants || []) : [];
       productCatalogTitleInput.value = item ? item.title : '';
       productCatalogStatusToggle.set(item ? item.status : 'draft');
       productCatalogChips.set(item ? item.category : null);
-      productCatalogDropZone.reset(item ? item.image : '');
+      productCatalogDropZone.reset(variants[0] ? variants[0].image : '');
+      if (variants.length > 1) {
+        productCatalogVariantsInfo.style.display = 'flex';
+        productCatalogVariantsInfo.innerHTML = '<div class="posFinderFieldLabel" style="width:100%;">' + variants.length + ' varyant (renk/boy) - toplu içe aktarımdan geldi, salt okunur</div>' +
+          variants.map(function(v) {
+            return '<div class="posFinderHeroImageRow"><img src="' + v.image + '" title="' + sanitize(v.label || '') + '"></div>';
+          }).join('');
+      } else {
+        productCatalogVariantsInfo.style.display = 'none';
+        productCatalogVariantsInfo.innerHTML = '';
+      }
       productCatalogListView.style.display = 'none';
       productCatalogEditorView.style.display = 'block';
     }
@@ -5182,13 +5202,18 @@
     productCatalogSaveButton.addEventListener('click', function() {
       var title = productCatalogTitleInput.value.trim();
       if (!title) { window.alert('Ürün adı girin.'); return; }
+      var existingVariants = editingProductCatalogItem ? (editingProductCatalogItem.variants || []) : [];
+      var coverPath = productCatalogDropZone.getPath() || (existingVariants[0] && existingVariants[0].image) || '';
+      var variants = existingVariants.length
+        ? [Object.assign({}, existingVariants[0], { image: coverPath })].concat(existingVariants.slice(1))
+        : [{ sku: (editingProductCatalogItem ? editingProductCatalogItem.id : ('prod-' + Date.now())), image: coverPath, label: null, colorName: null, colorHex: null, size: null }];
       var record = {
         id: editingProductCatalogItem ? editingProductCatalogItem.id : ('prod-' + Date.now()),
         title: title,
         category: productCatalogChips.get(),
-        image: productCatalogDropZone.getPath(),
         status: productCatalogStatusToggle.get(),
-        date: editingProductCatalogItem ? editingProductCatalogItem.date : todayIso()
+        date: editingProductCatalogItem ? editingProductCatalogItem.date : todayIso(),
+        variants: variants
       };
       products.push({ op: editingProductCatalogItem ? 'edit' : 'add', id: record.id, record: record });
       saveProducts();
@@ -5228,8 +5253,10 @@
         row.className = 'posFinderContentListItem';
         var info = document.createElement('div');
         info.className = 'posFinderContentListItemInfo';
+        var variantCount = (item.variants || []).length;
         info.innerHTML = '<strong>' + sanitize(item.title) + '</strong><span class="posFinderContentListItemMeta">' +
-          (item.status === 'published' ? 'Yayında' : 'Taslak') + ' · ' + sanitize(item.category) + '</span>';
+          (item.status === 'published' ? 'Yayında' : 'Taslak') + ' · ' + sanitize(item.category) +
+          (variantCount > 1 ? ' · ' + variantCount + ' varyant' : '') + '</span>';
         var editButton = document.createElement('button');
         editButton.type = 'button';
         editButton.textContent = 'Düzenle';

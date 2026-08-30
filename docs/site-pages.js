@@ -261,6 +261,7 @@ window.SitePages = (function() {
   // paneli) hepsini tek seferde DOM'a basmak tarayıcıyı yavaşlatır - bu
   // yüzden "Daha Fazla Göster" ile parça parça (PAGE_SIZE'lık) render edilir.
   var PRODUCT_PAGE_SIZE = 48;
+  var PRODUCT_VARIANTS_VISIBLE = 6;
   function renderProductGrid() {
     var container = document.getElementById('productGrid');
     var filterRow = document.getElementById('productFilterRow');
@@ -290,39 +291,87 @@ window.SitePages = (function() {
     });
     loadMoreWrap.appendChild(loadMoreBtn);
 
+    // Aynı üründe farklı renk/boy varsa (data.js: p.variants[]) enzahome.
+    // com.tr'deki gibi tek kartta gösterilir - renk biliniyorsa küçük bir
+    // renk noktası, sadece boy biliniyorsa (ör. halılar) metin etiketi.
+    // Bir varyanta tıklamak sadece görseli değiştirir (flip'i tetiklemez);
+    // fotoğrafa tıklamak flip yapıp Sepete Ekle/WhatsApp CTA'sını açar.
+    function variantChipHtml(v, i) {
+      if (v.colorHex) {
+        return '<button type="button" class="productVariantSwatch' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '" style="background-color:' + v.colorHex + '" title="' + esc(v.colorName || v.label || '') + '"></button>';
+      }
+      var text = v.size || (v.label ? v.label.slice(0, 12) : String(i + 1));
+      return '<button type="button" class="productVariantChip' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '" title="' + esc(v.label || '') + '">' + esc(text) + '</button>';
+    }
+    function variantFullTitle(p, v) {
+      return v.label ? p.title + ' - ' + v.label : p.title;
+    }
     function cardHtml(p) {
-      var waUrl = 'https://wa.me/' + (c.whatsapp || '').replace(/\D/g, '') + '?text=' + encodeURIComponent('Merhaba, "' + p.title + '" ürünü hakkında bilgi almak istiyorum.');
-      return '<div class="productCard revealOnScroll" data-product-id="' + esc(p.id) + '" data-product-title="' + esc(p.title) + '">' +
+      var v0 = p.variants[0];
+      return '<div class="productCard revealOnScroll" data-product-id="' + esc(p.id) + '" data-active-idx="0">' +
         '<div class="productCardInner">' +
         '<div class="productCardFace productCardFront">' +
-        '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy">' +
+        '<img src="' + esc(v0.image) + '" alt="' + esc(p.title) + '" loading="lazy">' +
         '<span class="productCardCategory">' + esc(deriveProductType(p.title, p.category)) + '</span>' +
         '</div>' +
         '<div class="productCardFace productCardBack">' +
         '<h3>' + esc(p.title) + '</h3>' +
         '<div class="productCardBackActions">' +
         '<button type="button" class="btnOutline productCardAddToCart">Sepete Ekle</button>' +
-        '<a class="btnWarm" href="' + waUrl + '" target="_blank" rel="noopener">WhatsApp\'tan Sor</a>' +
+        '<a class="btnWarm productCardWhatsapp" target="_blank" rel="noopener">WhatsApp\'tan Sor</a>' +
         '</div>' +
         '</div>' +
-        '</div></div>';
+        '</div>' +
+        '<h3 class="productCardTitle">' + esc(p.title) + '</h3>' +
+        (p.variants.length > 1 ? '<div class="productCardVariants">' +
+          p.variants.map(function(v, i) { return (i >= PRODUCT_VARIANTS_VISIBLE ? '<span class="productVariantOverflow" hidden>' + variantChipHtml(v, i) + '</span>' : variantChipHtml(v, i)); }).join('') +
+          (p.variants.length > PRODUCT_VARIANTS_VISIBLE ? '<button type="button" class="productVariantMoreBtn">+' + (p.variants.length - PRODUCT_VARIANTS_VISIBLE) + '</button>' : '') +
+          '</div>' : '') +
+        '</div>';
     }
-    function wireCard(card) {
+    function wireCard(card, p) {
       var inner = card.querySelector('.productCardInner');
+      var img = inner.querySelector('img');
+      var waLink = inner.querySelector('.productCardWhatsapp');
+      function activeVariant() { return p.variants[parseInt(card.dataset.activeIdx, 10)] || p.variants[0]; }
+      function updateWaLink() {
+        var v = activeVariant();
+        waLink.href = 'https://wa.me/' + (c.whatsapp || '').replace(/\D/g, '') + '?text=' + encodeURIComponent('Merhaba, "' + variantFullTitle(p, v) + '" ürünü hakkında bilgi almak istiyorum.');
+      }
+      updateWaLink();
       inner.querySelector('.productCardFront').addEventListener('click', function() {
         inner.classList.toggle('flipped');
       });
+      Array.prototype.forEach.call(card.querySelectorAll('.productVariantSwatch, .productVariantChip'), function(chip) {
+        chip.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx = chip.dataset.idx;
+          card.dataset.activeIdx = idx;
+          img.src = p.variants[idx].image;
+          card.querySelectorAll('.productVariantSwatch, .productVariantChip').forEach(function(c2) { c2.classList.toggle('active', c2 === chip); });
+          updateWaLink();
+        });
+      });
       card.querySelector('.productCardAddToCart').addEventListener('click', function(e) {
         e.stopPropagation();
-        addToCart({ id: card.dataset.productId, title: card.dataset.productTitle });
+        var v = activeVariant();
+        addToCart({ id: p.id + ':' + v.sku, title: variantFullTitle(p, v) });
       });
+      var moreBtn = card.querySelector('.productVariantMoreBtn');
+      if (moreBtn) {
+        moreBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          card.querySelectorAll('.productVariantOverflow').forEach(function(el) { el.hidden = false; });
+          moreBtn.remove();
+        });
+      }
     }
 
     function draw() {
       var all = activeCategory ? items.filter(function(p) { return p.category === activeCategory; }) : items;
       var visible = all.slice(0, visibleCount);
       container.innerHTML = visible.map(cardHtml).join('');
-      Array.prototype.forEach.call(container.querySelectorAll('.productCard'), wireCard);
+      Array.prototype.forEach.call(container.querySelectorAll('.productCard'), function(card, i) { wireCard(card, visible[i]); });
       countLabel.textContent = visible.length + ' / ' + all.length + ' ürün gösteriliyor';
       loadMoreWrap.style.display = visible.length < all.length ? 'block' : 'none';
       initScrollReveal();
@@ -369,7 +418,7 @@ window.SitePages = (function() {
     var items = all.length <= HOME_MARQUEE_SAMPLE_SIZE ? all : all.slice().sort(function() { return Math.random() - 0.5; }).slice(0, HOME_MARQUEE_SAMPLE_SIZE);
     var cardsHtml = items.map(function(p) {
       return '<a class="productMarqueeItem" href="urunler.html" title="' + esc(p.title) + '">' +
-        '<img src="' + esc(p.image) + '" alt="' + esc(p.title) + '" loading="lazy"></a>';
+        '<img src="' + esc(p.variants[0].image) + '" alt="' + esc(p.title) + '" loading="lazy"></a>';
     }).join('');
     container.innerHTML = '<div class="productMarqueeTrack">' + cardsHtml + cardsHtml + '</div>';
   }
